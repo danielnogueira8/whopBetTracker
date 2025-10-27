@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useWhopIframeSdk } from '@whop/react'
+import { useIframeSdk } from '@whop/react'
 import { Button } from '~/components/ui/button'
 import {
 	Dialog,
@@ -77,7 +77,7 @@ export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerD
 		reader.readAsDataURL(file)
 	}
 
-	const iframeSdk = useWhopIframeSdk()
+	const iframeSdk = useIframeSdk()
 
 	const checkoutMutation = useMutation({
 		mutationFn: async () => {
