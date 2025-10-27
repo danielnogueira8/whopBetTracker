@@ -21,12 +21,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { Switch } from "~/components/ui/switch";
+import { Badge } from "~/components/ui/badge";
 import { useWhop } from "~/lib/whop-context";
+import { Plus, Trash2 } from "lucide-react";
+import { calculateParlayOdds } from "~/lib/parlay-utils";
 
 interface CreateBetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isCommunityBet?: boolean;
+}
+
+interface Leg {
+  sport: string;
+  game: string;
+  outcome: string;
+  betCategory: string;
+  oddFormat: "american" | "decimal" | "fractional";
+  oddValue: string;
 }
 
 export function CreateBetDialog({
@@ -35,7 +48,12 @@ export function CreateBetDialog({
   isCommunityBet = false,
 }: CreateBetDialogProps) {
   const queryClient = useQueryClient();
-  const { experience } = useWhop();
+  const { experience, user } = useWhop();
+  
+  // Bet type toggle
+  const [isParlay, setIsParlay] = useState(false);
+  
+  // Single bet fields
   const [sport, setSport] = useState("");
   const [game, setGame] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -50,6 +68,13 @@ export function CreateBetDialog({
     () => new Date().toISOString().split("T")[0]
   );
   const [result, setResult] = useState<"pending" | "win" | "lose" | "returned">("pending");
+  
+  // Parlay fields
+  const [parlayName, setParlayName] = useState("");
+  const [legs, setLegs] = useState<Leg[]>([
+    { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
+    { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
+  ]);
 
   const oddPlaceholders = {
     american: "+150 or -200",
