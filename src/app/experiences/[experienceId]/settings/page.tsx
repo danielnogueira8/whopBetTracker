@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useWhop } from "~/lib/whop-context"
 import { Settings as SettingsIcon } from "lucide-react"
+import { Spinner } from "~/components/ui/spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
 import { Label } from "~/components/ui/label"
@@ -101,9 +102,9 @@ export default function SettingsPage() {
   if (isLoadingSettings || isLoadingForums) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <SettingsIcon className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="mt-2 text-sm text-muted-foreground">Loading settings...</p>
+        <div className="flex flex-col items-center justify-center gap-4">
+          <Spinner className="size-8 text-primary animate-spin" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     )
