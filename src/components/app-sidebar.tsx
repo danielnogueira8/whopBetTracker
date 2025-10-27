@@ -1,0 +1,121 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Users, Trophy, BarChart, TrendingUp, Calendar } from "lucide-react"
+import { useWhop } from "~/components/whop-context"
+import { ThemeToggle } from "~/components/theme-toggle"
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
+} from "~/components/ui/sidebar"
+
+interface AppSidebarProps {
+  experienceId: string
+}
+
+export function AppSidebar({ experienceId }: AppSidebarProps) {
+  const pathname = usePathname()
+  const { experience } = useWhop()
+
+  const companyName = `${experience.company.title} Bet Tracker`
+  const communityBetsUrl = `/experiences/${experienceId}/community-bets`
+  const analyticsUrl = `/experiences/${experienceId}/analytics`
+
+  return (
+    <Sidebar>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Bet Tracker</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/upcoming-bets`}>
+                  <Link href={`/experiences/${experienceId}/upcoming-bets` as any}>
+                    <Calendar />
+                    <span>Upcoming Bets</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === communityBetsUrl || pathname === analyticsUrl}>
+                  <Link href={communityBetsUrl as any}>
+                    <Users />
+                    <span>{companyName}</span>
+                  </Link>
+                </SidebarMenuButton>
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === communityBetsUrl}>
+                      <Link href={communityBetsUrl as any}>
+                        <Users />
+                        <span>Bets</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === analyticsUrl}>
+                      <Link href={analyticsUrl as any}>
+                        <TrendingUp />
+                        <span>Analytics</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/my-bets` || pathname === `/experiences/${experienceId}/my-bets/analytics`}>
+                  <Link href={`/experiences/${experienceId}/my-bets` as any}>
+                    <BarChart />
+                    <span>My Bet Tracker</span>
+                  </Link>
+                </SidebarMenuButton>
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === `/experiences/${experienceId}/my-bets`}>
+                      <Link href={`/experiences/${experienceId}/my-bets` as any}>
+                        <BarChart />
+                        <span>Bets</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild isActive={pathname === `/experiences/${experienceId}/my-bets/analytics`}>
+                      <Link href={`/experiences/${experienceId}/my-bets/analytics` as any}>
+                        <TrendingUp />
+                        <span>Analytics</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/leaderboard`}>
+                  <Link href={`/experiences/${experienceId}/leaderboard` as any}>
+                    <Trophy />
+                    <span>Global Leaderboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="p-2">
+        <ThemeToggle />
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
+
