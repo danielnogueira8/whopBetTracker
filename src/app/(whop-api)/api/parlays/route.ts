@@ -26,26 +26,33 @@ export async function GET(req: NextRequest) {
     }
 
     // Build where conditions
-    const conditions = [eq(parlays.experienceId, experienceId)]
-
-    if (isCommunity) {
-      conditions.push(eq(parlays.isCommunityBet, true))
-    }
-
+    let whereClause;
+    
     if (isUpcoming) {
-      conditions.push(eq(parlays.isUpcomingBet, true))
+      whereClause = and(
+        eq(parlays.experienceId, experienceId),
+        eq(parlays.isUpcomingBet, true)
+      )
+    } else if (isCommunity) {
+      whereClause = and(
+        eq(parlays.experienceId, experienceId),
+        eq(parlays.isCommunityBet, true)
+      )
     } else {
-      // For non-upcoming parlays, filter by userId
-      conditions.push(eq(parlays.userId, userId))
-      conditions.push(eq(parlays.isCommunityBet, false))
-      conditions.push(eq(parlays.isUpcomingBet, false))
+      // User's own parlays
+      whereClause = and(
+        eq(parlays.experienceId, experienceId),
+        eq(parlays.userId, userId),
+        eq(parlays.isCommunityBet, false),
+        eq(parlays.isUpcomingBet, false)
+      )
     }
 
     // Fetch parlays with pagination
     const results = await db
       .select()
       .from(parlays)
-      .where(and(...conditions))
+      .where(whereClause)
       .orderBy(desc(parlays.createdAt))
       .limit(limit)
       .offset(offset)
@@ -54,7 +61,7 @@ export async function GET(req: NextRequest) {
     const [countResult] = await db
       .select({ count: db.$count() })
       .from(parlays)
-      .where(and(...conditions))
+      .where(whereClause)
 
     const totalCount = countResult.count || 0
 
