@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Users, Trophy, BarChart, TrendingUp, Calendar } from "lucide-react"
+import { Users, Trophy, BarChart, TrendingUp, Gem, User } from "lucide-react"
 import { useWhop } from "~/lib/whop-context"
 import { ThemeToggle } from "~/components/theme-toggle"
 
@@ -45,7 +45,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/upcoming-bets`}>
                   <Link href={`/experiences/${experienceId}/upcoming-bets` as any}>
-                    <Calendar />
+                    <Gem />
                     <span>{experience.company.title} Picks</span>
                   </Link>
                 </SidebarMenuButton>
@@ -53,7 +53,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === communityBetsUrl || pathname === analyticsUrl}>
                   <Link href={communityBetsUrl as any}>
-                    <Users />
+                    <BarChart />
                     <span>{companyName}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -79,7 +79,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/my-bets` || pathname === `/experiences/${experienceId}/my-bets/analytics`}>
                   <Link href={`/experiences/${experienceId}/my-bets` as any}>
-                    <BarChart />
+                    <User />
                     <span>My Bet Tracker</span>
                   </Link>
                 </SidebarMenuButton>
