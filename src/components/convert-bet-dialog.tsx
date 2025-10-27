@@ -52,10 +52,9 @@ export function ConvertBetDialog({
 
   const { experience } = useWhop();
 
-  if (!experience) return null;
-
   const convertBet = useMutation({
     mutationFn: async (betData: any) => {
+      if (!experience) throw new Error("Experience not found");
       const response = await fetch(`/api/upcoming-bets/${bet?.id}/convert`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +79,8 @@ export function ConvertBetDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!experience) return;
 
     const betData = {
       result,

@@ -50,10 +50,9 @@ export function CreateUpcomingBetDialog({
 
   const { experience } = useWhop();
 
-  if (!experience) return null;
-
   const createBet = useMutation({
     mutationFn: async (betData: any) => {
+      if (!experience) throw new Error("Experience not found");
       const response = await fetch("/api/upcoming-bets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,6 +80,8 @@ export function CreateUpcomingBetDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!experience) return;
 
     const betData = {
       sport,
