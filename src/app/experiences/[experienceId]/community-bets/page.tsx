@@ -105,10 +105,10 @@ export default function CommunityBetsPage() {
 
       const matchesResult = filterResult === "all" || bet.result === filterResult;
       
-      // Filter by odds value range (decimal format)
+      // Filter by odds value range - convert user input from their preferred format to decimal
       const decimalOdd = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
-      const minValue = filterOddMin ? parseFloat(filterOddMin) : 0;
-      const maxValue = filterOddMax ? parseFloat(filterOddMax) : Infinity;
+      const minValue = filterOddMin ? toDecimal(parseFloat(filterOddMin), preferredOddsFormat) : 0;
+      const maxValue = filterOddMax ? toDecimal(parseFloat(filterOddMax), preferredOddsFormat) : Infinity;
       const matchesOddValue = !filterOddMin && !filterOddMax || (decimalOdd >= minValue && decimalOdd <= maxValue);
       
       const matchesSport = filterSport === "all" || bet.sport === filterSport;
@@ -116,7 +116,7 @@ export default function CommunityBetsPage() {
 
       return matchesSearch && matchesResult && matchesOddValue && matchesSport && matchesBetCategory;
     });
-  }, [bets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory]);
+  }, [bets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory, preferredOddsFormat]);
 
   const handleOddsFormatChange = (format: OddFormat) => {
     setPreferredOddsFormat(format);
@@ -304,18 +304,18 @@ export default function CommunityBetsPage() {
                 <div className="flex gap-2">
                   <Input
                     type="number"
-                    placeholder="Min odds"
+                    placeholder={`Min odds (${preferredOddsFormat})`}
                     value={filterOddMin}
                     onChange={(e) => setFilterOddMin(e.target.value)}
-                    className="w-[120px]"
+                    className="w-[140px]"
                     step="0.1"
                   />
                   <Input
                     type="number"
-                    placeholder="Max odds"
+                    placeholder={`Max odds (${preferredOddsFormat})`}
                     value={filterOddMax}
                     onChange={(e) => setFilterOddMax(e.target.value)}
-                    className="w-[120px]"
+                    className="w-[140px]"
                     step="0.1"
                   />
                 </div>
