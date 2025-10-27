@@ -15,7 +15,7 @@ import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
-import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp, Edit } from "lucide-react";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
 import {
@@ -495,7 +495,7 @@ export default function MyBetsPage() {
                                   setEditDialogOpen(true);
                                 }}
                               >
-                                Edit
+                                <Edit className="h-4 w-4" />
                               </Button>
                               <Button
                                 variant="ghost"
