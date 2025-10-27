@@ -60,6 +60,17 @@ export async function GET(req: NextRequest) {
 	try {
 		const now = new Date()
 
+		// Mark expired banners that have passed their end_time
+		await db
+			.update(adBanners)
+			.set({ status: 'expired' })
+			.where(
+				and(
+					eq(adBanners.status, 'active'),
+					lte(adBanners.endTime, now),
+				),
+			)
+
 		// Find active banner (status='active' and current time is within start/end range)
 		const activeBanner = await db
 			.select()

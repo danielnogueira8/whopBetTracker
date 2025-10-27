@@ -10,6 +10,17 @@ export async function GET(req: NextRequest) {
 	try {
 		const now = new Date()
 
+		// First, mark expired banners as expired
+		await db
+			.update(adBanners)
+			.set({ status: 'expired' })
+			.where(
+				and(
+					eq(adBanners.status, 'active'),
+					lte(adBanners.endTime, now),
+				),
+			)
+
 		// Check for active banner
 		const activeBanner = await db
 			.select()
