@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Clock } from 'lucide-react'
 
@@ -84,9 +83,9 @@ export function AdBannerDisplay() {
 
 	if (banner.linkUrl) {
 		return (
-			<Link href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
+			<a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
 				{content}
-			</Link>
+			</a>
 		)
 	}
 
