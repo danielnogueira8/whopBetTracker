@@ -254,7 +254,7 @@ export default function CommunityBetsPage() {
                 size="sm"
                 onClick={() => setSettingsOpen(true)}
               >
-                <Settings className="h-4 w-4" />
+                Odds Format
               </Button>
               {isAdmin && (
                 <Button onClick={() => setDialogOpen(true)}>
@@ -439,7 +439,6 @@ export default function CommunityBetsPage() {
                     <TableHead>Bet Type</TableHead>
                     <TableHead>Outcome</TableHead>
                     <TableHead>Odds</TableHead>
-                    <TableHead>Format</TableHead>
                     <TableHead>Units</TableHead>
                     <TableHead>Result</TableHead>
                     <TableHead>Date</TableHead>
@@ -449,7 +448,7 @@ export default function CommunityBetsPage() {
                 <TableBody>
                   {filteredBets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isAdmin ? 11 : 10} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={isAdmin ? 10 : 9} className="text-center py-8 text-muted-foreground">
                         No bets found matching your filters.
                       </TableCell>
                     </TableRow>
@@ -468,9 +467,6 @@ export default function CommunityBetsPage() {
                             <TableCell>{bet.outcome}</TableCell>
                             <TableCell>
                               {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
-                            </TableCell>
-                            <TableCell className="uppercase text-xs text-muted-foreground">
-                              {preferredOddsFormat}
                             </TableCell>
                             <TableCell>{formatUnits(bet.unitsInvested)}</TableCell>
                             <TableCell>
@@ -537,9 +533,6 @@ export default function CommunityBetsPage() {
                               <TableCell>
                                 {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
                               </TableCell>
-                              <TableCell className="uppercase text-xs text-muted-foreground">
-                                {preferredOddsFormat}
-                              </TableCell>
                               <TableCell>{formatUnits(parlay.unitsInvested)}</TableCell>
                               <TableCell>
                                 <Badge className={resultColors[parlay.result as keyof typeof resultColors]}>
@@ -571,7 +564,6 @@ export default function CommunityBetsPage() {
                                 <TableCell>{getBetCategoryLabel(leg.betCategory as any)}</TableCell>
                                 <TableCell>{leg.outcome}</TableCell>
                                 <TableCell>{displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}</TableCell>
-                                <TableCell className="uppercase text-xs text-muted-foreground">{leg.oddFormat}</TableCell>
                                 <TableCell>-</TableCell>
                                 <TableCell>
                                   <Badge className={resultColors[leg.result as keyof typeof resultColors]}>

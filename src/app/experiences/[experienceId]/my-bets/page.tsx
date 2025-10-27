@@ -261,7 +261,7 @@ export default function MyBetsPage() {
             size="sm"
             onClick={() => setSettingsOpen(true)}
           >
-            <Settings className="h-4 w-4" />
+            Odds Format
           </Button>
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -444,7 +444,6 @@ export default function MyBetsPage() {
                   <TableHead>Bet Type</TableHead>
                   <TableHead>Outcome</TableHead>
                   <TableHead>Odds</TableHead>
-                  <TableHead>Format</TableHead>
                   <TableHead>Units</TableHead>
                   <TableHead>$ Invested</TableHead>
                   <TableHead>Result</TableHead>
@@ -455,7 +454,7 @@ export default function MyBetsPage() {
               <TableBody>
                 {filteredBets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No bets found matching your filters.
                     </TableCell>
                   </TableRow>
@@ -474,9 +473,6 @@ export default function MyBetsPage() {
                           <TableCell>{bet.outcome}</TableCell>
                           <TableCell>
                             {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
-                          </TableCell>
-                          <TableCell className="uppercase text-xs text-muted-foreground">
-                            {preferredOddsFormat}
                           </TableCell>
                           <TableCell>{formatUnits(bet.unitsInvested)}</TableCell>
                           <TableCell>{bet.dollarsInvested || "-"}</TableCell>
@@ -547,9 +543,6 @@ export default function MyBetsPage() {
                             <TableCell>
                               {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
                             </TableCell>
-                            <TableCell className="uppercase text-xs text-muted-foreground">
-                              {preferredOddsFormat}
-                            </TableCell>
                             <TableCell>{formatUnits(parlay.unitsInvested)}</TableCell>
                             <TableCell>{parlay.dollarsInvested || "-"}</TableCell>
                             <TableCell>
@@ -587,9 +580,6 @@ export default function MyBetsPage() {
                               <TableCell>{leg.outcome}</TableCell>
                               <TableCell>
                                 {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
-                              </TableCell>
-                              <TableCell className="uppercase text-xs text-muted-foreground">
-                                {leg.oddFormat}
                               </TableCell>
                               <TableCell>-</TableCell>
                               <TableCell>-</TableCell>
