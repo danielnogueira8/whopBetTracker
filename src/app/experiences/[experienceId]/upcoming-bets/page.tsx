@@ -224,14 +224,18 @@ export default function UpcomingBetsPage() {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Odds</span>
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      💰 Odds
+                    </span>
                     <span className="font-medium">
                       {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
                     </span>
                   </div>
                   {bet.confidenceLevel && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Confidence</span>
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        🎯 Confidence
+                      </span>
                       <Badge 
                         variant={bet.confidenceLevel >= 8 ? "default" : bet.confidenceLevel >= 6 ? "secondary" : "outline"}
                         className={bet.confidenceLevel >= 8 ? "bg-green-500 text-white" : bet.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
@@ -242,7 +246,9 @@ export default function UpcomingBetsPage() {
                   )}
                   {bet.unitsToInvest && (
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Units</span>
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        📊 Units
+                      </span>
                       <span className="font-medium">{bet.unitsToInvest}</span>
                     </div>
                   )}
