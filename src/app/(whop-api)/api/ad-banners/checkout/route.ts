@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Duration is required' }, { status: 400 })
 		}
 
-		// Map duration to plan ID
+		// Map duration to plan ID and product ID
+		// Using separate product IDs allows users to purchase the same duration multiple times
 		const planIdMap: Record<string, string> = {
 			'1_minute': env.AD_BANNER_1_MINUTE_PLAN_ID,
 			'1_day': env.AD_BANNER_1_DAY_PLAN_ID,
@@ -26,9 +27,17 @@ export async function POST(req: NextRequest) {
 			'1_month': env.AD_BANNER_1_MONTH_PLAN_ID,
 		}
 
-		const planId = planIdMap[duration]
+		const productIdMap: Record<string, string> = {
+			'1_minute': env.AD_BANNER_1_MINUTE_PROD_ID,
+			'1_day': env.AD_BANNER_1_DAY_PROD_ID,
+			'1_week': env.AD_BANNER_1_WEEK_PROD_ID,
+			'1_month': env.AD_BANNER_1_MONTH_PROD_ID,
+		}
 
-		if (!planId) {
+		const planId = planIdMap[duration]
+		const productId = productIdMap[duration]
+
+		if (!planId || !productId) {
 			return NextResponse.json({ error: 'Invalid duration' }, { status: 400 })
 		}
 
@@ -44,14 +53,10 @@ export async function POST(req: NextRequest) {
 		}
 
 		// Create checkout session with metadata
-		// IMPORTANT: This is a workaround because Whop's checkout automatically grants access pass.
-		// Each checkout creates a NEW session ID, but if user already has membership to the same
-		// access pass, they'll get the "already have access" error.
-		// 
-		// Solution: Create separate PRODUCTS (access passes) in Whop dashboard for each ad purchase,
-		// not just different plans. Each product grants its own unique membership.
+		// The planId must be used for checkout, but we verify the productId (access pass ID)
+		// Each product has its own unique membership, so users can buy the same duration multiple times
 		const checkoutSession = await whop.payments.createCheckoutSession({
-			planId,
+			planId, // API requires planId
 			metadata: metadata as any,
 		})
 
@@ -61,6 +66,7 @@ export async function POST(req: NextRequest) {
 
 		return NextResponse.json({
 			planId,
+			productId, // Also return productId for tracking
 			checkoutId: checkoutSession.id,
 			duration,
 			metadata,
