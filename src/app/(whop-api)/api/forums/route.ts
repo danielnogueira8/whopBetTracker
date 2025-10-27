@@ -39,12 +39,12 @@ export async function GET(req: NextRequest) {
       console.log("Raw experiences response:", JSON.stringify(experiences, null, 2))
 
       // Handle different response structures
-      let experienceList = []
+      let experienceList: any[] = []
       if (Array.isArray(experiences)) {
         experienceList = experiences
       } else if (experiences?.experiencesV2?.nodes && Array.isArray(experiences.experiencesV2.nodes)) {
         // Handle GraphQL-style response with experiencesV2.nodes
-        experienceList = experiences.experiencesV2.nodes
+        experienceList = experiences.experiencesV2.nodes.filter((exp): exp is any => exp !== null)
       }
 
       console.log(`Found ${experienceList.length} total experiences`)
