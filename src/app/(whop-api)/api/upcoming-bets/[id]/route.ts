@@ -75,13 +75,27 @@ export async function PATCH(
       return Response.json({ error: "Upcoming bet not found" }, { status: 404 });
     }
 
+    // Prepare update data
+    const updateFields: any = {
+      updatedAt: new Date(),
+    };
+
+    // Only update fields that are provided
+    if (updateData.sport !== undefined) updateFields.sport = updateData.sport;
+    if (updateData.game !== undefined) updateFields.game = updateData.game;
+    if (updateData.outcome !== undefined) updateFields.outcome = updateData.outcome;
+    if (updateData.betCategory !== undefined) updateFields.betCategory = updateData.betCategory;
+    if (updateData.oddFormat !== undefined) updateFields.oddFormat = updateData.oddFormat;
+    if (updateData.oddValue !== undefined) updateFields.oddValue = updateData.oddValue.toString();
+    if (updateData.explanation !== undefined) updateFields.explanation = updateData.explanation;
+    if (updateData.confidenceLevel !== undefined) updateFields.confidenceLevel = updateData.confidenceLevel;
+    if (updateData.unitsToInvest !== undefined) updateFields.unitsToInvest = updateData.unitsToInvest?.toString() || null;
+    if (updateData.eventDate !== undefined) updateFields.eventDate = new Date(updateData.eventDate);
+
     // Update bet
     const updated = await db
       .update(upcomingBets)
-      .set({
-        ...updateData,
-        updatedAt: new Date(),
-      })
+      .set(updateFields)
       .where(eq(upcomingBets.id, id))
       .returning();
 
