@@ -95,14 +95,14 @@ export function ConvertBetDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="pt-6 pb-4">
           <DialogTitle>Convert to Community Bet</DialogTitle>
           <DialogDescription>
             Convert this pick to a tracked community bet with results.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-2">
             <div className="p-4 border rounded-md bg-muted/50 space-y-2">
               <p className="text-sm font-medium text-muted-foreground">Bet Details</p>
               <div className="space-y-1 text-sm">
@@ -155,7 +155,7 @@ export function ConvertBetDialog({
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pb-4">
             <Button
               type="button"
               variant="outline"

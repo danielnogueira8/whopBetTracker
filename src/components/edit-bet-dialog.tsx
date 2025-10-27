@@ -64,14 +64,14 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="pt-6 pb-4">
           <DialogTitle>Edit Bet Result</DialogTitle>
           <DialogDescription>
             Update the result for your bet: {bet.game} - {bet.outcome}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="edit-result">Result</Label>
               <Select value={result} onValueChange={(value: any) => setResult(value)}>
@@ -87,7 +87,7 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
               </Select>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pb-4">
             <Button
               type="button"
               variant="outline"

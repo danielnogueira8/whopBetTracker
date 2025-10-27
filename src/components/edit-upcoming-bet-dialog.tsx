@@ -123,14 +123,14 @@ export function EditUpcomingBetDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="pt-6 pb-4">
           <DialogTitle>Edit Pick</DialogTitle>
           <DialogDescription>
             Update your pick details.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="sport">Sport</Label>
               <Input
@@ -233,7 +233,7 @@ export function EditUpcomingBetDialog({
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pb-4">
             <Button
               type="button"
               variant="outline"
