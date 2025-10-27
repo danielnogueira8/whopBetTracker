@@ -45,6 +45,8 @@ export default function UpcomingBetsPage() {
   const { experience, access } = useWhop();
   const queryClient = useQueryClient();
   
+  const experienceId = experience?.id || "";
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -66,9 +68,8 @@ export default function UpcomingBetsPage() {
       if (!response.ok) throw new Error("Failed to fetch upcoming bets");
       return response.json();
     },
+    enabled: !!experienceId, // Don't run query if experienceId is empty
   });
-
-  const experienceId = experience?.id || "";
   
   const deleteBet = useMutation({
     mutationFn: async (betId: string) => {
