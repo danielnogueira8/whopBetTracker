@@ -43,6 +43,29 @@ interface UpcomingBet {
   createdAt: string;
 }
 
+interface UpcomingParlay {
+  id: string;
+  name: string;
+  combinedOddFormat: "american" | "decimal" | "fractional";
+  combinedOddValue: string;
+  unitsInvested: string | null;
+  result: "pending" | "win" | "lose" | "returned";
+  eventDate: string | null;
+  explanation: string | null;
+  legs: {
+    id: string;
+    sport: string;
+    game: string;
+    outcome: string;
+    betCategory: string;
+    oddFormat: "american" | "decimal" | "fractional";
+    oddValue: string;
+    result: "pending" | "win" | "lose" | "returned";
+    legOrder: number;
+  }[];
+  createdAt: string;
+}
+
 export default function UpcomingBetsPage() {
   const { experience, access } = useWhop();
   const queryClient = useQueryClient();
@@ -72,6 +95,23 @@ export default function UpcomingBetsPage() {
     },
     enabled: !!experienceId, // Don't run query if experienceId is empty
   });
+
+  // Fetch upcoming parlays
+  const { data: parlaysData, isLoading: isLoadingParlays } = useQuery({
+    queryKey: ["upcoming-parlays", experienceId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        experienceId,
+        isUpcoming: "true",
+        page: "1",
+        limit: "50"
+      });
+      const response = await fetch(`/api/parlays?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch upcoming parlays");
+      return response.json();
+    },
+    enabled: !!experienceId,
+  });
   
   const deleteBet = useMutation({
     mutationFn: async (betId: string) => {
@@ -83,6 +123,7 @@ export default function UpcomingBetsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
       setDeleteDialogOpen(false);
       setBetToDelete(null);
     },
@@ -93,6 +134,7 @@ export default function UpcomingBetsPage() {
   const isAdmin = access.accessLevel === "admin";
   const companyName = experience.company.title;
   const bets: UpcomingBet[] = data?.bets || [];
+  const parlays: UpcomingParlay[] = parlaysData?.parlays || [];
 
   const formatEventDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -171,12 +213,12 @@ export default function UpcomingBetsPage() {
       </AlertDialog>
 
       <div className="flex-1 p-6">
-        {isLoading ? (
+        {(isLoading || isLoadingParlays) ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Spinner className="size-8 text-primary animate-spin" />
             <p className="text-muted-foreground">Loading picks...</p>
           </div>
-        ) : bets.length === 0 ? (
+        ) : bets.length === 0 && parlays.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">
               No upcoming picks yet.
@@ -280,6 +322,89 @@ export default function UpcomingBetsPage() {
                       <TrendingUp className="mr-2 h-4 w-4" />
                       Convert to Bet
                     </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+            
+            {parlays.map((parlay) => (
+              <Card key={parlay.id} className="flex flex-col border-2 border-primary/20">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-2">
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-300">
+                      PARLAY ({parlay.legs.length} legs)
+                    </Badge>
+                    {isAdmin && (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={() => {
+                            // Handle parlay delete
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <CardTitle className="mt-2">{parlay.name}</CardTitle>
+                  <CardDescription className="mt-1">
+                    {parlay.legs.length}-leg parlay
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex-1 space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Percent className="h-4 w-4" />
+                      Combined Odds
+                    </span>
+                    <span className="font-medium">
+                      {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
+                    </span>
+                  </div>
+                  {parlay.unitsInvested && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Diamond className="h-4 w-4" />
+                        Units
+                      </span>
+                      <span className="font-medium">{parlay.unitsInvested}</span>
+                    </div>
+                  )}
+                  {parlay.eventDate && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>{formatEventDate(parlay.eventDate)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="pt-4 border-t space-y-3">
+                    <p className="text-sm font-medium text-muted-foreground">Legs</p>
+                    {parlay.legs.map((leg, index) => (
+                      <div key={leg.id} className="p-3 bg-muted/30 rounded-md">
+                        <div className="flex items-start justify-between mb-1">
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Leg {index + 1}: {leg.sport}
+                          </span>
+                          <span className="text-xs font-medium">
+                            {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium">{leg.game}</p>
+                        <p className="text-xs text-muted-foreground">{leg.outcome}</p>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {parlay.explanation && (
+                    <div className="pt-4 border-t">
+                      <p className="text-sm font-medium text-muted-foreground mb-2">Explanation</p>
+                      <div className="p-3 bg-muted/50 rounded-md text-sm leading-relaxed">
+                        {parlay.explanation}
+                      </div>
+                    </div>
                   )}
                 </CardContent>
               </Card>
