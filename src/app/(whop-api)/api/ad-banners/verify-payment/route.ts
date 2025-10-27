@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
 
 		// Check if there's a recent successful receipt (within last 5 minutes)
 		const recentReceipt = userReceipts?.find((receipt) => {
+			if (!receipt || !receipt.createdAt) return false
 			const receiptTime = new Date(receipt.createdAt)
 			const now = new Date()
 			const diffInMinutes = (now.getTime() - receiptTime.getTime()) / (1000 * 60)
