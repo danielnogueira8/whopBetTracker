@@ -42,8 +42,6 @@ export async function GET(req: NextRequest) {
       let experienceList = []
       if (Array.isArray(experiences)) {
         experienceList = experiences
-      } else if (experiences?.data && Array.isArray(experiences.data)) {
-        experienceList = experiences.data
       } else if (experiences?.experiencesV2?.nodes && Array.isArray(experiences.experiencesV2.nodes)) {
         // Handle GraphQL-style response with experiencesV2.nodes
         experienceList = experiences.experiencesV2.nodes

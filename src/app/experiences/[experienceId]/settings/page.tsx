@@ -23,8 +23,9 @@ interface Settings {
 }
 
 export default function SettingsPage() {
-  const { experience } = useWhop()
+  const { experience, access } = useWhop()
   const queryClient = useQueryClient()
+  const isAdmin = access?.accessLevel === "admin"
 
   // Fetch settings
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
@@ -103,6 +104,19 @@ export default function SettingsPage() {
         <div className="text-center">
           <SettingsIcon className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
           <p className="mt-2 text-sm text-muted-foreground">Loading settings...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            You need to be an admin to access forum integration settings.
+          </p>
         </div>
       </div>
     )
