@@ -10,7 +10,7 @@ import { Badge } from "~/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Progress } from "~/components/ui/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart";
-import { ArrowLeft, TrendingUp, TrendingDown, Target, BarChart3, Gem } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Target, BarChart3, Gem, DollarSign } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Spinner } from "~/components/ui/spinner";
 import Link from "next/link";
@@ -117,6 +117,47 @@ export default function PersonalAnalyticsPage() {
       };
     });
 
+    // Calculate cumulative dollars over time
+    const dailyDollarData: Record<string, { wins: number; losses: number }> = {};
+    
+    bets.forEach(bet => {
+      if (bet.dollarsInvested && bet.result !== "pending") {
+        const date = new Date(bet.createdAt).toISOString().split("T")[0];
+        if (!dailyDollarData[date]) {
+          dailyDollarData[date] = { wins: 0, losses: 0 };
+        }
+        
+        const amount = parseFloat(bet.dollarsInvested);
+        if (bet.result === "win") {
+          dailyDollarData[date].wins += amount;
+        } else if (bet.result === "lose") {
+          dailyDollarData[date].losses += amount;
+        }
+      }
+    });
+
+    // Sort and calculate cumulative dollars
+    const sortedDollarDates = Object.keys(dailyDollarData).sort();
+    let cumulativeDollarWins = 0;
+    let cumulativeDollarLosses = 0;
+
+    const cumulativeDollarsData = sortedDollarDates.map(date => {
+      cumulativeDollarWins += dailyDollarData[date].wins;
+      cumulativeDollarLosses += dailyDollarData[date].losses;
+      
+      return {
+        date,
+        wins: cumulativeDollarWins,
+        losses: cumulativeDollarLosses,
+        net: cumulativeDollarWins - cumulativeDollarLosses,
+      };
+    });
+
+    // Calculate net dollars
+    const netDollars = cumulativeDollarsData.length > 0 
+      ? cumulativeDollarsData[cumulativeDollarsData.length - 1].net 
+      : 0;
+
     return {
       totalBets,
       pendingBets,
@@ -128,6 +169,8 @@ export default function PersonalAnalyticsPage() {
       sportBreakdown,
       monthlyBreakdown,
       cumulativeUnitsData,
+      cumulativeDollarsData,
+      netDollars,
     };
   }, [bets]);
 
@@ -232,6 +275,23 @@ export default function PersonalAnalyticsPage() {
               </p>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Bankroll</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${analytics.netDollars >= 0 ? "text-primary" : "text-destructive"}`}>
+                {analytics.netDollars >= 0 
+                  ? `+$${analytics.netDollars.toFixed(2)}` 
+                  : `-$${Math.abs(analytics.netDollars).toFixed(2)}`}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Net dollar win/loss
+              </p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Units Won/Loss Chart */}
@@ -291,6 +351,59 @@ export default function PersonalAnalyticsPage() {
                     stroke="hsl(var(--chart-2))"
                     strokeWidth={2}
                     dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="net"
+                    stroke="hsl(var(--chart-3))"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Bankroll Chart */}
+        {analytics.cumulativeDollarsData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Bankroll Over Time</CardTitle>
+              <CardDescription>Cumulative dollar profit/loss</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer
+                config={{
+                  net: {
+                    label: "Bankroll",
+                    color: "hsl(var(--chart-3))",
+                  },
+                }}
+                className="h-[300px] w-full"
+              >
+                <LineChart data={analytics.cumulativeDollarsData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return date.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      });
+                    }}
+                  />
+                  <YAxis 
+                    tickFormatter={(value) => `$${value.toFixed(0)}`}
+                  />
+                  <ChartTooltip
+                    content={<ChartTooltipContent 
+                      formatter={(value) => `$${Number(value).toFixed(2)}`}
+                    />}
                   />
                   <Line
                     type="monotone"
