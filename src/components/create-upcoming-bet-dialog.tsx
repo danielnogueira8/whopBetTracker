@@ -102,7 +102,7 @@ export function CreateUpcomingBetDialog({
         <DialogHeader className="pt-6 pb-4">
           <DialogTitle>Create New Pick</DialogTitle>
           <DialogDescription>
-            Add your prediction with an explanation for the community.
+            Add your pick with an explanation for the community.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -188,14 +188,13 @@ export function CreateUpcomingBetDialog({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="explanation">Explanation</Label>
+              <Label htmlFor="explanation">Explanation (optional)</Label>
               <Textarea
                 id="explanation"
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
-                placeholder="Explain your prediction reasoning..."
+                placeholder="Explain your pick reasoning..."
                 className="min-h-[100px]"
-                required
               />
             </div>
             <div className="grid gap-2">

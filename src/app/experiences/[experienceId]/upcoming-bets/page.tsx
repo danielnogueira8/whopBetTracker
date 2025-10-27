@@ -122,7 +122,7 @@ export default function UpcomingBetsPage() {
           {isAdmin && (
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
-              Create Prediction
+              Create New Pick
             </Button>
           )}
         </div>
@@ -141,9 +141,9 @@ export default function UpcomingBetsPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Prediction?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Pick?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this prediction? This action cannot be undone.
+              Are you sure you want to delete this pick? This action cannot be undone.
               {betToDelete && (
                 <div className="mt-2 p-2 bg-muted rounded text-sm">
                   <strong>{betToDelete.sport}</strong> - {betToDelete.game} - {betToDelete.outcome}
@@ -171,12 +171,12 @@ export default function UpcomingBetsPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Spinner className="size-8 text-primary animate-spin" />
-            <p className="text-muted-foreground">Loading predictions...</p>
+            <p className="text-muted-foreground">Loading picks...</p>
           </div>
         ) : bets.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">
-              No upcoming predictions yet.
+              No upcoming picks yet.
               {isAdmin && " Create one to share with the community!"}
             </p>
           </div>

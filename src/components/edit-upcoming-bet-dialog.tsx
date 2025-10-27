@@ -124,9 +124,9 @@ export function EditUpcomingBetDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Prediction</DialogTitle>
+          <DialogTitle>Edit Pick</DialogTitle>
           <DialogDescription>
-            Update your prediction details.
+            Update your pick details.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
@@ -217,7 +217,7 @@ export function EditUpcomingBetDialog({
                 id="explanation"
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
-                placeholder="Explain your prediction reasoning..."
+                placeholder="Explain your pick reasoning..."
                 className="min-h-[100px]"
                 required
               />
@@ -242,7 +242,7 @@ export function EditUpcomingBetDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={updateBet.isPending}>
-              {updateBet.isPending ? "Updating..." : "Update Prediction"}
+              {updateBet.isPending ? "Updating..." : "Update Pick"}
             </Button>
           </DialogFooter>
         </form>

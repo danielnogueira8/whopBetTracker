@@ -98,7 +98,7 @@ export function ConvertBetDialog({
         <DialogHeader>
           <DialogTitle>Convert to Community Bet</DialogTitle>
           <DialogDescription>
-            Convert this prediction to a tracked community bet with results.
+            Convert this pick to a tracked community bet with results.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>

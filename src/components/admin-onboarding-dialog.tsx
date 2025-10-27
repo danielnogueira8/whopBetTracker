@@ -66,7 +66,7 @@ export function AdminOnboardingDialog({ open, onOpenChange }: AdminOnboardingDia
 					<ul className="space-y-2 text-sm text-muted-foreground">
 						<li className="flex items-center gap-2">
 							<ArrowRight className="h-4 w-4" />
-							Create predictions for your community
+							Create picks for your community
 						</li>
 						<li className="flex items-center gap-2">
 							<ArrowRight className="h-4 w-4" />
@@ -82,17 +82,17 @@ export function AdminOnboardingDialog({ open, onOpenChange }: AdminOnboardingDia
 		},
 		{
 			title: 'Create Community Picks',
-			description: 'Share your predictions with your community',
+			description: 'Share your picks with your community',
 			icon: <BarChart3 className="h-12 w-12 text-primary mb-4" />,
 			content: (
 				<div className="space-y-4">
 					<p className="text-center text-muted-foreground">
-						Use the Community Picks section to create predictions that all your members can see and follow.
+						Use the Community Picks section to create picks that all your members can see and follow.
 					</p>
 					<ul className="space-y-2 text-sm text-muted-foreground">
 						<li className="flex items-center gap-2">
 							<Gem className="h-4 w-4 text-primary" />
-							Click the "Create Prediction" button
+							Click the "Create New Pick" button
 						</li>
 						<li className="flex items-center gap-2">
 							<Gem className="h-4 w-4 text-primary" />
@@ -100,7 +100,7 @@ export function AdminOnboardingDialog({ open, onOpenChange }: AdminOnboardingDia
 						</li>
 						<li className="flex items-center gap-2">
 							<Gem className="h-4 w-4 text-primary" />
-							Set event dates for future predictions
+							Set event dates for future picks
 						</li>
 					</ul>
 				</div>
