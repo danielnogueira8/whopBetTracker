@@ -268,128 +268,140 @@ export default function PersonalAnalyticsPage() {
           </Card>
         </div>
 
-        {/* Units Won/Loss Chart */}
-        {analytics.cumulativeUnitsData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Units Won/Loss Over Time</CardTitle>
-              <CardDescription>Cumulative units won and lost</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  wins: {
-                    label: "Units Won",
-                    color: "hsl(var(--chart-1))",
-                  },
-                  losses: {
-                    label: "Units Lost",
-                    color: "hsl(var(--chart-2))",
-                  },
-                  net: {
-                    label: "Net Units",
-                    color: "hsl(var(--chart-3))",
-                  },
-                }}
-                className="h-[300px] w-full"
-              >
-                <LineChart data={analytics.cumulativeUnitsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => {
-                      const date = new Date(value);
-                      return date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      });
-                    }}
-                  />
-                  <YAxis />
-                  <ChartTooltip
-                    content={<ChartTooltipContent />}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="wins"
-                    stroke="hsl(var(--chart-1))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="losses"
-                    stroke="hsl(var(--chart-2))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="net"
-                    stroke="hsl(var(--chart-3))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Bankroll Chart */}
-        {analytics.cumulativeDollarsData.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Bankroll Over Time</CardTitle>
-              <CardDescription>Cumulative dollar profit/loss</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChartContainer
-                config={{
-                  net: {
-                    label: "Bankroll",
-                    color: "hsl(var(--chart-3))",
-                  },
-                }}
-                className="h-[300px] w-full"
-              >
-                <LineChart data={analytics.cumulativeDollarsData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey="date"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => {
-                      const date = new Date(value);
-                      return date.toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      });
-                    }}
-                  />
-                  <YAxis 
-                    tickFormatter={(value) => `$${value.toFixed(0)}`}
-                  />
-                  <ChartTooltip
-                    content={<ChartTooltipContent 
-                      formatter={(value) => `$${Number(value).toFixed(2)}`}
-                    />}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="net"
-                    stroke="hsl(var(--chart-3))"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ChartContainer>
-            </CardContent>
-          </Card>
+        {/* Chart Toggle */}
+        {(analytics.cumulativeUnitsData.length > 0 || analytics.cumulativeDollarsData.length > 0) && (
+          <Tabs defaultValue="units" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="units">Units Over Time</TabsTrigger>
+              <TabsTrigger value="bankroll">Bankroll Over Time</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="units">
+              {analytics.cumulativeUnitsData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Units Won/Loss Over Time</CardTitle>
+                    <CardDescription>Cumulative units won and lost</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ChartContainer
+                      config={{
+                        wins: {
+                          label: "Units Won",
+                          color: "hsl(var(--chart-1))",
+                        },
+                        losses: {
+                          label: "Units Lost",
+                          color: "hsl(var(--chart-2))",
+                        },
+                        net: {
+                          label: "Net Units",
+                          color: "hsl(var(--chart-3))",
+                        },
+                      }}
+                      className="h-[300px] w-full"
+                    >
+                      <LineChart data={analytics.cumulativeUnitsData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            });
+                          }}
+                        />
+                        <YAxis />
+                        <ChartTooltip
+                          content={<ChartTooltipContent />}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="wins"
+                          stroke="hsl(var(--chart-1))"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="losses"
+                          stroke="hsl(var(--chart-2))"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="net"
+                          stroke="hsl(var(--chart-3))"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="bankroll">
+              {analytics.cumulativeDollarsData.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bankroll Over Time</CardTitle>
+                    <CardDescription>Cumulative dollar profit/loss</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ChartContainer
+                      config={{
+                        net: {
+                          label: "Bankroll",
+                          color: "hsl(var(--chart-3))",
+                        },
+                      }}
+                      className="h-[300px] w-full"
+                    >
+                      <LineChart data={analytics.cumulativeDollarsData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          tickMargin={8}
+                          tickFormatter={(value) => {
+                            const date = new Date(value);
+                            return date.toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            });
+                          }}
+                        />
+                        <YAxis 
+                          tickFormatter={(value) => `$${value.toFixed(0)}`}
+                        />
+                        <ChartTooltip
+                          content={<ChartTooltipContent 
+                            formatter={(value) => `$${Number(value).toFixed(2)}`}
+                          />}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="net"
+                          stroke="hsl(var(--chart-3))"
+                          strokeWidth={2}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ChartContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
         )}
 
         {/* Detailed Tabs */}
