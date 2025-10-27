@@ -8,10 +8,8 @@ const connectionString = process.env.DATABASE_URL!
 const client = postgres(connectionString)
 export const db = drizzle(client, { schema })
 
-// Supabase client for Auth, Storage, Realtime (if configured)
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-export const supabase = supabaseUrl && supabaseKey
-	? createClient(supabaseUrl, supabaseKey)
-	: null
+// Supabase client for Auth, Storage, Realtime
+export const supabase = createClient(
+	process.env.NEXT_PUBLIC_SUPABASE_URL!,
+	process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+)
