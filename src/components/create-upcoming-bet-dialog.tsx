@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWhop } from "~/lib/whop-context";
 import { Button } from "~/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
+import { Switch } from "~/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -43,6 +44,7 @@ export function CreateUpcomingBetDialog({
   const [confidenceLevel, setConfidenceLevel] = useState("5");
   const [unitsToInvest, setUnitsToInvest] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [shouldPostToForum, setShouldPostToForum] = useState(false);
 
   const oddPlaceholders = {
     american: "+150 or -200",
@@ -51,6 +53,35 @@ export function CreateUpcomingBetDialog({
   };
 
   const { experience } = useWhop();
+
+  // Fetch settings to determine default checkbox state
+  const { data: settings } = useQuery({
+    queryKey: ["experience-settings", experience?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/settings?experienceId=${experience?.id}`)
+      if (!response.ok) throw new Error("Failed to fetch settings")
+      const data = await response.json()
+      return data.settings
+    },
+    enabled: !!experience?.id,
+  })
+
+  // Set default checkbox state based on auto-post setting
+  useEffect(() => {
+    if (settings?.autoPostEnabled) {
+      setShouldPostToForum(true)
+    } else if (settings && !settings.autoPostEnabled) {
+      setShouldPostToForum(false)
+    }
+  }, [settings])
+
+  // Reset checkbox when dialog closes, but only to the default from settings
+  useEffect(() => {
+    if (!open) {
+      // Reset to the default based on settings when dialog closes
+      setShouldPostToForum(settings?.autoPostEnabled || false)
+    }
+  }, [open, settings?.autoPostEnabled])
 
   const createBet = useMutation({
     mutationFn: async (betData: any) => {
@@ -96,6 +127,7 @@ export function CreateUpcomingBetDialog({
       confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
       unitsToInvest: unitsToInvest ? parseFloat(unitsToInvest) : null,
       eventDate,
+      shouldPostToForum,
     };
 
     createBet.mutate(betData);
@@ -244,6 +276,21 @@ export function CreateUpcomingBetDialog({
                 required
               />
             </div>
+            {settings?.forumId && (
+              <div className="flex items-center justify-between space-x-2 rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="post-to-forum">Post to Forum</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Share this pick in your selected forum
+                  </p>
+                </div>
+                <Switch
+                  id="post-to-forum"
+                  checked={shouldPostToForum}
+                  onCheckedChange={setShouldPostToForum}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter className="pb-4">
             <Button

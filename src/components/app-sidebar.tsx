@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Users, Trophy, BarChart, TrendingUp, Gem, User, DollarSign } from "lucide-react"
+import { Users, Trophy, BarChart, TrendingUp, Gem, User, DollarSign, Settings, MessagesSquare } from "lucide-react"
 import { useWhop } from "~/lib/whop-context"
 import { ThemeToggle } from "~/components/theme-toggle"
 
@@ -27,13 +27,14 @@ interface AppSidebarProps {
 
 export function AppSidebar({ experienceId }: AppSidebarProps) {
   const pathname = usePathname()
-  const { experience } = useWhop()
+  const { experience, access } = useWhop()
 
   if (!experience) return null
 
   const companyName = `${experience.company.title} Bet Tracker`
   const communityBetsUrl = `/experiences/${experienceId}/community-bets`
   const analyticsUrl = `/experiences/${experienceId}/analytics`
+  const isAdmin = access?.accessLevel === "admin"
 
   return (
     <Sidebar>
@@ -110,6 +111,16 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/settings`}>
+                    <Link href={`/experiences/${experienceId}/settings` as any}>
+                      <MessagesSquare />
+                      <span>Forum Integration</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

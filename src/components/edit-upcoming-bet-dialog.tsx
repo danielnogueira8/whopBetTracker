@@ -15,6 +15,7 @@ import {
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
+import { Switch } from "~/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ interface UpcomingBet {
   confidenceLevel: number | null;
   unitsToInvest: string | null;
   eventDate: string;
+  forumPostId?: string | null;
 }
 
 interface EditUpcomingBetDialogProps {
@@ -59,6 +61,7 @@ export function EditUpcomingBetDialog({
   const [confidenceLevel, setConfidenceLevel] = useState("5");
   const [unitsToInvest, setUnitsToInvest] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [shouldUpdateForumPost, setShouldUpdateForumPost] = useState(false);
 
   useEffect(() => {
     if (bet) {
@@ -122,6 +125,7 @@ export function EditUpcomingBetDialog({
       confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
       unitsToInvest: unitsToInvest ? parseFloat(unitsToInvest) : null,
       eventDate,
+      shouldUpdateForumPost,
     };
 
     updateBet.mutate(betData);
@@ -270,6 +274,21 @@ export function EditUpcomingBetDialog({
                 required
               />
             </div>
+            {bet?.forumPostId && (
+              <div className="flex items-center justify-between space-x-2 rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="update-forum-post">Update Forum Post</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Update the existing forum post with new bet details
+                  </p>
+                </div>
+                <Switch
+                  id="update-forum-post"
+                  checked={shouldUpdateForumPost}
+                  onCheckedChange={setShouldUpdateForumPost}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter className="pb-4">
             <Button

@@ -65,6 +65,7 @@ export const upcomingBets = pgTable('upcoming_bets', {
 	unitsToInvest: decimal('units_to_invest', { precision: 10, scale: 2 }),
 	eventDate: timestamp('event_date').notNull(),
 	createdById: text('created_by_id').notNull(),
+	forumPostId: text('forum_post_id'), // Links to Whop forum post
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -81,6 +82,16 @@ export const adBanners = pgTable('ad_banners', {
 	endTime: timestamp('end_time').notNull(),
 	purchaseReceiptId: text('purchase_receipt_id').notNull(),
 	status: adBannerStatusEnum('status').notNull().default('pending'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Experience settings table for forum integration
+export const experienceSettings = pgTable('experience_settings', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	experienceId: text('experience_id').notNull().unique(),
+	forumId: text('forum_id'),
+	autoPostEnabled: boolean('auto_post_enabled').notNull().default(false),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })

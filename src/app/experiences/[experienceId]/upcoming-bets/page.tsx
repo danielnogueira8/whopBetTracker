@@ -7,7 +7,7 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3 } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent } from "lucide-react";
 import { CreateUpcomingBetDialog } from "~/components/create-upcoming-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
 import { ConvertBetDialog } from "~/components/convert-bet-dialog";
@@ -225,7 +225,7 @@ export default function UpcomingBetsPage() {
                 <CardContent className="flex-1 space-y-4">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
+                      <Percent className="h-4 w-4" />
                       Odds
                     </span>
                     <span className="font-medium">
@@ -235,7 +235,7 @@ export default function UpcomingBetsPage() {
                   {bet.confidenceLevel && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-2">
-                        <Target className="h-4 w-4" />
+                        <Gauge className="h-4 w-4" />
                         Confidence
                       </span>
                       <Badge 
@@ -249,7 +249,7 @@ export default function UpcomingBetsPage() {
                   {bet.unitsToInvest && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4" />
+                        <Diamond className="h-4 w-4" />
                         Units
                       </span>
                       <span className="font-medium">{bet.unitsToInvest}</span>

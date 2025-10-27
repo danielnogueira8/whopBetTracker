@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { db } from "~/db";
-import { upcomingBets } from "~/db/schema";
+import { upcomingBets, experienceSettings } from "~/db/schema";
 import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
 import { eq, and } from "drizzle-orm";
+import { formatUpcomingBetForForum } from "~/lib/forum-post-utils";
 
 export async function GET(
   req: NextRequest,
@@ -98,6 +99,24 @@ export async function PATCH(
       .set(updateFields)
       .where(eq(upcomingBets.id, id))
       .returning();
+
+    // Check if forum post should be updated
+    const { shouldUpdateForumPost } = updateData;
+    const bet = updated[0];
+    const hasForumPost = bet.forumPostId;
+
+    if (shouldUpdateForumPost && hasForumPost) {
+      try {
+        const postContent = formatUpcomingBetForForum(bet);
+        await whop.forumPosts.updateForumPost({
+          forum_post_id: bet.forumPostId,
+          content: postContent,
+        });
+      } catch (error) {
+        console.error("Error updating forum post:", error);
+        // Continue even if forum update fails
+      }
+    }
 
     return Response.json({ bet: updated[0] });
   } catch (error) {
