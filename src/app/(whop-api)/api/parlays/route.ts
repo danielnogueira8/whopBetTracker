@@ -3,7 +3,7 @@ import { db } from "~/db"
 import { parlays, parlayLegs } from "~/db/schema"
 import { verifyUserToken } from "@whop/api"
 import { whop } from "~/lib/whop"
-import { eq, and, desc } from "drizzle-orm"
+import { eq, and, desc, count } from "drizzle-orm"
 import { calculateParlayOdds } from "~/lib/parlay-utils"
 import { formatParlayForForum } from "~/lib/forum-post-utils"
 import { env } from "~/env"
@@ -59,11 +59,11 @@ export async function GET(req: NextRequest) {
 
     // Count total
     const [countResult] = await db
-      .select({ count: db.$count() })
+      .select({ count: count() })
       .from(parlays)
       .where(whereClause)
 
-    const totalCount = countResult.count || 0
+    const totalCount = countResult?.count || 0
 
     // Fetch legs for each parlay
     const parlaysWithLegs = await Promise.all(
