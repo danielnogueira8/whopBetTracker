@@ -90,34 +90,60 @@ export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerD
 			return response.json()
 		},
 		onSuccess: async (data) => {
+			// Store banner data temporarily for after payment
+			const bannerData = {
+				imageUrl,
+				linkUrl,
+				title,
+				duration: selectedDuration,
+				purchaseReceiptId: data.checkoutId,
+			}
+
 			// Open Whop checkout using iframe SDK
 			try {
 				if (iframeSdk) {
+					// Open checkout
 					await iframeSdk.inAppPurchase({
 						planId: data.planId,
 						id: data.checkoutId,
 					})
-					
-					// Wait for payment to complete, then confirm
-					setTimeout(async () => {
-						const confirmResponse = await fetch('/api/ad-banners/confirm', {
+
+					// Poll for payment confirmation
+					const checkPayment = async (retries = 20) => {
+						if (retries === 0) {
+							console.error('Payment verification timeout')
+							return
+						}
+
+						const verificationResponse = await fetch('/api/ad-banners/verify-payment', {
 							method: 'POST',
 							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify({
-								imageUrl,
-								linkUrl,
-								title,
-								duration: selectedDuration,
-								purchaseReceiptId: data.checkoutId,
-							}),
+							body: JSON.stringify({ checkoutId: data.checkoutId }),
 						})
 
-						if (confirmResponse.ok) {
-							onOpenChange(false)
-							// Refresh the page to show new banner
-							window.location.reload()
+						if (verificationResponse.ok) {
+							const { paid } = await verificationResponse.json()
+							if (paid) {
+								// Payment confirmed, create banner
+								const confirmResponse = await fetch('/api/ad-banners/confirm', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json' },
+									body: JSON.stringify(bannerData),
+								})
+
+								if (confirmResponse.ok) {
+									onOpenChange(false)
+									window.location.reload()
+								}
+							} else {
+								// Not paid yet, check again in 1 second
+								setTimeout(() => checkPayment(retries - 1), 1000)
+							}
 						}
-					}, 2000) // Wait 2 seconds for payment to process
+					}
+
+					// Start checking after 3 seconds
+					setTimeout(() => checkPayment(), 3000)
 				}
 			} catch (error) {
 				console.error('Failed to open checkout:', error)
