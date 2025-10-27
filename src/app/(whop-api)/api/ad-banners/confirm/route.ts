@@ -3,8 +3,6 @@ import { verifyUserToken } from '@whop/api'
 import { db } from '~/db'
 import { adBanners } from '~/db/schema'
 import { eq } from 'drizzle-orm'
-import { whop } from '~/lib/whop'
-import { env } from '~/env'
 
 /**
  * POST /api/ad-banners/confirm - Confirm payment and activate banner
@@ -57,32 +55,6 @@ export async function POST(req: NextRequest) {
 				status: 'active',
 			})
 			.returning()
-
-		// IMPORTANT: Revoke the temporary access pass membership that was automatically granted
-		// This allows users to repurchase the same ad slot in the future
-		try {
-			// Map duration back to plan ID to revoke access
-			const planIdMap: Record<string, string> = {
-				'1_minute': env.AD_BANNER_1_MINUTE_PLAN_ID,
-				'1_day': env.AD_BANNER_1_DAY_PLAN_ID,
-				'1_week': env.AD_BANNER_1_WEEK_PLAN_ID,
-				'1_month': env.AD_BANNER_1_MONTH_PLAN_ID,
-			}
-			const planId = planIdMap[duration]
-			
-			if (planId) {
-				// Remove the user's membership to this plan so they can purchase again
-				// This is necessary because Whop grants membership even for one-time purchases
-				await whop.access.revokeAccessFromExperience({
-					experienceId: env.NEXT_PUBLIC_WHOP_APP_ID,
-					userId,
-					planId,
-				})
-			}
-		} catch (error) {
-			// Log but don't fail - the banner was already created
-			console.error('Failed to revoke temporary membership (non-critical):', error)
-		}
 
 		return NextResponse.json({ banner: newBanner[0], success: true })
 	} catch (error) {
