@@ -17,10 +17,15 @@ export const serverQueryClient = new QueryClient({
 
 export function getApiUrl(path: string): string {
 	if (typeof window === 'undefined') {
-		// On server-side, use relative paths for same-origin requests
-		// This avoids URL parsing issues in server-side rendering
-		return path
+		// Server-side: construct absolute URL for Node.js fetch
+		const baseUrl = env.NEXT_PUBLIC_VERCEL_URL
+		// Ensure protocol exists
+		const fullBaseUrl = baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+			? baseUrl
+			: `https://${baseUrl}`
+		return `${fullBaseUrl}${path}`
 	}
+	// Client-side: use relative path
 	return path
 }
 
