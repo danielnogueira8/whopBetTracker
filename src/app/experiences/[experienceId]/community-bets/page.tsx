@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
-import { Plus, Edit, Search, Trash2, Settings, TrendingUp, DollarSign } from "lucide-react";
+import { Plus, Edit, Search, Trash2, Settings, TrendingUp } from "lucide-react";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
@@ -181,7 +181,7 @@ export default function CommunityBetsPage() {
               </Button>
               {isAdmin && (
                 <Button onClick={() => setDialogOpen(true)}>
-                  <DollarSign className="mr-2 h-4 w-4" />
+                  <Plus className="mr-2 h-4 w-4" />
                   Create Community Bet
                 </Button>
               )}

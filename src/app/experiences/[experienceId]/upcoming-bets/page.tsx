@@ -7,7 +7,7 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Gem, Calendar } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Calendar } from "lucide-react";
 import { CreateUpcomingBetDialog } from "~/components/create-upcoming-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
 import { ConvertBetDialog } from "~/components/convert-bet-dialog";
@@ -114,7 +114,7 @@ export default function UpcomingBetsPage() {
         {isAdmin && (
           <div className="ml-auto">
             <Button onClick={() => setDialogOpen(true)}>
-              <Gem className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" />
               Create Prediction
             </Button>
           </div>
