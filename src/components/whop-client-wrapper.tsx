@@ -2,6 +2,7 @@
 
 import { Providers } from '~/app/providers'
 import { WhopProvider } from '~/lib/whop-context'
+import { OnboardingWrapper } from './onboarding-wrapper'
 
 export function WhopClientWrapper({
 	children,
@@ -12,7 +13,9 @@ export function WhopClientWrapper({
 }) {
 	return (
 		<Providers>
-			<WhopProvider experienceId={experienceId}>{children}</WhopProvider>
+			<WhopProvider experienceId={experienceId}>
+				<OnboardingWrapper>{children}</OnboardingWrapper>
+			</WhopProvider>
 		</Providers>
 	)
 }

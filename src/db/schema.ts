@@ -41,6 +41,7 @@ export const userStats = pgTable('user_stats', {
 	totalUnitsWon: decimal('total_units_won', { precision: 15, scale: 2 }).notNull().default('0'),
 	totalDollarsInvested: decimal('total_dollars_invested', { precision: 15, scale: 2 }).notNull().default('0'),
 	totalDollarsWon: decimal('total_dollars_won', { precision: 15, scale: 2 }).notNull().default('0'),
+	hasCompletedOnboarding: boolean('has_completed_onboarding').notNull().default(false),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
 

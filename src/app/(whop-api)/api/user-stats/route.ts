@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
           totalUnitsWon: "0",
           totalDollarsInvested: "0",
           totalDollarsWon: "0",
+          hasCompletedOnboarding: false,
         },
       });
     }

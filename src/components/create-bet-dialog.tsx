@@ -104,7 +104,7 @@ export function CreateBetDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {isCommunityBet ? "Create Community Bet" : "Log New Bet"}
+            {isCommunityBet ? "Log New Community Bet" : "Log New Bet"}
           </DialogTitle>
           <DialogDescription>
             Enter the details for your bet.
