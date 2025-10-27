@@ -31,6 +31,7 @@ interface CreateBetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   isCommunityBet?: boolean;
+  isUpcomingBet?: boolean;
 }
 
 interface Leg {
@@ -46,6 +47,7 @@ export function CreateBetDialog({
   open,
   onOpenChange,
   isCommunityBet = false,
+  isUpcomingBet = false,
 }: CreateBetDialogProps) {
   const queryClient = useQueryClient();
   const { experience, user } = useWhop();
@@ -75,6 +77,10 @@ export function CreateBetDialog({
     { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
     { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
   ]);
+  
+  // Upcoming bet fields (for parlays)
+  const [eventDate, setEventDate] = useState("");
+  const [explanation, setExplanation] = useState("");
 
   const oddPlaceholders = {
     american: "+150 or -200",
@@ -159,11 +165,18 @@ export function CreateBetDialog({
         name: parlayName,
         legs: validLegs,
         isCommunityBet,
+        isUpcomingBet: isUpcomingBet,
         unitsInvested: unitsInvested || null,
         dollarsInvested: dollarsInvested || null,
         notes: notes || null,
         userId: user?.id || null,
       };
+      
+      // Add upcoming bet fields if it's an upcoming bet
+      if (isUpcomingBet) {
+        parlayData.eventDate = eventDate ? new Date(eventDate).toISOString() : null;
+        parlayData.explanation = explanation || null;
+      }
 
       createParlay.mutate(parlayData);
     } else {
@@ -217,7 +230,7 @@ export function CreateBetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh]">
         <DialogHeader className="pt-6 pb-4">
           <DialogTitle>
             {isCommunityBet ? "Log New Community Bet" : "Log New Bet"}
@@ -226,6 +239,8 @@ export function CreateBetDialog({
             {isParlay ? "Create a multi-leg parlay" : "Enter the details for your bet"}
           </DialogDescription>
         </DialogHeader>
+
+        <div className="overflow-y-auto max-h-[calc(90vh-200px)] pr-1">
 
         {/* Mode Toggle */}
         <div className="flex items-center justify-between space-x-2 rounded-lg border p-3 bg-muted/30">
@@ -402,6 +417,32 @@ export function CreateBetDialog({
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </div>
+
+                {/* Upcoming bet fields for parlays */}
+                {isUpcomingBet && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="parlay-event-date">Event Date</Label>
+                      <Input
+                        id="parlay-event-date"
+                        type="datetime-local"
+                        value={eventDate}
+                        onChange={(e) => setEventDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="parlay-explanation">Explanation</Label>
+                      <Textarea
+                        id="parlay-explanation"
+                        placeholder="Explain your reasoning for this parlay..."
+                        value={explanation}
+                        onChange={(e) => setExplanation(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               // Single Bet Mode
@@ -581,6 +622,7 @@ export function CreateBetDialog({
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );
