@@ -607,6 +607,7 @@ export function CreateBetDialog({
               </>
             )}
           </div>
+          </div>
           
           <DialogFooter className="pb-4 pt-4 border-t mt-auto">
             <Button
