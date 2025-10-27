@@ -447,7 +447,7 @@ export default function MyBetsPage() {
               <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Type</TableHead>
+                  <TableHead>Slip Type</TableHead>
                   <TableHead>Sport</TableHead>
                   <TableHead>Game</TableHead>
                   <TableHead>Bet Type</TableHead>
