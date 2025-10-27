@@ -36,6 +36,9 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
   const analyticsUrl = `/experiences/${experienceId}/analytics`
   const isAdmin = access?.accessLevel === "admin"
 
+  // Don't render Forum Integration until access is loaded to avoid layout shift
+  const showForumIntegration = access && isAdmin
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -111,7 +114,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {isAdmin && (
+              {showForumIntegration && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/settings`}>
                     <Link href={`/experiences/${experienceId}/settings` as any}>
