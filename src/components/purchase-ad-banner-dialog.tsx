@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useWhopIframeSdk } from '@whop/react'
 import { Button } from '~/components/ui/button'
 import {
 	Dialog,
@@ -15,7 +16,6 @@ import { Input } from '~/components/ui/input'
 import { Label } from '~/components/ui/label'
 import { Alert, AlertDescription } from '~/components/ui/alert'
 import { Clock, Upload, ExternalLink, DollarSign } from 'lucide-react'
-import { verifyUserToken } from '@whop/api'
 
 interface PurchaseAdBannerDialogProps {
 	open: boolean
@@ -77,6 +77,8 @@ export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerD
 		reader.readAsDataURL(file)
 	}
 
+	const iframeSdk = useWhopIframeSdk()
+
 	const checkoutMutation = useMutation({
 		mutationFn: async () => {
 			const response = await fetch('/api/ad-banners/checkout', {
@@ -88,23 +90,39 @@ export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerD
 			return response.json()
 		},
 		onSuccess: async (data) => {
-			// Call confirm endpoint after successful checkout
-			const confirmResponse = await fetch('/api/ad-banners/confirm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					imageUrl,
-					linkUrl,
-					title,
-					duration: selectedDuration,
-					purchaseReceiptId: data.checkoutId,
-				}),
-			})
+			// Open Whop checkout using iframe SDK
+			try {
+				if (iframeSdk) {
+					await iframeSdk.inAppPurchase({
+						planId: data.planId,
+						id: data.checkoutId,
+					})
+					
+					// Wait for payment to complete, then confirm
+					setTimeout(async () => {
+						const confirmResponse = await fetch('/api/ad-banners/confirm', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								imageUrl,
+								linkUrl,
+								title,
+								duration: selectedDuration,
+								purchaseReceiptId: data.checkoutId,
+							}),
+						})
 
-			if (confirmResponse.ok) {
-				onOpenChange(false)
-				// Refresh the page to show new banner
-				window.location.reload()
+						if (confirmResponse.ok) {
+							onOpenChange(false)
+							// Refresh the page to show new banner
+							window.location.reload()
+						}
+					}, 2000) // Wait 2 seconds for payment to process
+				}
+			} catch (error) {
+				console.error('Failed to open checkout:', error)
+				// Fallback to opening in new tab
+				window.open(`https://whop.com/checkout/${data.checkoutId}`, '_blank')
 			}
 		},
 	})

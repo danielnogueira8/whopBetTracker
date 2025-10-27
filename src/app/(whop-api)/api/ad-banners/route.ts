@@ -5,6 +5,55 @@ import { adBanners } from '~/db/schema'
 import { and, eq, gte, lte, desc } from 'drizzle-orm'
 
 /**
+ * DELETE /api/ad-banners - Delete all active or all banners (admin only)
+ */
+export async function DELETE(req: NextRequest) {
+	try {
+		const { userId } = await verifyUserToken(req.headers)
+		if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+		const url = new URL(req.url)
+		const deleteAll = url.searchParams.get('deleteAll') === 'true'
+
+		if (deleteAll) {
+			// Delete all banners
+			await db.delete(adBanners)
+			return NextResponse.json({ success: true, message: 'All banners deleted' })
+		} else {
+			// Delete only active banners
+			const now = new Date()
+			const active = await db
+				.select()
+				.from(adBanners)
+				.where(
+					and(
+						eq(adBanners.status, 'active'),
+						lte(adBanners.startTime, now),
+						gte(adBanners.endTime, now),
+					),
+				)
+
+			if (active.length > 0) {
+				await db
+					.delete(adBanners)
+					.where(
+						and(
+							eq(adBanners.status, 'active'),
+							lte(adBanners.startTime, now),
+							gte(adBanners.endTime, now),
+						),
+					)
+			}
+
+			return NextResponse.json({ success: true, message: 'Active banners deleted' })
+		}
+	} catch (error) {
+		console.error('Error deleting banners:', error)
+		return NextResponse.json({ error: 'Failed to delete banners' }, { status: 500 })
+	}
+}
+
+/**
  * GET /api/ad-banners - Get currently active banner
  */
 export async function GET(req: NextRequest) {
