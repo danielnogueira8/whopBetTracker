@@ -27,6 +27,8 @@ export const bets = pgTable('bets', {
 	dollarsInvested: decimal('dollars_invested', { precision: 10, scale: 2 }),
 	result: betResultEnum('result').notNull().default('pending'),
 	isCommunityBet: boolean('is_community_bet').notNull().default(false),
+	notes: text('notes'),
+	confidenceLevel: integer('confidence_level').default(5), // 1-10 scale
 	createdById: text('created_by_id').notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),

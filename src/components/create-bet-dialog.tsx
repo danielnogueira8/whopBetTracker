@@ -13,6 +13,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Textarea } from "~/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -41,6 +42,8 @@ export function CreateBetDialog({
   const [oddValue, setOddValue] = useState("");
   const [unitsInvested, setUnitsInvested] = useState("");
   const [dollarsInvested, setDollarsInvested] = useState("");
+  const [notes, setNotes] = useState("");
+  const [confidenceLevel, setConfidenceLevel] = useState("5");
   const [date, setDate] = useState(
     () => new Date().toISOString().split("T")[0]
   );
@@ -74,6 +77,8 @@ export function CreateBetDialog({
       setOddValue("");
       setUnitsInvested("");
       setDollarsInvested("");
+      setNotes("");
+      setConfidenceLevel("5");
       setDate("");
       setResult("pending");
     },
@@ -91,6 +96,8 @@ export function CreateBetDialog({
       oddValue: parseFloat(oddValue),
       unitsInvested: unitsInvested ? parseFloat(unitsInvested) : null,
       dollarsInvested: dollarsInvested ? parseFloat(dollarsInvested) : null,
+      notes: notes || null,
+      confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
       date: date || new Date().toISOString().split("T")[0],
       result,
       isCommunityBet,
@@ -215,6 +222,28 @@ export function CreateBetDialog({
                   placeholder="0"
                 />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="confidence">Confidence Level (1-10)</Label>
+              <Input
+                id="confidence"
+                type="number"
+                min="1"
+                max="10"
+                value={confidenceLevel}
+                onChange={(e) => setConfidenceLevel(e.target.value)}
+                placeholder="5"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes (optional)</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add any additional context or thoughts about this bet..."
+                rows={3}
+              />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="grid gap-2">
