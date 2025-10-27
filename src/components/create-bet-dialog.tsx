@@ -258,7 +258,6 @@ export function CreateBetDialog({
           />
         </div>
 
-        <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-2">
             {isParlay ? (
               // Parlay Mode
