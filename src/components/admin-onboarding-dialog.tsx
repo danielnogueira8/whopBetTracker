@@ -165,12 +165,12 @@ export function AdminOnboardingDialog({ open, onOpenChange }: AdminOnboardingDia
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[500px]">
-				<DialogHeader>
+				<DialogHeader className="pt-6 pb-4">
 					<div className="flex justify-center mb-4">{currentStep.icon}</div>
 					<DialogTitle>{currentStep.title}</DialogTitle>
 					<DialogDescription>{currentStep.description}</DialogDescription>
 				</DialogHeader>
-				<div className="py-4 min-h-[200px]">{currentStep.content}</div>
+				<div className="py-2 min-h-[200px]">{currentStep.content}</div>
 				<div className="flex items-center justify-center gap-2 pb-4">
 					{steps.map((_, i) => (
 						<div
@@ -181,7 +181,7 @@ export function AdminOnboardingDialog({ open, onOpenChange }: AdminOnboardingDia
 						/>
 					))}
 				</div>
-				<DialogFooter className="flex-col sm:flex-row justify-between gap-2">
+				<DialogFooter className="flex-col sm:flex-row justify-between gap-2 pb-4">
 					<Button variant="ghost" onClick={handleSkip} disabled={completeOnboarding.isPending}>
 						Skip
 					</Button>
