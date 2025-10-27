@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Users, Trophy, BarChart, TrendingUp, Calendar } from "lucide-react"
-import { useWhop } from "~/components/whop-context"
+import { useWhop } from "~/lib/whop-context"
 import { ThemeToggle } from "~/components/theme-toggle"
 
 import {
@@ -28,6 +28,8 @@ interface AppSidebarProps {
 export function AppSidebar({ experienceId }: AppSidebarProps) {
   const pathname = usePathname()
   const { experience } = useWhop()
+
+  if (!experience) return null
 
   const companyName = `${experience.company.title} Bet Tracker`
   const communityBetsUrl = `/experiences/${experienceId}/community-bets`

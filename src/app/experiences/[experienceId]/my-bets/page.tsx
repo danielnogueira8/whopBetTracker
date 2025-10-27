@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
-import { useWhop, getApiUrl } from "~/components/whop-context";
+import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import Link from "next/link";
@@ -51,6 +51,9 @@ type Bet = {
 
 export default function MyBetsPage() {
   const { experience, user } = useWhop();
+  
+  if (!experience) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
+  
   const experienceId = experience.id;
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -81,7 +84,7 @@ export default function MyBetsPage() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["my-bets"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/bets?userOnly=true"));
+      const response = await fetch("/api/bets?userOnly=true");
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },
@@ -128,7 +131,7 @@ export default function MyBetsPage() {
 
   const deleteBet = useMutation({
     mutationFn: async (betId: string) => {
-      const response = await fetch(getApiUrl(`/api/bets/${betId}`), {
+      const response = await fetch(`/api/bets/${betId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete bet");

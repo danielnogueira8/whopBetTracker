@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useWhop, getApiUrl } from "~/components/whop-context";
+import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -41,6 +41,9 @@ interface UpcomingBet {
 
 export default function UpcomingBetsPage() {
   const { experience, access } = useWhop();
+  
+  if (!experience || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
+  
   const queryClient = useQueryClient();
   const isAdmin = access.accessLevel === "admin";
   const companyName = experience.company.title;
@@ -62,7 +65,7 @@ export default function UpcomingBetsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["upcoming-bets"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/upcoming-bets"));
+      const response = await fetch("/api/upcoming-bets");
       if (!response.ok) throw new Error("Failed to fetch upcoming bets");
       return response.json();
     },
@@ -72,7 +75,7 @@ export default function UpcomingBetsPage() {
 
   const deleteBet = useMutation({
     mutationFn: async (betId: string) => {
-      const response = await fetch(getApiUrl(`/api/upcoming-bets/${betId}?experienceId=${experienceId}`), {
+      const response = await fetch(`/api/upcoming-bets/${betId}?experienceId=${experienceId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete upcoming bet");

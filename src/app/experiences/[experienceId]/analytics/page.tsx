@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useWhop, getApiUrl } from "~/components/whop-context";
+import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -30,13 +30,16 @@ type Bet = {
 
 export default function AnalyticsPage() {
   const { experience } = useWhop();
+  
+  if (!experience) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
+  
   const experienceId = experience.id;
   const companyName = experience.company.title;
 
   const { data, isLoading } = useQuery({
     queryKey: ["community-bets"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/bets?isCommunity=true"));
+      const response = await fetch("/api/bets?isCommunity=true");
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },

@@ -2,16 +2,17 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useWhop } from "~/components/whop-context";
+import { useWhop } from "~/lib/whop-context";
 
 export default function Page() {
   const router = useRouter();
   const { experience } = useWhop();
 
   useEffect(() => {
+    if (!experience) return;
     // Redirect to upcoming-bets by default
     router.replace(`/experiences/${experience.id}/upcoming-bets`);
-  }, [router, experience.id]);
+  }, [router, experience?.id]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">

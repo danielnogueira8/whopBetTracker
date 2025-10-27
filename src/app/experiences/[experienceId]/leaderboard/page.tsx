@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useWhop, getApiUrl } from "~/components/whop-context";
+import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
@@ -25,6 +25,9 @@ type LeaderboardEntry = {
 
 export default function LeaderboardPage() {
   const { experience, user, access } = useWhop();
+  
+  if (!experience || !user || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
+  
   const companyName = experience.company.title;
   const currentUserId = user.id;
   const isAdmin = access.accessLevel === "admin";
@@ -43,7 +46,7 @@ export default function LeaderboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["leaderboard"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/leaderboard"));
+      const response = await fetch("/api/leaderboard");
       if (!response.ok) throw new Error("Failed to fetch leaderboard");
       return response.json();
     },
@@ -52,7 +55,7 @@ export default function LeaderboardPage() {
   const { data: communityBetsData } = useQuery({
     queryKey: ["community-bets"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/bets?isCommunity=true"));
+      const response = await fetch("/api/bets?isCommunity=true");
       if (!response.ok) throw new Error("Failed to fetch community bets");
       return response.json();
     },
@@ -71,7 +74,7 @@ export default function LeaderboardPage() {
     queryKey: ["admin-status", uniqueUserIds, experience.id],
     queryFn: async () => {
       if (uniqueUserIds.length === 0) return { adminStatus: {} };
-      const response = await fetch(getApiUrl("/api/check-admin"), {
+      const response = await fetch("/api/check-admin", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

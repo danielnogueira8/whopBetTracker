@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useWhop } from "~/components/whop-context";
+import { useWhop } from "~/lib/whop-context";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -49,6 +49,8 @@ export function CreateUpcomingBetDialog({
   };
 
   const { experience } = useWhop();
+
+  if (!experience) return null;
 
   const createBet = useMutation({
     mutationFn: async (betData: any) => {

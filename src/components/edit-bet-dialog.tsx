@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getApiUrl } from "~/components/whop-context";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -40,7 +39,7 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
 
   const updateBet = useMutation({
     mutationFn: async (betData: any) => {
-      const response = await fetch(getApiUrl(`/api/bets/${bet.id}`), {
+      const response = await fetch(`/api/bets/${bet.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(betData),

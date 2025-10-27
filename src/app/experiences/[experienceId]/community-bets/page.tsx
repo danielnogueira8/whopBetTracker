@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useWhop, getApiUrl } from "~/components/whop-context";
+import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
@@ -51,6 +51,9 @@ type Bet = {
 
 export default function CommunityBetsPage() {
   const { experience, access } = useWhop();
+  
+  if (!experience || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
+  
   const queryClient = useQueryClient();
   const isAdmin = access.accessLevel === "admin";
   const companyName = experience.company.title;
@@ -77,7 +80,7 @@ export default function CommunityBetsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["community-bets"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/bets?isCommunity=true"));
+      const response = await fetch("/api/bets?isCommunity=true");
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },
@@ -132,7 +135,7 @@ export default function CommunityBetsPage() {
 
   const deleteBet = useMutation({
     mutationFn: async (betId: string) => {
-      const response = await fetch(getApiUrl(`/api/bets/${betId}`), {
+      const response = await fetch(`/api/bets/${betId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete bet");
