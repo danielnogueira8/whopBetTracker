@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
-import { Plus, Trash2, Search, Settings, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Search, Settings, TrendingUp, DollarSign } from "lucide-react";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
 import {
@@ -176,7 +176,7 @@ export default function MyBetsPage() {
             <Settings className="h-4 w-4" />
           </Button>
           <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
+            <DollarSign className="mr-2 h-4 w-4" />
             Log New Bet
           </Button>
         </div>
