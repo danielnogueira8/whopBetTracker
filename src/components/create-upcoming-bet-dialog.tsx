@@ -52,14 +52,11 @@ export function CreateUpcomingBetDialog({
 
   const createBet = useMutation({
     mutationFn: async (betData: any) => {
-      if (!experience) throw new Error("Experience not found");
+      if (!betData.experienceId) throw new Error("Experience ID is required");
       const response = await fetch("/api/upcoming-bets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...betData,
-          experienceId: experience.id,
-        }),
+        body: JSON.stringify(betData),
       });
       if (!response.ok) throw new Error("Failed to create upcoming bet");
       return response.json();
@@ -84,6 +81,7 @@ export function CreateUpcomingBetDialog({
     if (!experience) return;
 
     const betData = {
+      experienceId: experience.id,
       sport,
       game,
       outcome,

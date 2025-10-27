@@ -54,14 +54,11 @@ export function ConvertBetDialog({
 
   const convertBet = useMutation({
     mutationFn: async (betData: any) => {
-      if (!experience) throw new Error("Experience not found");
+      if (!betData.experienceId) throw new Error("Experience ID is required");
       const response = await fetch(`/api/upcoming-bets/${bet?.id}/convert`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...betData,
-          experienceId: experience.id,
-        }),
+        body: JSON.stringify(betData),
       });
       if (!response.ok) throw new Error("Failed to convert bet");
       return response.json();
@@ -83,6 +80,7 @@ export function ConvertBetDialog({
     if (!experience) return;
 
     const betData = {
+      experienceId: experience.id,
       result,
       unitsInvested: unitsInvested ? parseFloat(unitsInvested) : null,
       dollarsInvested: dollarsInvested ? parseFloat(dollarsInvested) : null,

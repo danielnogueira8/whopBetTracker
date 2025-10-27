@@ -84,14 +84,11 @@ export function EditUpcomingBetDialog({
 
   const updateBet = useMutation({
     mutationFn: async (betData: any) => {
-      if (!experience) throw new Error("Experience not found");
+      if (!betData.experienceId) throw new Error("Experience ID is required");
       const response = await fetch(`/api/upcoming-bets/${bet?.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...betData,
-          experienceId: experience.id,
-        }),
+        body: JSON.stringify(betData),
       });
       if (!response.ok) throw new Error("Failed to update upcoming bet");
       return response.json();
@@ -108,6 +105,7 @@ export function EditUpcomingBetDialog({
     if (!experience) return;
 
     const betData = {
+      experienceId: experience.id,
       sport,
       game,
       outcome,
