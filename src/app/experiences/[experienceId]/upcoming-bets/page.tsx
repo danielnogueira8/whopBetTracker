@@ -7,7 +7,7 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Gem } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Gem, Calendar } from "lucide-react";
 import { CreateUpcomingBetDialog } from "~/components/create-upcoming-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
 import { ConvertBetDialog } from "~/components/convert-bet-dialog";
