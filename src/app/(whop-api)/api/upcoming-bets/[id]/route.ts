@@ -5,6 +5,7 @@ import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
 import { eq, and } from "drizzle-orm";
 import { formatUpcomingBetForForum } from "~/lib/forum-post-utils";
+import { env } from "~/env";
 
 export async function GET(
   req: NextRequest,
@@ -108,10 +109,22 @@ export async function PATCH(
     if (shouldUpdateForumPost && hasForumPost) {
       try {
         const postContent = formatUpcomingBetForForum(bet);
-        await whop.forumPosts.updateForumPost({
-          forum_post_id: bet.forumPostId,
-          content: postContent,
+        
+        // Use direct API call since whop.forumPosts is not available in the SDK
+        const response = await fetch(`https://api.whop.com/api/v1/forum_posts/${bet.forumPostId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${env.WHOP_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: postContent,
+          }),
         });
+
+        if (!response.ok) {
+          console.error("Forum API error:", await response.text());
+        }
       } catch (error) {
         console.error("Error updating forum post:", error);
         // Continue even if forum update fails
