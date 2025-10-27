@@ -7,19 +7,34 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Progress } from "~/components/ui/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart";
-import { ArrowLeft, TrendingUp, TrendingDown, Target, DollarSign, BarChart3, Gem } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Target, DollarSign, BarChart3, Gem, Filter } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Spinner } from "~/components/ui/spinner";
+import { toDecimal, type OddFormat } from "~/lib/bet-utils";
+import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import Link from "next/link";
+
+// Helper function to get odds range label
+function getOddsRange(decimalOdds: number): string {
+  if (decimalOdds < 2.0) return 'Favorites (<2.0)';
+  if (decimalOdds < 2.5) return 'Slight Favorites (2.0-2.5)';
+  if (decimalOdds < 3.0) return 'Near Even (2.5-3.0)';
+  if (decimalOdds < 4.0) return 'Slight Underdogs (3.0-4.0)';
+  if (decimalOdds < 6.0) return 'Underdogs (4.0-6.0)';
+  return 'Long Shots (>6.0)';
+}
 
 type Bet = {
   id: string;
   sport: string;
   game: string;
   outcome: string;
+  betCategory: string;
   oddFormat: "american" | "decimal" | "fractional";
   oddValue: string;
   unitsInvested?: string | null;
@@ -47,13 +62,45 @@ export default function AnalyticsPage() {
 
   const bets: Bet[] = data?.bets || [];
 
+  // Filter state
+  const [filterSport, setFilterSport] = useState<string>("all");
+  const [filterDateRange, setFilterDateRange] = useState<string>("all");
+  const [includePending, setIncludePending] = useState(false);
+
+  // Apply filters
+  const filteredBets = useMemo(() => {
+    return bets.filter(bet => {
+      if (filterSport !== "all" && bet.sport !== filterSport) return false;
+      
+      if (!includePending && bet.result === "pending") return false;
+      
+      if (filterDateRange !== "all") {
+        const betDate = new Date(bet.createdAt);
+        const now = new Date();
+        
+        if (filterDateRange === "last7") {
+          const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (betDate < sevenDaysAgo) return false;
+        } else if (filterDateRange === "last30") {
+          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          if (betDate < thirtyDaysAgo) return false;
+        } else if (filterDateRange === "last90") {
+          const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          if (betDate < ninetyDaysAgo) return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [bets, filterSport, filterDateRange, includePending]);
+
   // Calculate analytics
   const analytics = useMemo(() => {
-    const totalBets = bets.length;
-    const pendingBets = bets.filter(b => b.result === "pending").length;
-    const wonBets = bets.filter(b => b.result === "win").length;
-    const lostBets = bets.filter(b => b.result === "lose").length;
-    const returnedBets = bets.filter(b => b.result === "returned").length;
+    const totalBets = filteredBets.length;
+    const pendingBets = filteredBets.filter(b => b.result === "pending").length;
+    const wonBets = filteredBets.filter(b => b.result === "win").length;
+    const lostBets = filteredBets.filter(b => b.result === "lose").length;
+    const returnedBets = filteredBets.filter(b => b.result === "returned").length;
     const settledBets = wonBets + lostBets + returnedBets;
     const winRate = settledBets > 0 ? (wonBets / settledBets) * 100 : 0;
 
