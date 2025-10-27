@@ -12,7 +12,13 @@ export const env = createEnv({
 		SUBSCRIPTION_PURCHASE_ACCESS_PASS_PLAN_ID: z.string(),
 		SUBSCRIPTION_PURCHASE_ACCESS_PASS_ID: z.string(),
 
-		// Ad Banner Plans
+		// Ad Banner Products (Access Passes)
+		AD_BANNER_1_MINUTE_PROD_ID: z.string(),
+		AD_BANNER_1_DAY_PROD_ID: z.string(),
+		AD_BANNER_1_WEEK_PROD_ID: z.string(),
+		AD_BANNER_1_MONTH_PROD_ID: z.string(),
+		
+		// Ad Banner Plans (Pricing Plans)
 		AD_BANNER_1_MINUTE_PLAN_ID: z.string(),
 		AD_BANNER_1_DAY_PLAN_ID: z.string(),
 		AD_BANNER_1_WEEK_PLAN_ID: z.string(),
@@ -32,7 +38,13 @@ export const env = createEnv({
 			process.env.SUBSCRIPTION_PURCHASE_ACCESS_PASS_PLAN_ID,
 		SUBSCRIPTION_PURCHASE_ACCESS_PASS_ID: process.env.SUBSCRIPTION_PURCHASE_ACCESS_PASS_ID,
 
-		// Ad Banner Plans
+		// Ad Banner Products (Access Passes)
+		AD_BANNER_1_MINUTE_PROD_ID: process.env.AD_BANNER_1_MINUTE_PROD_ID,
+		AD_BANNER_1_DAY_PROD_ID: process.env.AD_BANNER_1_DAY_PROD_ID,
+		AD_BANNER_1_WEEK_PROD_ID: process.env.AD_BANNER_1_WEEK_PROD_ID,
+		AD_BANNER_1_MONTH_PROD_ID: process.env.AD_BANNER_1_MONTH_PROD_ID,
+		
+		// Ad Banner Plans (Pricing Plans)
 		AD_BANNER_1_MINUTE_PLAN_ID: process.env.AD_BANNER_1_MINUTE_PLAN_ID,
 		AD_BANNER_1_DAY_PLAN_ID: process.env.AD_BANNER_1_DAY_PLAN_ID,
 		AD_BANNER_1_WEEK_PLAN_ID: process.env.AD_BANNER_1_WEEK_PLAN_ID,
