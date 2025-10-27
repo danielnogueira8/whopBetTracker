@@ -195,6 +195,7 @@ export function CreateUpcomingBetDialog({
                 onChange={(e) => setExplanation(e.target.value)}
                 placeholder="Explain your pick reasoning..."
                 className="min-h-[100px]"
+                required={false}
               />
             </div>
             <div className="grid gap-2">
