@@ -26,14 +26,18 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    // Get the current experience to determine which company we're in
+    const currentExperience = await whop.experiences.getExperience({ experienceId })
+    const companyId = currentExperience.company.id
+
     // List all experiences for the company and filter for forums
     const forums = []
     try {
       // Get all experiences for the company
-      // Use companyId parameter with the company ID from environment
-      console.log("Fetching experiences for companyId:", env.NEXT_PUBLIC_WHOP_COMPANY_ID)
+      // Use the dynamic company ID from the current experience
+      console.log("Fetching experiences for companyId:", companyId)
       const experiences = await whop.experiences.listExperiences({ 
-        companyId: env.NEXT_PUBLIC_WHOP_COMPANY_ID 
+        companyId: companyId 
       })
 
       console.log("Raw experiences response:", JSON.stringify(experiences, null, 2))
