@@ -14,6 +14,10 @@ export async function GET(
 		return NextResponse.json<WhopExperience>(experience)
 	} catch (error) {
 		console.error('Failed to fetch experience:', error)
-		return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+		return NextResponse.json({ 
+			error: 'Failed to fetch experience', 
+			details: errorMessage 
+		}, { status: 500 })
 	}
 }
