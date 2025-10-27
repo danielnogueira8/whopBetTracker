@@ -52,6 +52,8 @@ export function ConvertBetDialog({
 
   const { experience } = useWhop();
 
+  if (!experience) return null;
+
   const convertBet = useMutation({
     mutationFn: async (betData: any) => {
       const response = await fetch(`/api/upcoming-bets/${bet?.id}/convert`, {

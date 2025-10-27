@@ -82,6 +82,8 @@ export function EditUpcomingBetDialog({
 
   const { experience } = useWhop();
 
+  if (!experience) return null;
+
   const updateBet = useMutation({
     mutationFn: async (betData: any) => {
       const response = await fetch(`/api/upcoming-bets/${bet?.id}`, {
