@@ -99,14 +99,14 @@ export function CreateUpcomingBetDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create Prediction</DialogTitle>
+        <DialogHeader className="pt-6 pb-4">
+          <DialogTitle>Create New Pick</DialogTitle>
           <DialogDescription>
             Add your prediction with an explanation for the community.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 py-2">
             <div className="grid gap-2">
               <Label htmlFor="sport">Sport</Label>
               <Input
@@ -209,7 +209,7 @@ export function CreateUpcomingBetDialog({
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="pb-4">
             <Button
               type="button"
               variant="outline"
@@ -218,7 +218,7 @@ export function CreateUpcomingBetDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={createBet.isPending}>
-              {createBet.isPending ? "Creating..." : "Create Prediction"}
+              {createBet.isPending ? "Creating..." : "Create New Pick"}
             </Button>
           </DialogFooter>
         </form>
