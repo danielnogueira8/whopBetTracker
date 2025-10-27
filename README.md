@@ -1,6 +1,67 @@
-# Whop App
+# Whop Bet Tracker
 
-A Next.js application for building apps on the Whop platform.
+A comprehensive betting analytics application built for the Whop platform that allows communities to track, analyze, and compete on betting performance.
+
+## Overview
+
+Whop Bet Tracker is a Whop app that enables communities to:
+- **Track Community Bets**: Admins create and track community-wide bets with detailed analytics
+- **Personal Bet Tracking**: Users log their individual bets and track their personal performance
+- **Global Competition**: Compete on leaderboards showing ROI, win rates, and performance metrics
+- **Rich Analytics**: Dive deep into performance with charts, breakdowns by sport, and timeline analysis
+- **Predictions**: Admins can create upcoming betting predictions that can be converted to actual tracked bets
+
+## Key Features
+
+### Community Bet Tracking
+- Admins create and manage community bets that all members can view
+- Track multiple sports with custom bet types and outcomes
+- Filter bets by sport, result, odds range, and bet type
+- Flexible odds formats (American, Decimal, Fractional) with user preference settings
+- Real-time analytics and performance tracking
+
+### Personal Bet Tracking  
+- Users maintain their own private bet log
+- All the same powerful filtering and tracking capabilities as community bets
+- Personal analytics dashboard with cumulative performance charts
+- Performance breakdown by sport and timeline analysis
+
+### Leaderboards
+- **Community Leaderboard**: Shows individual members' performance within the community
+- **Global Leaderboard**: Compete across all communities with ROI-based rankings
+- Smart ROI calculation based on win rate and average odds
+- Displays average odds in preferred format
+- Tooltips explaining the ROI calculation formula
+
+### Analytics Dashboard
+- Overview cards showing total bets, win rate, wins, losses, and net units
+- Interactive line charts tracking cumulative units won/lost over time
+- Performance breakdown by sport with progress bars
+- Monthly timeline analysis of betting activity
+- Available for both community and personal tracking
+
+### Upcoming Bets
+- Admins create predictions with explanations and event dates
+- Bet type categorization (Match Bets, Player Props, Team Bets, etc.)
+- Can be converted to tracked community bets once results are known
+- Clean card-based layout for easy browsing
+
+### User Experience
+- Modern dark mode support with orange theme
+- Responsive design with shadcn/ui components
+- Loading states and empty states throughout
+- Settings dialog for preferred odds display format
+- Intuitive navigation with sidebar menu
+
+## Technical Stack
+
+- **Framework**: Next.js 16 (Turbopack) with App Router
+- **Database**: PostgreSQL with Drizzle ORM
+- **UI Components**: shadcn/ui with Tailwind CSS
+- **Data Fetching**: TanStack React Query
+- **Charts**: Recharts
+- **Authentication**: Whop SDK integration
+- **Package Manager**: pnpm
 
 ## Prerequisites
 
