@@ -51,6 +51,10 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
   const [dollarsInvested, setDollarsInvested] = useState("");
   const [notes, setNotes] = useState("");
   const [result, setResult] = useState<"pending" | "win" | "lose" | "returned">("pending");
+  const [eventDate, setEventDate] = useState("");
+  const [explanation, setExplanation] = useState("");
+  const [confidenceLevel, setConfidenceLevel] = useState("");
+  const [shouldUpdateForumPost, setShouldUpdateForumPost] = useState(false);
 
   useEffect(() => {
     if (parlay) {
@@ -67,6 +71,17 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
       setDollarsInvested(parlay.dollarsInvested || "");
       setNotes(parlay.notes || "");
       setResult(parlay.result || "pending");
+      
+      // Set upcoming bet fields if they exist
+      if (parlay.eventDate) {
+        const date = new Date(parlay.eventDate);
+        setEventDate(date.toISOString().slice(0, 16));
+      }
+      setExplanation(parlay.explanation || "");
+      setConfidenceLevel(parlay.confidenceLevel?.toString() || "");
+      
+      // Set forum update flag if parlay has a forum post
+      setShouldUpdateForumPost(!!parlay.forumPostId);
     }
   }, [parlay]);
 
@@ -95,14 +110,29 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateParlay.mutate({
+    
+    const parlayData: any = {
       name,
       legs: legs.filter(leg => leg.sport && leg.game && leg.outcome && leg.oddValue),
       unitsInvested: unitsInvested || null,
       dollarsInvested: dollarsInvested || null,
       notes: notes || null,
       result,
-    });
+    };
+    
+    // Add upcoming bet fields if eventDate is set
+    if (eventDate) {
+      parlayData.eventDate = new Date(eventDate).toISOString();
+    }
+    if (explanation) parlayData.explanation = explanation;
+    if (confidenceLevel) parlayData.confidenceLevel = parseInt(confidenceLevel);
+    
+    // Only include forum post update if parlay has forumPostId
+    if (parlay?.forumPostId && shouldUpdateForumPost) {
+      parlayData.shouldUpdateForumPost = true;
+    }
+    
+    updateParlay.mutate(parlayData);
   };
 
   const addLeg = () => {
@@ -317,6 +347,60 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
+
+              {/* Upcoming bet fields (only show if parlay has eventDate) */}
+              {parlay?.eventDate && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="event-date">Event Date</Label>
+                    <Input
+                      id="event-date"
+                      type="datetime-local"
+                      value={eventDate}
+                      onChange={(e) => setEventDate(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="explanation">Explanation (Optional)</Label>
+                    <Textarea
+                      id="explanation"
+                      placeholder="Explain your reasoning..."
+                      value={explanation}
+                      onChange={(e) => setExplanation(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confidence-level">Confidence Level (1-10)</Label>
+                    <Input
+                      id="confidence-level"
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={confidenceLevel}
+                      onChange={(e) => setConfidenceLevel(e.target.value)}
+                      placeholder="5"
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Forum post update checkbox (only show if parlay has forumPostId) */}
+              {parlay?.forumPostId && (
+                <div className="flex items-center space-x-2 pt-2 border-t">
+                  <input
+                    type="checkbox"
+                    id="update-forum-post"
+                    checked={shouldUpdateForumPost}
+                    onChange={(e) => setShouldUpdateForumPost(e.target.checked)}
+                    className="rounded"
+                  />
+                  <Label htmlFor="update-forum-post" className="font-normal">
+                    Update forum post when saving
+                  </Label>
+                </div>
+              )}
             </div>
           </div>
           

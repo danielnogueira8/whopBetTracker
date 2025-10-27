@@ -10,6 +10,7 @@ import { Badge } from "~/components/ui/badge";
 import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent } from "lucide-react";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
+import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { ConvertBetDialog } from "~/components/convert-bet-dialog";
 import { AdBannerDisplay } from "~/components/ad-banner-display";
 import { PurchaseAdBannerDialog } from "~/components/purchase-ad-banner-dialog";
@@ -75,9 +76,11 @@ export default function UpcomingBetsPage() {
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editParlayDialogOpen, setEditParlayDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<UpcomingBet | null>(null);
+  const [selectedParlay, setSelectedParlay] = useState<UpcomingParlay | null>(null);
   const [betToDelete, setBetToDelete] = useState<UpcomingBet | null>(null);
   const [purchaseAdDialogOpen, setPurchaseAdDialogOpen] = useState(false);
   const [preferredOddsFormat, setPreferredOddsFormat] = useState<OddFormat>(() => {
@@ -181,6 +184,7 @@ export default function UpcomingBetsPage() {
 
       <CreateBetDialog open={dialogOpen} onOpenChange={setDialogOpen} isUpcomingBet={true} />
       <EditUpcomingBetDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} bet={selectedBet} />
+      <EditParlayDialog open={editParlayDialogOpen} onOpenChange={setEditParlayDialogOpen} parlay={selectedParlay} />
       <ConvertBetDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen} bet={selectedBet} />
       <PurchaseAdBannerDialog open={purchaseAdDialogOpen} onOpenChange={setPurchaseAdDialogOpen} />
 
@@ -337,6 +341,17 @@ export default function UpcomingBetsPage() {
                     </Badge>
                     {isAdmin && (
                       <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
+                          onClick={() => {
+                            setSelectedParlay(parlay);
+                            setEditParlayDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
