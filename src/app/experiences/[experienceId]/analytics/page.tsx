@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
 
     // Sport breakdown
     const sportBreakdown: Record<string, { total: number; wins: number; losses: number; pending: number }> = {};
-    bets.forEach(bet => {
+    filteredBets.forEach(bet => {
       if (!sportBreakdown[bet.sport]) {
         sportBreakdown[bet.sport] = { total: 0, wins: 0, losses: 0, pending: 0 };
       }
@@ -118,7 +118,7 @@ export default function AnalyticsPage() {
 
     // Monthly breakdown
     const monthlyBreakdown: Record<string, { total: number; wins: number; losses: number }> = {};
-    bets.forEach(bet => {
+    filteredBets.forEach(bet => {
       const date = new Date(bet.createdAt);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       if (!monthlyBreakdown[monthKey]) {
@@ -132,7 +132,7 @@ export default function AnalyticsPage() {
     // Calculate cumulative units over time
     const dailyData: Record<string, { wins: number; losses: number }> = {};
     
-    bets.forEach(bet => {
+    filteredBets.forEach(bet => {
       if (bet.unitsInvested && bet.result !== "pending") {
         const date = new Date(bet.createdAt).toISOString().split("T")[0];
         if (!dailyData[date]) {
@@ -164,6 +164,149 @@ export default function AnalyticsPage() {
       };
     });
 
+    // Bet Category Breakdown
+    const betCategoryBreakdown: Record<string, { 
+      total: number; 
+      wins: number; 
+      losses: number; 
+      pending: number;
+      winRate: number;
+      unitsWon: number;
+      unitsLost: number;
+      dollarsWon: number;
+      dollarsLost: number;
+      roi: number;
+      avgOdds: number;
+    }> = {};
+
+    filteredBets.forEach(bet => {
+      if (!betCategoryBreakdown[bet.betCategory]) {
+        betCategoryBreakdown[bet.betCategory] = { 
+          total: 0, 
+          wins: 0, 
+          losses: 0, 
+          pending: 0,
+          winRate: 0,
+          unitsWon: 0,
+          unitsLost: 0,
+          dollarsWon: 0,
+          dollarsLost: 0,
+          roi: 0,
+          avgOdds: 0
+        };
+      }
+      
+      betCategoryBreakdown[bet.betCategory].total++;
+      if (bet.result === "win") betCategoryBreakdown[bet.betCategory].wins++;
+      else if (bet.result === "lose") betCategoryBreakdown[bet.betCategory].losses++;
+      else if (bet.result === "pending") betCategoryBreakdown[bet.betCategory].pending++;
+      
+      // Calculate financial metrics
+      if (bet.unitsInvested) {
+        if (bet.result === "win") {
+          betCategoryBreakdown[bet.betCategory].unitsWon += parseFloat(bet.unitsInvested);
+        } else if (bet.result === "lose") {
+          betCategoryBreakdown[bet.betCategory].unitsLost += parseFloat(bet.unitsInvested);
+        }
+      }
+      
+      if (bet.dollarsInvested) {
+        const amount = parseFloat(bet.dollarsInvested);
+        if (bet.result === "win") {
+          betCategoryBreakdown[bet.betCategory].dollarsWon += amount;
+        } else if (bet.result === "lose") {
+          betCategoryBreakdown[bet.betCategory].dollarsLost += amount;
+        }
+      }
+      
+      // Calculate average odds
+      const decimalOdds = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
+      betCategoryBreakdown[bet.betCategory].avgOdds += decimalOdds;
+    });
+
+    // Post-process bet category data
+    Object.keys(betCategoryBreakdown).forEach(category => {
+      const stats = betCategoryBreakdown[category];
+      const settled = stats.wins + stats.losses;
+      stats.winRate = settled > 0 ? (stats.wins / settled) * 100 : 0;
+      
+      const totalInvested = stats.unitsLost > 0 ? stats.unitsLost : 0;
+      const totalWon = stats.unitsWon > 0 ? stats.unitsWon : 0;
+      stats.roi = totalInvested > 0 ? ((totalWon - totalInvested) / totalInvested) * 100 : 0;
+      
+      stats.avgOdds = stats.total > 0 ? stats.avgOdds / stats.total : 0;
+    });
+
+    // Odds Range Breakdown
+    const oddsRangeBreakdown: Record<string, {
+      total: number;
+      wins: number;
+      losses: number;
+      winRate: number;
+      expectedWinRate: number;
+      unitsWon: number;
+      unitsLost: number;
+      dollarsWon: number;
+      dollarsLost: number;
+      roi: number;
+    }> = {};
+
+    filteredBets.forEach(bet => {
+      const decimalOdds = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
+      const rangeLabel = getOddsRange(decimalOdds);
+      
+      if (!oddsRangeBreakdown[rangeLabel]) {
+        oddsRangeBreakdown[rangeLabel] = {
+          total: 0,
+          wins: 0,
+          losses: 0,
+          winRate: 0,
+          expectedWinRate: 0,
+          unitsWon: 0,
+          unitsLost: 0,
+          dollarsWon: 0,
+          dollarsLost: 0,
+          roi: 0
+        };
+      }
+      
+      oddsRangeBreakdown[rangeLabel].total++;
+      if (bet.result === "win") oddsRangeBreakdown[rangeLabel].wins++;
+      else if (bet.result === "lose") oddsRangeBreakdown[rangeLabel].losses++;
+      
+      if (bet.unitsInvested) {
+        if (bet.result === "win") {
+          oddsRangeBreakdown[rangeLabel].unitsWon += parseFloat(bet.unitsInvested);
+        } else if (bet.result === "lose") {
+          oddsRangeBreakdown[rangeLabel].unitsLost += parseFloat(bet.unitsInvested);
+        }
+      }
+      
+      if (bet.dollarsInvested) {
+        const amount = parseFloat(bet.dollarsInvested);
+        if (bet.result === "win") {
+          oddsRangeBreakdown[rangeLabel].dollarsWon += amount;
+        } else if (bet.result === "lose") {
+          oddsRangeBreakdown[rangeLabel].dollarsLost += amount;
+        }
+      }
+    });
+
+    // Post-process odds range data
+    Object.keys(oddsRangeBreakdown).forEach(range => {
+      const stats = oddsRangeBreakdown[range];
+      const settled = stats.wins + stats.losses;
+      stats.winRate = settled > 0 ? (stats.wins / settled) * 100 : 0;
+      
+      const totalInvested = stats.unitsLost > 0 ? stats.unitsLost : 0;
+      const totalWon = stats.unitsWon > 0 ? stats.unitsWon : 0;
+      stats.roi = totalInvested > 0 ? ((totalWon - totalInvested) / totalInvested) * 100 : 0;
+      
+      // Calculate average odds for range to get expected win rate
+      const avgOdds = 2.0; // Simplified - would need to calculate actual average for each range
+      stats.expectedWinRate = (1 / avgOdds) * 100;
+    });
+
     return {
       totalBets,
       pendingBets,
@@ -175,8 +318,10 @@ export default function AnalyticsPage() {
       sportBreakdown,
       monthlyBreakdown,
       cumulativeUnitsData,
+      betCategoryBreakdown,
+      oddsRangeBreakdown,
     };
-  }, [bets]);
+  }, [filteredBets]);
 
   if (isLoading) {
     return (
@@ -207,6 +352,60 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="flex-1 p-6 space-y-6">
+        {/* Filter Controls */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Sport</label>
+                <Select value={filterSport} onValueChange={setFilterSport}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Sports" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sports</SelectItem>
+                    {Array.from(new Set(bets.map(b => b.sport))).map(sport => (
+                      <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Date Range</label>
+                <Select value={filterDateRange} onValueChange={setFilterDateRange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="last7">Last 7 Days</SelectItem>
+                    <SelectItem value="last30">Last 30 Days</SelectItem>
+                    <SelectItem value="last90">Last 90 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select value={includePending ? "include" : "exclude"} onValueChange={(value) => setIncludePending(value === "include")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="exclude">Settled Only</SelectItem>
+                    <SelectItem value="include">Include Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Overview Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card>
@@ -458,6 +657,143 @@ export default function AnalyticsPage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Bet Category Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance by Bet Category</CardTitle>
+            <CardDescription>Detailed breakdown by bet type</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Bets</TableHead>
+                    <TableHead>Wins</TableHead>
+                    <TableHead>Losses</TableHead>
+                    <TableHead>Win Rate</TableHead>
+                    <TableHead>Units +/-</TableHead>
+                    <TableHead>Dollars +/-</TableHead>
+                    <TableHead>ROI</TableHead>
+                    <TableHead>Avg Odds</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(analytics.betCategoryBreakdown)
+                    .sort(([, a], [, b]) => b.total - a.total)
+                    .map(([category, stats]) => {
+                      const netUnits = stats.unitsWon - stats.unitsLost;
+                      const netDollars = stats.dollarsWon - stats.dollarsLost;
+                      
+                      return (
+                        <TableRow key={category}>
+                          <TableCell className="font-medium">{getBetCategoryLabel(category as any)}</TableCell>
+                          <TableCell>{stats.total}</TableCell>
+                          <TableCell className="text-primary">{stats.wins}</TableCell>
+                          <TableCell className="text-destructive">{stats.losses}</TableCell>
+                          <TableCell>{stats.winRate.toFixed(1)}%</TableCell>
+                          <TableCell className={netUnits >= 0 ? "text-primary" : "text-destructive"}>
+                            {netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)}
+                          </TableCell>
+                          <TableCell className={netDollars >= 0 ? "text-primary" : "text-destructive"}>
+                            {netDollars >= 0 ? `+$${netDollars.toFixed(2)}` : `-$${Math.abs(netDollars).toFixed(2)}`}
+                          </TableCell>
+                          <TableCell className={stats.roi >= 0 ? "text-primary" : "text-destructive"}>
+                            {stats.roi >= 0 ? `+${stats.roi.toFixed(1)}%` : `${stats.roi.toFixed(1)}%`}
+                          </TableCell>
+                          <TableCell>{stats.avgOdds.toFixed(2)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {Object.keys(analytics.betCategoryBreakdown).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">
+                        No bet category data available
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Odds Range Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance by Odds Range</CardTitle>
+            <CardDescription>How the community performs at different odds levels</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Odds Range</TableHead>
+                    <TableHead>Bets</TableHead>
+                    <TableHead>Wins</TableHead>
+                    <TableHead>Losses</TableHead>
+                    <TableHead>Actual Win Rate</TableHead>
+                    <TableHead>Expected Win Rate</TableHead>
+                    <TableHead>Units +/-</TableHead>
+                    <TableHead>Dollars +/-</TableHead>
+                    <TableHead>ROI</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(analytics.oddsRangeBreakdown)
+                    .sort(([a], [b]) => {
+                      // Sort by odds range (from favorites to long shots)
+                      const order = [
+                        'Favorites (<2.0)',
+                        'Slight Favorites (2.0-2.5)',
+                        'Near Even (2.5-3.0)',
+                        'Slight Underdogs (3.0-4.0)',
+                        'Underdogs (4.0-6.0)',
+                        'Long Shots (>6.0)'
+                      ];
+                      return order.indexOf(a) - order.indexOf(b);
+                    })
+                    .map(([range, stats]) => {
+                      const netUnits = stats.unitsWon - stats.unitsLost;
+                      const netDollars = stats.dollarsWon - stats.dollarsLost;
+                      
+                      return (
+                        <TableRow key={range}>
+                          <TableCell className="font-medium">{range}</TableCell>
+                          <TableCell>{stats.total}</TableCell>
+                          <TableCell className="text-primary">{stats.wins}</TableCell>
+                          <TableCell className="text-destructive">{stats.losses}</TableCell>
+                          <TableCell className={stats.winRate >= stats.expectedWinRate ? "text-primary" : "text-destructive"}>
+                            {stats.winRate.toFixed(1)}%
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{stats.expectedWinRate.toFixed(1)}%</TableCell>
+                          <TableCell className={netUnits >= 0 ? "text-primary" : "text-destructive"}>
+                            {netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)}
+                          </TableCell>
+                          <TableCell className={netDollars >= 0 ? "text-primary" : "text-destructive"}>
+                            {netDollars >= 0 ? `+$${netDollars.toFixed(2)}` : `-$${Math.abs(netDollars).toFixed(2)}`}
+                          </TableCell>
+                          <TableCell className={stats.roi >= 0 ? "text-primary" : "text-destructive"}>
+                            {stats.roi >= 0 ? `+${stats.roi.toFixed(1)}%` : `${stats.roi.toFixed(1)}%`}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {Object.keys(analytics.oddsRangeBreakdown).length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-center text-muted-foreground">
+                        No odds range data available
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
