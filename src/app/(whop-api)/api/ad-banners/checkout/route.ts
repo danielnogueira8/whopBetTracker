@@ -40,12 +40,16 @@ export async function POST(req: NextRequest) {
 			duration,
 			purchase_type: 'consumable',
 			timestamp: new Date().toISOString(),
+			skipAutoGrant: true, // Attempt to prevent automatic access pass grant
 		}
 
 		// Create checkout session with metadata
-		// Note: Whop creates access pass membership on checkout, so users can only
-		// purchase once per plan. To allow repurchases, you need separate products
-		// for each ad purchase in your Whop dashboard, not just different plans.
+		// IMPORTANT: This is a workaround because Whop's checkout automatically grants access pass.
+		// Each checkout creates a NEW session ID, but if user already has membership to the same
+		// access pass, they'll get the "already have access" error.
+		// 
+		// Solution: Create separate PRODUCTS (access passes) in Whop dashboard for each ad purchase,
+		// not just different plans. Each product grants its own unique membership.
 		const checkoutSession = await whop.payments.createCheckoutSession({
 			planId,
 			metadata: metadata as any,
