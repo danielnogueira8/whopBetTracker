@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useWhop } from "~/components/whop-context";
+import { useWhop, getApiUrl } from "~/components/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
@@ -43,7 +43,7 @@ export default function LeaderboardPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["leaderboard"],
     queryFn: async () => {
-      const response = await fetch("/api/leaderboard");
+      const response = await fetch(getApiUrl("/api/leaderboard"));
       if (!response.ok) throw new Error("Failed to fetch leaderboard");
       return response.json();
     },
@@ -52,7 +52,7 @@ export default function LeaderboardPage() {
   const { data: communityBetsData } = useQuery({
     queryKey: ["community-bets"],
     queryFn: async () => {
-      const response = await fetch("/api/bets?isCommunity=true");
+      const response = await fetch(getApiUrl("/api/bets?isCommunity=true"));
       if (!response.ok) throw new Error("Failed to fetch community bets");
       return response.json();
     },
@@ -71,7 +71,7 @@ export default function LeaderboardPage() {
     queryKey: ["admin-status", uniqueUserIds, experience.id],
     queryFn: async () => {
       if (uniqueUserIds.length === 0) return { adminStatus: {} };
-      const response = await fetch("/api/check-admin", {
+      const response = await fetch(getApiUrl("/api/check-admin"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

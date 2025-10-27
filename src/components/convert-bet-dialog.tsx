@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useWhop } from "~/components/whop-context";
+import { useWhop, getApiUrl } from "~/components/whop-context";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -54,7 +54,7 @@ export function ConvertBetDialog({
 
   const convertBet = useMutation({
     mutationFn: async (betData: any) => {
-      const response = await fetch(`/api/upcoming-bets/${bet?.id}/convert`, {
+      const response = await fetch(getApiUrl(`/api/upcoming-bets/${bet?.id}/convert`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

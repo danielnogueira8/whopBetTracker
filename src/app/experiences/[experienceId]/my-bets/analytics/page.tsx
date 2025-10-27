@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useWhop } from "~/components/whop-context";
+import { useWhop, getApiUrl } from "~/components/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -36,7 +36,7 @@ export default function PersonalAnalyticsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["my-bets"],
     queryFn: async () => {
-      const response = await fetch("/api/bets?userOnly=true");
+      const response = await fetch(getApiUrl("/api/bets?userOnly=true"));
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },
