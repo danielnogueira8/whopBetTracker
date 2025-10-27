@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { Pagination } from "~/components/pagination";
-import { Plus, Edit, Search, Trash2, Settings, TrendingUp } from "lucide-react";
+import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
@@ -78,6 +78,19 @@ export default function CommunityBetsPage() {
     return "american";
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [expandedParlays, setExpandedParlays] = useState<Set<string>>(new Set());
+
+  const toggleParlayExpansion = (parlayId: string) => {
+    setExpandedParlays(prev => {
+      const next = new Set(prev);
+      if (next.has(parlayId)) {
+        next.delete(parlayId);
+      } else {
+        next.add(parlayId);
+      }
+      return next;
+    });
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ["community-bets", page, experienceId],
@@ -94,30 +107,75 @@ export default function CommunityBetsPage() {
     },
   });
 
+  // Fetch community parlays
+  const { data: parlaysData, isLoading: isLoadingParlays } = useQuery({
+    queryKey: ["community-parlays", page, experienceId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        experienceId,
+        isCommunity: "true",
+        page: String(page),
+        limit: "50"
+      });
+      const response = await fetch(`/api/parlays?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch parlays");
+      return response.json();
+    },
+  });
+
   const bets: Bet[] = data?.bets || [];
   const pagination = data?.pagination;
+  const parlays = parlaysData?.parlays || [];
 
+  // Unified data structure combining bets and parlays
+  const allBets = useMemo(() => {
+    const betItems = bets.map(bet => ({ ...bet, type: 'single' as const }));
+    const parlayItems = parlays.map((parlay: any) => ({ ...parlay, type: 'parlay' as const }));
+    return [...betItems, ...parlayItems].sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [bets, parlays]);
+
+  // Filter bets and parlays
   const filteredBets = useMemo(() => {
-    return bets.filter((bet) => {
-      const matchesSearch =
-        bet.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bet.outcome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bet.sport.toLowerCase().includes(searchQuery.toLowerCase());
+    return allBets.filter((item) => {
+      if (item.type === 'single') {
+        const bet = item as any;
+        const matchesSearch =
+          bet.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          bet.outcome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          bet.sport.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const matchesResult = filterResult === "all" || bet.result === filterResult;
-      
-      // Filter by odds value range - convert user input from their preferred format to decimal
-      const decimalOdd = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
-      const minValue = filterOddMin ? toDecimal(parseFloat(filterOddMin), preferredOddsFormat) : 0;
-      const maxValue = filterOddMax ? toDecimal(parseFloat(filterOddMax), preferredOddsFormat) : Infinity;
-      const matchesOddValue = !filterOddMin && !filterOddMax || (decimalOdd >= minValue && decimalOdd <= maxValue);
-      
-      const matchesSport = filterSport === "all" || bet.sport === filterSport;
-      const matchesBetCategory = filterBetCategory === "all" || bet.betCategory === filterBetCategory;
+        const matchesResult = filterResult === "all" || bet.result === filterResult;
+        
+        const decimalOdd = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
+        const minValue = filterOddMin ? toDecimal(parseFloat(filterOddMin), preferredOddsFormat) : 0;
+        const maxValue = filterOddMax ? toDecimal(parseFloat(filterOddMax), preferredOddsFormat) : Infinity;
+        const matchesOddValue = !filterOddMin && !filterOddMax || (decimalOdd >= minValue && decimalOdd <= maxValue);
 
-      return matchesSearch && matchesResult && matchesOddValue && matchesSport && matchesBetCategory;
+        const matchesSport = filterSport === "all" || bet.sport === filterSport;
+        const matchesBetCategory = filterBetCategory === "all" || bet.betCategory === filterBetCategory;
+
+        return matchesSearch && matchesResult && matchesOddValue && matchesSport && matchesBetCategory;
+      } else {
+        // For parlays
+        const parlay = item as any;
+        const parlayMatches = {
+          search: parlay.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            parlay.legs.some((leg: any) => 
+              leg.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              leg.outcome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              leg.sport.toLowerCase().includes(searchQuery.toLowerCase())
+            ),
+          result: filterResult === "all" || parlay.result === filterResult,
+          sport: filterSport === "all" || parlay.legs.some((leg: any) => leg.sport === filterSport),
+          category: filterBetCategory === "all" || parlay.legs.some((leg: any) => leg.betCategory === filterBetCategory),
+        };
+        
+        return parlayMatches.search && parlayMatches.result && parlayMatches.sport && parlayMatches.category;
+      }
     });
-  }, [bets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory, preferredOddsFormat]);
+  }, [allBets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory, preferredOddsFormat]);
 
   const handleOddsFormatChange = (format: OddFormat) => {
     setPreferredOddsFormat(format);
@@ -133,14 +191,24 @@ export default function CommunityBetsPage() {
   };
 
   const uniqueSports = useMemo(() => {
-    const sports = Array.from(new Set(bets.map(bet => bet.sport)));
-    return sports.sort();
-  }, [bets]);
+    const allSports = new Set(bets.map(bet => bet.sport));
+    parlays.forEach((parlay: any) => {
+      if (parlay.legs) {
+        parlay.legs.forEach((leg: any) => allSports.add(leg.sport));
+      }
+    });
+    return Array.from(allSports).sort();
+  }, [bets, parlays]);
 
   const uniqueBetCategories = useMemo(() => {
-    const categories = Array.from(new Set(bets.map(bet => bet.betCategory)));
-    return categories.sort();
-  }, [bets]);
+    const categories = new Set(bets.map(bet => bet.betCategory));
+    parlays.forEach((parlay: any) => {
+      if (parlay.legs) {
+        parlay.legs.forEach((leg: any) => categories.add(leg.betCategory));
+      }
+    });
+    return Array.from(categories).sort();
+  }, [bets, parlays]);
 
   const deleteBet = useMutation({
     mutationFn: async (betId: string) => {
@@ -266,12 +334,12 @@ export default function CommunityBetsPage() {
       </AlertDialog>
 
       <div className="flex-1 p-6 space-y-4">
-        {isLoading ? (
+        {(isLoading || isLoadingParlays) ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Spinner className="size-8 text-primary animate-spin" />
             <p className="text-muted-foreground">Loading community bets...</p>
           </div>
-        ) : bets.length === 0 ? (
+        ) : bets.length === 0 && parlays.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">
               No community bets yet. {isAdmin && "Create one to get started!"}
@@ -365,6 +433,7 @@ export default function CommunityBetsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Type</TableHead>
                     <TableHead>Sport</TableHead>
                     <TableHead>Game</TableHead>
                     <TableHead>Bet Type</TableHead>
@@ -380,32 +449,38 @@ export default function CommunityBetsPage() {
                 <TableBody>
                   {filteredBets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isAdmin ? 10 : 9} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={isAdmin ? 11 : 10} className="text-center py-8 text-muted-foreground">
                         No bets found matching your filters.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredBets.map((bet) => (
-                      <TableRow key={bet.id}>
-                        <TableCell className="font-medium">{bet.sport}</TableCell>
-                        <TableCell className="font-medium">{bet.game}</TableCell>
-                        <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
-                        <TableCell>{bet.outcome}</TableCell>
-                        <TableCell>
-                          {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
-                        </TableCell>
-                        <TableCell className="uppercase text-xs text-muted-foreground">
-                          {preferredOddsFormat}
-                        </TableCell>
-                        <TableCell>{formatUnits(bet.unitsInvested)}</TableCell>
-                        <TableCell>
-                          <Badge className={resultColors[bet.result]}>
-                            {bet.result}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {new Date(bet.createdAt).toLocaleDateString()}
-                        </TableCell>
+                    filteredBets.map((item) => {
+                      if (item.type === 'single') {
+                        const bet = item as any;
+                        return (
+                          <TableRow key={bet.id}>
+                            <TableCell>
+                              <Badge variant="outline" className="text-xs">Single</Badge>
+                            </TableCell>
+                            <TableCell className="font-medium">{bet.sport}</TableCell>
+                            <TableCell className="font-medium">{bet.game}</TableCell>
+                            <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
+                            <TableCell>{bet.outcome}</TableCell>
+                            <TableCell>
+                              {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
+                            </TableCell>
+                            <TableCell className="uppercase text-xs text-muted-foreground">
+                              {preferredOddsFormat}
+                            </TableCell>
+                            <TableCell>{formatUnits(bet.unitsInvested)}</TableCell>
+                            <TableCell>
+                              <Badge className={resultColors[bet.result as keyof typeof resultColors]}>
+                                {bet.result}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {new Date(bet.createdAt).toLocaleDateString()}
+                            </TableCell>
                             {isAdmin && (
                               <TableCell className="text-right">
                                 <div className="flex gap-2 justify-end">
@@ -434,8 +509,83 @@ export default function CommunityBetsPage() {
                                 </div>
                               </TableCell>
                             )}
-                      </TableRow>
-                    ))
+                          </TableRow>
+                        );
+                      } else {
+                        const parlay = item as any;
+                        const isExpanded = expandedParlays.has(parlay.id);
+                        return (
+                          <>
+                            <TableRow key={parlay.id} className="bg-muted/20">
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary">Parlay</Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => toggleParlayExpansion(parlay.id)}
+                                  >
+                                    {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell>-</TableCell>
+                              <TableCell className="font-medium">{parlay.name}</TableCell>
+                              <TableCell>-</TableCell>
+                              <TableCell>{parlay.legs.length} legs</TableCell>
+                              <TableCell>
+                                {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
+                              </TableCell>
+                              <TableCell className="uppercase text-xs text-muted-foreground">
+                                {preferredOddsFormat}
+                              </TableCell>
+                              <TableCell>{formatUnits(parlay.unitsInvested)}</TableCell>
+                              <TableCell>
+                                <Badge className={resultColors[parlay.result as keyof typeof resultColors]}>
+                                  {parlay.result}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(parlay.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              {isAdmin && (
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="hover:bg-destructive/10 hover:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                            {isExpanded && parlay.legs.map((leg: any, index: number) => (
+                              <TableRow key={`${parlay.id}-leg-${leg.id}`} className="bg-muted/10">
+                                <TableCell>
+                                  <span className="text-xs text-muted-foreground ml-4">Leg {index + 1}</span>
+                                </TableCell>
+                                <TableCell>{leg.sport}</TableCell>
+                                <TableCell>{leg.game}</TableCell>
+                                <TableCell>{getBetCategoryLabel(leg.betCategory as any)}</TableCell>
+                                <TableCell>{leg.outcome}</TableCell>
+                                <TableCell>{displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}</TableCell>
+                                <TableCell className="uppercase text-xs text-muted-foreground">{leg.oddFormat}</TableCell>
+                                <TableCell>-</TableCell>
+                                <TableCell>
+                                  <Badge className={resultColors[leg.result as keyof typeof resultColors]}>
+                                    {leg.result}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>-</TableCell>
+                                <TableCell></TableCell>
+                              </TableRow>
+                            ))}
+                          </>
+                        );
+                      }
+                    })
                   )}
                 </TableBody>
               </Table>
