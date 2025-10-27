@@ -8,7 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
 import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent } from "lucide-react";
-import { CreateUpcomingBetDialog } from "~/components/create-upcoming-bet-dialog";
+import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
 import { ConvertBetDialog } from "~/components/convert-bet-dialog";
 import { AdBannerDisplay } from "~/components/ad-banner-display";
@@ -136,7 +136,7 @@ export default function UpcomingBetsPage() {
         <AdBannerDisplay />
       </div>
 
-      <CreateUpcomingBetDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <CreateBetDialog open={dialogOpen} onOpenChange={setDialogOpen} isUpcomingBet={true} />
       <EditUpcomingBetDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} bet={selectedBet} />
       <ConvertBetDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen} bet={selectedBet} />
       <PurchaseAdBannerDialog open={purchaseAdDialogOpen} onOpenChange={setPurchaseAdDialogOpen} />
