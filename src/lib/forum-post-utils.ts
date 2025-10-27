@@ -1,7 +1,13 @@
 import type { InferSelectModel } from 'drizzle-orm'
-import type { upcomingBets } from '~/db/schema'
+import type { upcomingBets, parlays, parlayLegs } from '~/db/schema'
 
 type UpcomingBet = InferSelectModel<typeof upcomingBets>
+type Parlay = InferSelectModel<typeof parlays>
+type ParlayLeg = InferSelectModel<typeof parlayLegs>
+
+export interface ParlayWithLegs extends Parlay {
+  legs: ParlayLeg[]
+}
 
 /**
  * Formats an upcoming bet as a markdown-formatted forum post
@@ -37,6 +43,64 @@ export function formatUpcomingBetForForum(bet: UpcomingBet): string {
 	// Add explanation
 	if (explanation) {
 		postContent += `**Reasoning:**\n${explanation}\n\n`
+	}
+
+	// Add footer
+	postContent += `---\n*This is an automated post from the Bet Tracker app*`
+
+	return postContent
+}
+
+/**
+ * Formats a parlay (upcoming bet) as a markdown-formatted forum post
+ */
+export function formatParlayForForum(parlay: ParlayWithLegs): string {
+	const { name, combinedOddFormat, combinedOddValue, unitsInvested, eventDate, explanation, legs } = parlay
+
+	// Format the combined odds
+	const formattedOdds = formatOdds(combinedOddFormat, combinedOddValue)
+
+	// Format the date
+	let eventDateFormatted = ''
+	if (eventDate) {
+		eventDateFormatted = new Date(eventDate).toLocaleString('en-US', {
+			weekday: 'long',
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric',
+			hour: '2-digit',
+			minute: '2-digit',
+		})
+	}
+
+	// Format units to invest
+	const unitsText = unitsInvested ? `${unitsInvested} units` : 'Not specified'
+
+	// Build the post content
+	let postContent = `## 🎯 PARLAY PICK: ${name}\n\n`
+	postContent += `📊 ${legs.length}-Leg Parlay\n\n`
+	postContent += `**Combined Odds:** ${formattedOdds} (${combinedOddFormat})\n\n`
+	
+	if (unitsInvested) {
+		postContent += `**Units:** ${unitsInvested}u\n\n`
+	}
+
+	if (eventDate) {
+		postContent += `**Event Date:** ${eventDateFormatted}\n\n`
+	}
+
+	// Add each leg
+	postContent += `### 🏀 Legs:\n\n`
+	legs.forEach((leg, index) => {
+		postContent += `**🔹 LEG ${index + 1}: ${leg.sport}**\n`
+		postContent += `Game: ${leg.game}\n`
+		postContent += `Pick: ${leg.outcome}\n`
+		postContent += `Odds: ${formatOdds(leg.oddFormat, leg.oddValue)} (${leg.oddFormat})\n\n`
+	})
+
+	// Add explanation
+	if (explanation) {
+		postContent += `### 📝 Explanation:\n${explanation}\n\n`
 	}
 
 	// Add footer

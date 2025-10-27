@@ -95,3 +95,41 @@ export const experienceSettings = pgTable('experience_settings', {
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// Parlays table for multi-leg bets
+export const parlays = pgTable('parlays', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	experienceId: text('experience_id').notNull(),
+	userId: text('user_id'), // null for upcoming bets (admin picks)
+	name: text('name').notNull(), // e.g., "Sunday 3-Leg Parlay"
+	combinedOddFormat: oddFormatEnum('combined_odd_format').notNull(),
+	combinedOddValue: decimal('combined_odd_value', { precision: 10, scale: 2 }).notNull(),
+	unitsInvested: decimal('units_invested', { precision: 10, scale: 2 }),
+	dollarsInvested: decimal('dollars_invested', { precision: 10, scale: 2 }),
+	result: betResultEnum('result').notNull().default('pending'),
+	isCommunityBet: boolean('is_community_bet').notNull().default(false),
+	isUpcomingBet: boolean('is_upcoming_bet').notNull().default(false),
+	notes: text('notes'),
+	forumPostId: text('forum_post_id'), // for upcoming bet parlays
+	eventDate: timestamp('event_date'), // for upcoming bet parlays
+	explanation: text('explanation'), // for upcoming bet parlays
+	createdById: text('created_by_id').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Parlay legs table for individual legs within a parlay
+export const parlayLegs = pgTable('parlay_legs', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	parlayId: uuid('parlay_id').notNull().references(() => parlays.id, { onDelete: 'cascade' }),
+	sport: text('sport').notNull(),
+	game: text('game').notNull(),
+	outcome: text('outcome').notNull(),
+	betCategory: betCategoryEnum('bet_category').notNull().default('game_match'),
+	oddFormat: oddFormatEnum('odd_format').notNull(),
+	oddValue: decimal('odd_value', { precision: 10, scale: 2 }).notNull(),
+	result: betResultEnum('result').notNull().default('pending'),
+	legOrder: integer('leg_order').notNull(), // 1, 2, 3, etc.
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
