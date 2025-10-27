@@ -41,14 +41,8 @@ interface UpcomingBet {
 
 export default function UpcomingBetsPage() {
   const { experience, access } = useWhop();
-  
-  if (!experience || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
-  
   const queryClient = useQueryClient();
-  const isAdmin = access.accessLevel === "admin";
-  const companyName = experience.company.title;
-  const experienceId = experience.id;
-
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
@@ -61,6 +55,12 @@ export default function UpcomingBetsPage() {
     }
     return "american";
   });
+
+  if (!experience || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
+  
+  const isAdmin = access.accessLevel === "admin";
+  const companyName = experience.company.title;
+  const experienceId = experience.id;
 
   const { data, isLoading } = useQuery({
     queryKey: ["upcoming-bets"],
