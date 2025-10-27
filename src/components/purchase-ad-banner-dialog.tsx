@@ -199,7 +199,7 @@ export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerD
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[600px]">
-				<DialogHeader className="px-4">
+				<DialogHeader className="px-4 pt-6 pb-4">
 					<DialogTitle>Purchase Ad Space</DialogTitle>
 					<DialogDescription>
 						{step === 'availability' && 'Check if the ad slot is available'}
@@ -210,7 +210,7 @@ export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerD
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="py-4 px-4 min-h-[300px]">
+				<div className="py-6 px-4 min-h-[300px]">
 					{step === 'availability' && (
 						<div className="space-y-4">
 							{availability?.available ? (
@@ -355,7 +355,7 @@ export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerD
 					)}
 				</div>
 
-				<DialogFooter className="flex-col sm:flex-row justify-between gap-2 px-4">
+				<DialogFooter className="flex-col sm:flex-row justify-between gap-2 px-4 pb-6">
 					{step !== 'availability' && (
 						<Button variant="outline" onClick={handleBack} disabled={checkoutMutation.isPending}>
 							Back
