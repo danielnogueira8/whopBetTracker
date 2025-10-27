@@ -7,10 +7,12 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Plus, Calendar } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone } from "lucide-react";
 import { CreateUpcomingBetDialog } from "~/components/create-upcoming-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
 import { ConvertBetDialog } from "~/components/convert-bet-dialog";
+import { AdBannerDisplay } from "~/components/ad-banner-display";
+import { PurchaseAdBannerDialog } from "~/components/purchase-ad-banner-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +51,7 @@ export default function UpcomingBetsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<UpcomingBet | null>(null);
   const [betToDelete, setBetToDelete] = useState<UpcomingBet | null>(null);
+  const [purchaseAdDialogOpen, setPurchaseAdDialogOpen] = useState(false);
   const [preferredOddsFormat, setPreferredOddsFormat] = useState<OddFormat>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("preferredOddsFormat") as OddFormat) || "american";
@@ -111,19 +114,29 @@ export default function UpcomingBetsPage() {
       <div className="flex items-center gap-4 p-4 border-b">
         <SidebarTrigger />
         <h1 className="text-xl font-semibold">{companyName} Picks</h1>
-        {isAdmin && (
-          <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" onClick={() => setPurchaseAdDialogOpen(true)}>
+            <Megaphone className="mr-2 h-4 w-4" />
+            Purchase Ad Space
+          </Button>
+          {isAdmin && (
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Create Prediction
             </Button>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
+
+      {/* Ad Banner Display */}
+      <div className="p-4">
+        <AdBannerDisplay />
       </div>
 
       <CreateUpcomingBetDialog open={dialogOpen} onOpenChange={setDialogOpen} />
       <EditUpcomingBetDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} bet={selectedBet} />
       <ConvertBetDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen} bet={selectedBet} />
+      <PurchaseAdBannerDialog open={purchaseAdDialogOpen} onOpenChange={setPurchaseAdDialogOpen} />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

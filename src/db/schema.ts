@@ -10,6 +10,8 @@ export const betCategoryEnum = pgEnum('bet_category', [
   'corners_cards',
   'period_time'
 ])
+export const adBannerDurationEnum = pgEnum('ad_banner_duration', ['1_minute', '1_day', '1_week', '1_month'])
+export const adBannerStatusEnum = pgEnum('ad_banner_status', ['active', 'expired', 'pending'])
 
 // Bets table
 export const bets = pgTable('bets', {
@@ -57,6 +59,22 @@ export const upcomingBets = pgTable('upcoming_bets', {
 	explanation: text('explanation').notNull(),
 	eventDate: timestamp('event_date').notNull(),
 	createdById: text('created_by_id').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Ad banners table for purchasable banner ads
+export const adBanners = pgTable('ad_banners', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	userId: text('user_id').notNull(),
+	imageUrl: text('image_url').notNull(),
+	linkUrl: text('link_url'),
+	title: text('title'),
+	duration: adBannerDurationEnum('duration').notNull(),
+	startTime: timestamp('start_time').notNull(),
+	endTime: timestamp('end_time').notNull(),
+	purchaseReceiptId: text('purchase_receipt_id').notNull(),
+	status: adBannerStatusEnum('status').notNull().default('pending'),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
