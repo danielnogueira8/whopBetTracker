@@ -15,7 +15,7 @@ import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
-import { Plus, Trash2, Search, Settings, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
 import {
@@ -73,8 +73,21 @@ export default function MyBetsPage() {
     }
     return "american";
   });
+  const [expandedParlays, setExpandedParlays] = useState<Set<string>>(new Set());
 
   const experienceId = experience?.id || "";
+
+  const toggleParlayExpansion = (parlayId: string) => {
+    setExpandedParlays(prev => {
+      const next = new Set(prev);
+      if (next.has(parlayId)) {
+        next.delete(parlayId);
+      } else {
+        next.add(parlayId);
+      }
+      return next;
+    });
+  };
 
   const formatUnits = (units: string | null | undefined) => {
     if (!units) return "-";
@@ -118,37 +131,77 @@ export default function MyBetsPage() {
   const pagination = data?.pagination;
   const parlays = parlaysData?.parlays || [];
 
-  // Extract unique values for filters
+  // Unified data structure combining bets and parlays
+  const allBets = useMemo(() => {
+    const betItems = bets.map(bet => ({ ...bet, type: 'single' as const }));
+    const parlayItems = parlays.map((parlay: any) => ({ ...parlay, type: 'parlay' as const }));
+    return [...betItems, ...parlayItems].sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [bets, parlays]);
+
+  // Extract unique values for filters (include parlay legs)
   const uniqueSports = useMemo(() => {
-    return Array.from(new Set(bets.map(bet => bet.sport)));
-  }, [bets]);
+    const allSports = new Set(bets.map(bet => bet.sport));
+    parlays.forEach((parlay: any) => {
+      if (parlay.legs) {
+        parlay.legs.forEach((leg: any) => allSports.add(leg.sport));
+      }
+    });
+    return Array.from(allSports);
+  }, [bets, parlays]);
 
   const uniqueBetCategories = useMemo(() => {
-    return Array.from(new Set(bets.map(bet => bet.betCategory)));
-  }, [bets]);
-
-  // Filter bets based on search and filters
-  const filteredBets = useMemo(() => {
-    return bets.filter((bet) => {
-      const matchesSearch =
-        bet.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bet.outcome.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bet.sport.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesResult = filterResult === "all" || bet.result === filterResult;
-      
-      // Filter by odds value range - convert user input from their preferred format to decimal
-      const decimalOdd = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
-      const minValue = filterOddMin ? toDecimal(parseFloat(filterOddMin), preferredOddsFormat) : 0;
-      const maxValue = filterOddMax ? toDecimal(parseFloat(filterOddMax), preferredOddsFormat) : Infinity;
-      const matchesOdds = decimalOdd >= minValue && decimalOdd <= maxValue;
-
-      const matchesSport = filterSport === "all" || bet.sport === filterSport;
-      const matchesBetCategory = filterBetCategory === "all" || bet.betCategory === filterBetCategory;
-
-      return matchesSearch && matchesResult && matchesOdds && matchesSport && matchesBetCategory;
+    const categories = new Set(bets.map(bet => bet.betCategory));
+    parlays.forEach((parlay: any) => {
+      if (parlay.legs) {
+        parlay.legs.forEach((leg: any) => categories.add(leg.betCategory));
+      }
     });
-  }, [bets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory, preferredOddsFormat]);
+    return Array.from(categories);
+  }, [bets, parlays]);
+
+  // Filter bets and parlays
+  const filteredBets = useMemo(() => {
+    return allBets.filter((item) => {
+      if (item.type === 'single') {
+        const bet = item as any;
+        const matchesSearch =
+          bet.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          bet.outcome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          bet.sport.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesResult = filterResult === "all" || bet.result === filterResult;
+        
+        const decimalOdd = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
+        const minValue = filterOddMin ? toDecimal(parseFloat(filterOddMin), preferredOddsFormat) : 0;
+        const maxValue = filterOddMax ? toDecimal(parseFloat(filterOddMax), preferredOddsFormat) : Infinity;
+        const matchesOdds = decimalOdd >= minValue && decimalOdd <= maxValue;
+
+        const matchesSport = filterSport === "all" || bet.sport === filterSport;
+        const matchesBetCategory = filterBetCategory === "all" || bet.betCategory === filterBetCategory;
+
+        return matchesSearch && matchesResult && matchesOdds && matchesSport && matchesBetCategory;
+      } else {
+        // For parlays, check if parlay itself or any leg matches filters
+        const parlay = item as any;
+        const parlayMatches = {
+          search: parlay.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            parlay.legs.some((leg: any) => 
+              leg.game.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              leg.outcome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              leg.sport.toLowerCase().includes(searchQuery.toLowerCase())
+            ),
+          result: filterResult === "all" || parlay.result === filterResult,
+          odds: true, // Parlays use combined odds, skip odds filter for now
+          sport: filterSport === "all" || parlay.legs.some((leg: any) => leg.sport === filterSport),
+          category: filterBetCategory === "all" || parlay.legs.some((leg: any) => leg.betCategory === filterBetCategory),
+        };
+        
+        return parlayMatches.search && parlayMatches.result && parlayMatches.sport && parlayMatches.category;
+      }
+    });
+  }, [allBets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory, preferredOddsFormat]);
 
   const handleOddsFormatChange = (format: OddFormat) => {
     setPreferredOddsFormat(format);
@@ -385,6 +438,7 @@ export default function MyBetsPage() {
               <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Type</TableHead>
                   <TableHead>Sport</TableHead>
                   <TableHead>Game</TableHead>
                   <TableHead>Bet Type</TableHead>
@@ -401,81 +455,161 @@ export default function MyBetsPage() {
               <TableBody>
                 {filteredBets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                       No bets found matching your filters.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredBets.map((bet) => (
-                    <TableRow key={bet.id}>
-                    <TableCell className="font-medium">{bet.sport}</TableCell>
-                    <TableCell className="font-medium">{bet.game}</TableCell>
-                    <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
-                    <TableCell>{bet.outcome}</TableCell>
-                    <TableCell>
-                      {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
-                    </TableCell>
-                    <TableCell className="uppercase text-xs text-muted-foreground">
-                      {preferredOddsFormat}
-                    </TableCell>
-                    <TableCell>{formatUnits(bet.unitsInvested)}</TableCell>
-                    <TableCell>{bet.dollarsInvested || "-"}</TableCell>
-                    <TableCell>
-                      <Badge className={resultColors[bet.result]}>
-                        {bet.result}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(bet.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-2 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-primary/10 hover:text-primary"
-                          onClick={() => {
-                            setSelectedBet(bet);
-                            setEditDialogOpen(true);
-                          }}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => {
-                            setBetToDelete(bet);
-                            setDeleteDialogOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                  ))
+                  filteredBets.map((item) => {
+                    if (item.type === 'single') {
+                      const bet = item as any;
+                      return (
+                        <TableRow key={bet.id}>
+                          <TableCell>
+                            <Badge variant="outline" className="text-xs">Single</Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">{bet.sport}</TableCell>
+                          <TableCell className="font-medium">{bet.game}</TableCell>
+                          <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
+                          <TableCell>{bet.outcome}</TableCell>
+                          <TableCell>
+                            {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
+                          </TableCell>
+                          <TableCell className="uppercase text-xs text-muted-foreground">
+                            {preferredOddsFormat}
+                          </TableCell>
+                          <TableCell>{formatUnits(bet.unitsInvested)}</TableCell>
+                          <TableCell>{bet.dollarsInvested || "-"}</TableCell>
+                          <TableCell>
+                            <Badge className={resultColors[bet.result as keyof typeof resultColors]}>
+                              {bet.result}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(bet.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-primary/10 hover:text-primary"
+                                onClick={() => {
+                                  setSelectedBet(bet);
+                                  setEditDialogOpen(true);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="hover:bg-destructive/10 hover:text-destructive"
+                                onClick={() => {
+                                  setBetToDelete(bet);
+                                  setDeleteDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    } else {
+                      const parlay = item as any;
+                      const isExpanded = expandedParlays.has(parlay.id);
+                      return (
+                        <>
+                          {/* Main Parlay Row */}
+                          <TableRow key={parlay.id} className="bg-muted/20">
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary">Parlay</Badge>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-5 w-5"
+                                  onClick={() => toggleParlayExpansion(parlay.id)}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>-</TableCell>
+                            <TableCell className="font-medium">{parlay.name}</TableCell>
+                            <TableCell>-</TableCell>
+                            <TableCell>{parlay.legs.length} legs</TableCell>
+                            <TableCell>
+                              {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
+                            </TableCell>
+                            <TableCell className="uppercase text-xs text-muted-foreground">
+                              {preferredOddsFormat}
+                            </TableCell>
+                            <TableCell>{formatUnits(parlay.unitsInvested)}</TableCell>
+                            <TableCell>{parlay.dollarsInvested || "-"}</TableCell>
+                            <TableCell>
+                              <Badge className={resultColors[parlay.result as keyof typeof resultColors]}>
+                                {parlay.result}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(parlay.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-2 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="hover:bg-destructive/10 hover:text-destructive"
+                                  onClick={() => {
+                                    // Handle parlay delete
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          {/* Expanded Parlay Legs */}
+                          {isExpanded && parlay.legs.map((leg: any, index: number) => (
+                            <TableRow key={`${parlay.id}-leg-${leg.id}`} className="bg-muted/10">
+                              <TableCell>
+                                <span className="text-xs text-muted-foreground ml-4">Leg {index + 1}</span>
+                              </TableCell>
+                              <TableCell className="font-medium">{leg.sport}</TableCell>
+                              <TableCell className="font-medium">{leg.game}</TableCell>
+                              <TableCell>{getBetCategoryLabel(leg.betCategory as any)}</TableCell>
+                              <TableCell>{leg.outcome}</TableCell>
+                              <TableCell>
+                                {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
+                              </TableCell>
+                              <TableCell className="uppercase text-xs text-muted-foreground">
+                                {leg.oddFormat}
+                              </TableCell>
+                              <TableCell>-</TableCell>
+                              <TableCell>-</TableCell>
+                              <TableCell>
+                                <Badge className={resultColors[leg.result as keyof typeof resultColors]}>
+                                  {leg.result}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>-</TableCell>
+                              <TableCell></TableCell>
+                            </TableRow>
+                          ))}
+                        </>
+                      );
+                    }
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
-
-          {/* Parlays Section */}
-          {parlays.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">Your Parlays</h2>
-              <div className="space-y-3">
-                {parlays.map((parlay: any) => (
-                  <ParlayDisplay
-                    key={parlay.id}
-                    parlay={parlay}
-                    preferredOddsFormat={preferredOddsFormat}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
           
           {pagination && (
             <Pagination
