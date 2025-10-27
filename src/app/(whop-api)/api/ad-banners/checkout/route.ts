@@ -32,9 +32,18 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid duration' }, { status: 400 })
 		}
 
-		// Create checkout session
+		// Create unique metadata to allow multiple purchases
+		const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+		const metadata = {
+			ad_purchase_id: uniqueId,
+			duration,
+			purchase_type: 'consumable',
+		}
+
+		// Create checkout session with metadata to make each purchase unique
 		const checkoutSession = await whop.payments.createCheckoutSession({
 			planId,
+			metadata: metadata as any,
 		})
 
 		if (!checkoutSession) {
@@ -45,6 +54,7 @@ export async function POST(req: NextRequest) {
 			planId,
 			checkoutId: checkoutSession.id,
 			duration,
+			metadata,
 		})
 	} catch (error) {
 		console.error('Failed to create checkout session:', error)
