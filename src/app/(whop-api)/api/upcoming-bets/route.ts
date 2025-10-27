@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     } = betData;
 
     // Validation
-    if (!game || !outcome || !oddFormat || !oddValue || !explanation || !eventDate) {
+    if (!game || !outcome || !oddFormat || !oddValue || !eventDate) {
       return Response.json(
         { error: "Missing required fields" },
         { status: 400 }
