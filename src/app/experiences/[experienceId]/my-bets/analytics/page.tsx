@@ -65,6 +65,7 @@ export default function PersonalAnalyticsPage() {
   const [filterSport, setFilterSport] = useState<string>("all");
   const [filterDateRange, setFilterDateRange] = useState<string>("all");
   const [includePending, setIncludePending] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Apply filters
   const filteredBets = useMemo(() => {
@@ -395,57 +396,85 @@ export default function PersonalAnalyticsPage() {
 
       <div className="flex-1 p-6 space-y-6">
         {/* Filter Controls */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Sport</label>
-                <Select value={filterSport} onValueChange={setFilterSport}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Sports" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sports</SelectItem>
-                    {Array.from(new Set(bets.map(b => b.sport))).map(sport => (
-                      <SelectItem key={sport} value={sport}>{sport}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Date Range</label>
-                <Select value={filterDateRange} onValueChange={setFilterDateRange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Time" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Time</SelectItem>
-                    <SelectItem value="last7">Last 7 Days</SelectItem>
-                    <SelectItem value="last30">Last 30 Days</SelectItem>
-                    <SelectItem value="last90">Last 90 Days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Status</label>
-                <Select value={includePending ? "include" : "exclude"} onValueChange={(value) => setIncludePending(value === "include")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="exclude">Settled Only</SelectItem>
-                    <SelectItem value="include">Include Pending</SelectItem>
-                  </SelectContent>
-                </Select>
+        <Card className="border-2">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                className="gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+                {(filterSport !== "all" || filterDateRange !== "all" || includePending) && (
+                  <Badge variant="secondary" className="ml-1">
+                    {[filterSport !== "all", filterDateRange !== "all", includePending].filter(Boolean).length}
+                  </Badge>
+                )}
+              </Button>
+              {(filterSport !== "all" || filterDateRange !== "all" || includePending) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilterSport("all");
+                    setFilterDateRange("all");
+                    setIncludePending(false);
+                  }}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  Clear all
+                </Button>
+              )}
+            </div>
+          </div>
+          {filtersOpen && (
+            <div className="border-t px-4 py-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Sport</label>
+                  <Select value={filterSport} onValueChange={setFilterSport}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Sports" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sports</SelectItem>
+                      {Array.from(new Set(bets.map(b => b.sport))).map(sport => (
+                        <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Date Range</label>
+                  <Select value={filterDateRange} onValueChange={setFilterDateRange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Time" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Time</SelectItem>
+                      <SelectItem value="last7">Last 7 Days</SelectItem>
+                      <SelectItem value="last30">Last 30 Days</SelectItem>
+                      <SelectItem value="last90">Last 90 Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Status</label>
+                  <Select value={includePending ? "include" : "exclude"} onValueChange={(value) => setIncludePending(value === "include")}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="exclude">Settled Only</SelectItem>
+                      <SelectItem value="include">Include Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-          </CardContent>
+          )}
         </Card>
 
         {/* Overview Cards */}
