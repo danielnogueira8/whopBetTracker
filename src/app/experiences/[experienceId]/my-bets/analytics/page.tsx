@@ -204,7 +204,7 @@ export default function PersonalAnalyticsPage() {
 
       <div className="flex-1 p-6 space-y-6">
         {/* Overview Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Bets</CardTitle>
@@ -226,33 +226,7 @@ export default function PersonalAnalyticsPage() {
             <CardContent>
               <div className="text-2xl font-bold">{analytics.winRate.toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground">
-                {analytics.wonBets} wins / {analytics.settledBets} settled
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Wins</CardTitle>
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">{analytics.wonBets}</div>
-              <p className="text-xs text-muted-foreground">
-                {analytics.totalBets > 0 ? ((analytics.wonBets / analytics.totalBets) * 100).toFixed(1) : 0}% of total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Losses</CardTitle>
-              <TrendingDown className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{analytics.lostBets}</div>
-              <p className="text-xs text-muted-foreground">
-                {analytics.totalBets > 0 ? ((analytics.lostBets / analytics.totalBets) * 100).toFixed(1) : 0}% of total
+                {analytics.wonBets} wins / {analytics.lostBets} losses
               </p>
             </CardContent>
           </Card>
