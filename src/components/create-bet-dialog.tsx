@@ -432,13 +432,12 @@ export function CreateBetDialog({
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="parlay-explanation">Explanation</Label>
+                      <Label htmlFor="parlay-explanation">Explanation (optional)</Label>
                       <Textarea
                         id="parlay-explanation"
                         placeholder="Explain your reasoning for this parlay..."
                         value={explanation}
                         onChange={(e) => setExplanation(e.target.value)}
-                        required
                       />
                     </div>
                   </>

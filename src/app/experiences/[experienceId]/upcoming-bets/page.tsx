@@ -328,7 +328,7 @@ export default function UpcomingBetsPage() {
             ))}
             
             {parlays.map((parlay) => (
-              <Card key={parlay.id} className="flex flex-col border-2 border-primary/20">
+              <Card key={parlay.id} className="flex flex-col">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
                     <Badge variant="secondary" className="bg-purple-100 text-purple-800 border-purple-300">
