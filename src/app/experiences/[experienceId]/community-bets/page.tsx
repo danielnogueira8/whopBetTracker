@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
+import { Pagination } from "~/components/pagination";
 import { Plus, Edit, Search, Trash2, Settings, TrendingUp } from "lucide-react";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
@@ -69,6 +70,7 @@ export default function CommunityBetsPage() {
   const [filterOddMax, setFilterOddMax] = useState("");
   const [filterSport, setFilterSport] = useState<string>("all");
   const [filterBetCategory, setFilterBetCategory] = useState<string>("all");
+  const [page, setPage] = useState(1);
   const [preferredOddsFormat, setPreferredOddsFormat] = useState<OddFormat>(() => {
     if (typeof window !== "undefined") {
       return (localStorage.getItem("preferredOddsFormat") as OddFormat) || "american";
@@ -78,15 +80,21 @@ export default function CommunityBetsPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["community-bets"],
+    queryKey: ["community-bets", page],
     queryFn: async () => {
-      const response = await fetch("/api/bets?isCommunity=true");
+      const params = new URLSearchParams({
+        isCommunity: "true",
+        page: String(page),
+        limit: "50"
+      });
+      const response = await fetch(`/api/bets?${params}`);
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },
   });
 
   const bets: Bet[] = data?.bets || [];
+  const pagination = data?.pagination;
 
   const filteredBets = useMemo(() => {
     return bets.filter((bet) => {
@@ -182,7 +190,7 @@ export default function CommunityBetsPage() {
               {isAdmin && (
                 <Button onClick={() => setDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Community Bet
+                  Log New Community Bet
                 </Button>
               )}
             </div>
@@ -434,6 +442,22 @@ export default function CommunityBetsPage() {
                 </TableBody>
               </Table>
             </div>
+            
+            {pagination && (
+              <Pagination
+                currentPage={pagination.page}
+                totalPages={pagination.totalPages}
+                onPageChange={(newPage) => {
+                  setPage(newPage);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                showing={{
+                  from: ((pagination.page - 1) * pagination.limit) + 1,
+                  to: Math.min(pagination.page * pagination.limit, pagination.total),
+                  total: pagination.total
+                }}
+              />
+            )}
           </>
         )}
       </div>

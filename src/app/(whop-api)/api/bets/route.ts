@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { verifyUserToken } from "@whop/api";
 import { db } from "~/db";
 import { bets, userStats } from "~/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 /**
  * GET /api/bets - Fetch all bets for a user
@@ -15,30 +15,77 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const isCommunity = searchParams.get("isCommunity");
     const userOnly = searchParams.get("userOnly");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const offset = (page - 1) * limit;
 
-    let query = db.select().from(bets);
+    // Build count query for pagination
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(bets);
+    
+    // Build data query
+    let dataQuery = db.select().from(bets);
 
     if (userOnly === "true") {
       // User's personal bets
-      query = query.where(eq(bets.userId, userId)) as any;
+      dataQuery = dataQuery.where(eq(bets.userId, userId)) as any;
+      countQuery = countQuery.where(eq(bets.userId, userId));
     }
 
     if (isCommunity === "true") {
       // Community bets (visible to everyone)
-      const communityQuery = db.select().from(bets).where(eq(bets.isCommunityBet, true)).orderBy(desc(bets.createdAt));
-      const results = await communityQuery;
-      return Response.json({ bets: results });
+      const communityDataQuery = db
+        .select()
+        .from(bets)
+        .where(eq(bets.isCommunityBet, true))
+        .orderBy(desc(bets.createdAt))
+        .limit(limit)
+        .offset(offset);
+      
+      const communityCountQuery = db
+        .select({ count: sql<number>`count(*)` })
+        .from(bets)
+        .where(eq(bets.isCommunityBet, true));
+
+      const results = await communityDataQuery;
+      const totalResult = await communityCountQuery;
+      
+      return Response.json({ 
+        bets: results, 
+        pagination: { 
+          page, 
+          limit, 
+          total: totalResult[0].count,
+          totalPages: Math.ceil(totalResult[0].count / limit)
+        } 
+      });
     }
 
     if (userOnly === "true") {
       // Exclude community bets
-      query = query.where(
+      dataQuery = dataQuery.where(
         and(eq(bets.userId, userId), eq(bets.isCommunityBet, false))
       ) as any;
+      countQuery = countQuery.where(
+        and(eq(bets.userId, userId), eq(bets.isCommunityBet, false))
+      );
     }
 
-    const results = await query.orderBy(desc(bets.createdAt));
-    return Response.json({ bets: results });
+    const results = await dataQuery
+      .orderBy(desc(bets.createdAt))
+      .limit(limit)
+      .offset(offset);
+    
+    const totalResult = await countQuery;
+    
+    return Response.json({ 
+      bets: results,
+      pagination: {
+        page,
+        limit,
+        total: totalResult[0].count,
+        totalPages: Math.ceil(totalResult[0].count / limit)
+      }
+    });
   } catch (error) {
     console.error("Error fetching bets:", error);
     return Response.json({ error: "Failed to fetch bets" }, { status: 500 });

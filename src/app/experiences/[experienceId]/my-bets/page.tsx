@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
+import { Pagination } from "~/components/pagination";
 import { Plus, Trash2, Search, Settings, TrendingUp } from "lucide-react";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
@@ -67,6 +68,7 @@ export default function MyBetsPage() {
   const [filterOddMax, setFilterOddMax] = useState("");
   const [filterSport, setFilterSport] = useState<string>("all");
   const [filterBetCategory, setFilterBetCategory] = useState<string>("all");
+  const [page, setPage] = useState(1);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [preferredOddsFormat, setPreferredOddsFormat] = useState<OddFormat>(() => {
     if (typeof window !== "undefined") {
@@ -82,15 +84,21 @@ export default function MyBetsPage() {
   };
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["my-bets"],
+    queryKey: ["my-bets", page],
     queryFn: async () => {
-      const response = await fetch("/api/bets?userOnly=true");
+      const params = new URLSearchParams({
+        userOnly: "true",
+        page: String(page),
+        limit: "50"
+      });
+      const response = await fetch(`/api/bets?${params}`);
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },
   });
 
   const bets: Bet[] = data?.bets || [];
+  const pagination = data?.pagination;
 
   // Extract unique values for filters
   const uniqueSports = useMemo(() => {
@@ -428,6 +436,22 @@ export default function MyBetsPage() {
               </TableBody>
             </Table>
           </div>
+          
+          {pagination && (
+            <Pagination
+              currentPage={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={(newPage) => {
+                setPage(newPage);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              showing={{
+                from: ((pagination.page - 1) * pagination.limit) + 1,
+                to: Math.min(pagination.page * pagination.limit, pagination.total),
+                total: pagination.total
+              }}
+            />
+          )}
           </>
         )}
       </div>
