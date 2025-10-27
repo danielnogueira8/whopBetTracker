@@ -45,10 +45,6 @@ export async function GET(req: NextRequest) {
       } else if (experiences?.experiencesV2?.nodes && Array.isArray(experiences.experiencesV2.nodes)) {
         // Handle GraphQL-style response with experiencesV2.nodes
         experienceList = experiences.experiencesV2.nodes
-      } else if (experiences && typeof experiences[Symbol.asyncIterator] === 'function') {
-        for await (const exp of experiences) {
-          experienceList.push(exp)
-        }
       }
 
       console.log(`Found ${experienceList.length} total experiences`)
