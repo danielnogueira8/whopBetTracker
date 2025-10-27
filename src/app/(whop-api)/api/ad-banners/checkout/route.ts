@@ -32,15 +32,20 @@ export async function POST(req: NextRequest) {
 			return NextResponse.json({ error: 'Invalid duration' }, { status: 400 })
 		}
 
-		// Create unique metadata to allow multiple purchases
+		// Create unique metadata for tracking - this makes each purchase unique
+		// even if user already purchased before
 		const uniqueId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 		const metadata = {
 			ad_purchase_id: uniqueId,
 			duration,
 			purchase_type: 'consumable',
+			timestamp: new Date().toISOString(),
 		}
 
-		// Create checkout session with metadata to make each purchase unique
+		// Create checkout session with metadata
+		// Note: Whop creates access pass membership on checkout, so users can only
+		// purchase once per plan. To allow repurchases, you need separate products
+		// for each ad purchase in your Whop dashboard, not just different plans.
 		const checkoutSession = await whop.payments.createCheckoutSession({
 			planId,
 			metadata: metadata as any,
