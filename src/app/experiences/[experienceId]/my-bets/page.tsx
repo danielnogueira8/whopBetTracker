@@ -13,6 +13,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
+import { CreateParlayDialog } from "~/components/create-parlay-dialog";
+import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
 import { Plus, Trash2, Search, Settings, TrendingUp } from "lucide-react";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
@@ -58,6 +60,7 @@ export default function MyBetsPage() {
   const experienceId = experience.id;
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [parlayDialogOpen, setParlayDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<Bet | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -98,8 +101,25 @@ export default function MyBetsPage() {
     },
   });
 
+  // Fetch parlays
+  const { data: parlaysData, isLoading: isLoadingParlays } = useQuery({
+    queryKey: ["my-parlays", page, experienceId],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        experienceId,
+        page: String(page),
+        limit: "50"
+      });
+      const response = await fetch(`/api/parlays?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch parlays");
+      return response.json();
+    },
+    enabled: !!experienceId,
+  });
+
   const bets: Bet[] = data?.bets || [];
   const pagination = data?.pagination;
+  const parlays = parlaysData?.parlays || [];
 
   // Extract unique values for filters
   const uniqueSports = useMemo(() => {
@@ -184,6 +204,9 @@ export default function MyBetsPage() {
           >
             <Settings className="h-4 w-4" />
           </Button>
+          <Button variant="outline" onClick={() => setParlayDialogOpen(true)}>
+            Create Parlay
+          </Button>
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Log New Bet
@@ -194,6 +217,12 @@ export default function MyBetsPage() {
       <CreateBetDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        isCommunityBet={false}
+      />
+
+      <CreateParlayDialog
+        open={parlayDialogOpen}
+        onOpenChange={setParlayDialogOpen}
         isCommunityBet={false}
       />
 
@@ -260,12 +289,12 @@ export default function MyBetsPage() {
       </AlertDialog>
 
       <div className="flex-1 p-6 space-y-4">
-        {isLoading ? (
+        {(isLoading || isLoadingParlays) ? (
           <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Spinner className="size-8 text-primary animate-spin" />
             <p className="text-muted-foreground">Loading your bets...</p>
           </div>
-        ) : bets.length === 0 ? (
+        ) : bets.length === 0 && parlays.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">
               No bets tracked yet. Log your first bet to get started!
@@ -434,6 +463,22 @@ export default function MyBetsPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Parlays Section */}
+          {parlays.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold">Your Parlays</h2>
+              <div className="space-y-3">
+                {parlays.map((parlay: any) => (
+                  <ParlayDisplay
+                    key={parlay.id}
+                    parlay={parlay}
+                    preferredOddsFormat={preferredOddsFormat}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           
           {pagination && (
             <Pagination
