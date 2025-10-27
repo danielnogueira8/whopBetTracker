@@ -36,13 +36,9 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(parlays.isUpcomingBet, true))
     } else {
       // For non-upcoming parlays, filter by userId
-      const userParlaysCondition = and(
-        eq(parlays.experienceId, experienceId),
-        eq(parlays.userId, userId),
-        eq(parlays.isCommunityBet, false),
-        eq(parlays.isUpcomingBet, false)
-      )
-      conditions.push(userParlaysCondition)
+      conditions.push(eq(parlays.userId, userId))
+      conditions.push(eq(parlays.isCommunityBet, false))
+      conditions.push(eq(parlays.isUpcomingBet, false))
     }
 
     // Fetch parlays with pagination
