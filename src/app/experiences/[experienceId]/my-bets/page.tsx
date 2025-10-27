@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
+import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
 import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp, Edit } from "lucide-react";
@@ -56,7 +57,9 @@ export default function MyBetsPage() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editParlayDialogOpen, setEditParlayDialogOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<Bet | null>(null);
+  const [selectedParlay, setSelectedParlay] = useState<any>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [betToDelete, setBetToDelete] = useState<Bet | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -280,6 +283,12 @@ export default function MyBetsPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         bet={selectedBet}
+      />
+
+      <EditParlayDialog
+        open={editParlayDialogOpen}
+        onOpenChange={setEditParlayDialogOpen}
+        parlay={selectedParlay}
       />
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
@@ -555,6 +564,17 @@ export default function MyBetsPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-2 justify-end">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="hover:bg-primary/10 hover:text-primary"
+                                  onClick={() => {
+                                    setSelectedParlay(parlay);
+                                    setEditParlayDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
