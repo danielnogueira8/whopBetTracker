@@ -32,6 +32,8 @@ interface UpcomingBet {
   oddFormat: "american" | "decimal" | "fractional";
   oddValue: string;
   explanation: string;
+  confidenceLevel: number | null;
+  unitsToInvest: string | null;
   eventDate: string;
 }
 
@@ -54,6 +56,8 @@ export function EditUpcomingBetDialog({
   const [oddFormat, setOddFormat] = useState<"american" | "decimal" | "fractional">("american");
   const [oddValue, setOddValue] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [confidenceLevel, setConfidenceLevel] = useState("5");
+  const [unitsToInvest, setUnitsToInvest] = useState("");
   const [eventDate, setEventDate] = useState("");
 
   useEffect(() => {
@@ -65,6 +69,8 @@ export function EditUpcomingBetDialog({
       setOddFormat(bet.oddFormat);
       setOddValue(bet.oddValue);
       setExplanation(bet.explanation);
+      setConfidenceLevel(bet.confidenceLevel?.toString() || "5");
+      setUnitsToInvest(bet.unitsToInvest || "");
       // Format date for datetime-local input
       const date = new Date(bet.eventDate);
       const formattedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -113,6 +119,8 @@ export function EditUpcomingBetDialog({
       oddFormat,
       oddValue: parseFloat(oddValue),
       explanation,
+      confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
+      unitsToInvest: unitsToInvest ? parseFloat(unitsToInvest) : null,
       eventDate,
     };
 
@@ -220,6 +228,37 @@ export function EditUpcomingBetDialog({
                 className="min-h-[100px]"
                 required
               />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
+                <Label htmlFor="confidence-level-edit">Confidence Level</Label>
+                <Select
+                  value={confidenceLevel}
+                  onValueChange={setConfidenceLevel}
+                >
+                  <SelectTrigger id="confidence-level-edit">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                      <SelectItem key={level} value={String(level)}>
+                        {level}/10
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="units-to-invest-edit">Units to Invest</Label>
+                <Input
+                  id="units-to-invest-edit"
+                  type="number"
+                  step="0.1"
+                  value={unitsToInvest}
+                  onChange={(e) => setUnitsToInvest(e.target.value)}
+                  placeholder="e.g., 2.5"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="event-date">Event Date & Time</Label>

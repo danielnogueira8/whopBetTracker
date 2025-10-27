@@ -31,6 +31,8 @@ interface UpcomingBet {
   oddFormat: "american" | "decimal" | "fractional";
   oddValue: string;
   explanation: string;
+  confidenceLevel: number | null;
+  unitsToInvest: string | null;
   eventDate: string;
 }
 

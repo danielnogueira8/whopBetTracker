@@ -40,6 +40,8 @@ export function CreateUpcomingBetDialog({
   const [oddFormat, setOddFormat] = useState<"american" | "decimal" | "fractional">("american");
   const [oddValue, setOddValue] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [confidenceLevel, setConfidenceLevel] = useState("5");
+  const [unitsToInvest, setUnitsToInvest] = useState("");
   const [eventDate, setEventDate] = useState("");
 
   const oddPlaceholders = {
@@ -71,6 +73,8 @@ export function CreateUpcomingBetDialog({
       setBetCategory("game_match");
       setOddValue("");
       setExplanation("");
+      setConfidenceLevel("5");
+      setUnitsToInvest("");
       setEventDate("");
     },
   });
@@ -89,6 +93,8 @@ export function CreateUpcomingBetDialog({
       oddFormat,
       oddValue: parseFloat(oddValue),
       explanation,
+      confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
+      unitsToInvest: unitsToInvest ? parseFloat(unitsToInvest) : null,
       eventDate,
     };
 
@@ -196,6 +202,37 @@ export function CreateUpcomingBetDialog({
                 className="min-h-[100px]"
                 required={false}
               />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="grid gap-2">
+                <Label htmlFor="confidence-level">Confidence Level</Label>
+                <Select
+                  value={confidenceLevel}
+                  onValueChange={setConfidenceLevel}
+                >
+                  <SelectTrigger id="confidence-level">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
+                      <SelectItem key={level} value={String(level)}>
+                        {level}/10
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="units-to-invest">Units to Invest (optional)</Label>
+                <Input
+                  id="units-to-invest"
+                  type="number"
+                  step="0.1"
+                  value={unitsToInvest}
+                  onChange={(e) => setUnitsToInvest(e.target.value)}
+                  placeholder="e.g., 2.5"
+                />
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="event-date">Event Date & Time</Label>

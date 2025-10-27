@@ -36,6 +36,8 @@ interface UpcomingBet {
   oddFormat: "american" | "decimal" | "fractional";
   oddValue: string;
   explanation: string;
+  confidenceLevel: number | null;
+  unitsToInvest: string | null;
   eventDate: string;
   createdById: string;
   createdAt: string;
@@ -227,6 +229,23 @@ export default function UpcomingBetsPage() {
                       {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
                     </span>
                   </div>
+                  {bet.confidenceLevel && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Confidence</span>
+                      <Badge 
+                        variant={bet.confidenceLevel >= 8 ? "default" : bet.confidenceLevel >= 6 ? "secondary" : "outline"}
+                        className={bet.confidenceLevel >= 8 ? "bg-green-500 text-white" : bet.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
+                      >
+                        {bet.confidenceLevel}/10
+                      </Badge>
+                    </div>
+                  )}
+                  {bet.unitsToInvest && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Units</span>
+                      <span className="font-medium">{bet.unitsToInvest}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     <span>{formatEventDate(bet.eventDate)}</span>

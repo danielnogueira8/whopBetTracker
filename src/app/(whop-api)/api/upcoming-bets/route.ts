@@ -63,6 +63,8 @@ export async function POST(req: NextRequest) {
       oddFormat,
       oddValue,
       explanation,
+      confidenceLevel,
+      unitsToInvest,
       eventDate,
     } = betData;
 
@@ -85,6 +87,8 @@ export async function POST(req: NextRequest) {
         oddFormat,
         oddValue: oddValue.toString(),
         explanation,
+        confidenceLevel: confidenceLevel || 5,
+        unitsToInvest: unitsToInvest?.toString() || null,
         eventDate: new Date(eventDate),
         createdById: userId,
       })
