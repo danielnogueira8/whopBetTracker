@@ -326,9 +326,6 @@ export default function MyBetsPage() {
                     Clear
                   </Button>
                 )}
-                <span className="text-xs text-muted-foreground">
-                  (Decimal format)
-                </span>
               </div>
               <Select value={filterSport} onValueChange={(value: any) => setFilterSport(value)}>
                 <SelectTrigger className="w-[180px]">
