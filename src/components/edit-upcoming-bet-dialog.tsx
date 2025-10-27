@@ -219,14 +219,14 @@ export function EditUpcomingBetDialog({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="explanation">Explanation</Label>
+              <Label htmlFor="explanation">Explanation (optional)</Label>
               <Textarea
                 id="explanation"
                 value={explanation}
                 onChange={(e) => setExplanation(e.target.value)}
                 placeholder="Explain your pick reasoning..."
                 className="min-h-[100px]"
-                required
+                required={false}
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
