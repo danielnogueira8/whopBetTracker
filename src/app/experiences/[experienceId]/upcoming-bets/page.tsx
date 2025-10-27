@@ -110,7 +110,7 @@ export default function UpcomingBetsPage() {
     <div className="flex flex-col min-h-screen bg-background">
       <div className="flex items-center gap-4 p-4 border-b">
         <SidebarTrigger />
-        <h1 className="text-xl font-semibold">Upcoming Bets</h1>
+        <h1 className="text-xl font-semibold">{companyName} Picks</h1>
         {isAdmin && (
           <div className="ml-auto">
             <Button onClick={() => setDialogOpen(true)}>

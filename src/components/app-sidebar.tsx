@@ -46,7 +46,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
                 <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/upcoming-bets`}>
                   <Link href={`/experiences/${experienceId}/upcoming-bets` as any}>
                     <Calendar />
-                    <span>Upcoming Bets</span>
+                    <span>{experience.company.title} Picks</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
