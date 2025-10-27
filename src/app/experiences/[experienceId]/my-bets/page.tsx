@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Badge } from "~/components/ui/badge";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
-import { CreateParlayDialog } from "~/components/create-parlay-dialog";
 import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
 import { Plus, Trash2, Search, Settings, TrendingUp } from "lucide-react";
@@ -60,7 +59,6 @@ export default function MyBetsPage() {
   const experienceId = experience.id;
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [parlayDialogOpen, setParlayDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<Bet | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -204,12 +202,9 @@ export default function MyBetsPage() {
           >
             <Settings className="h-4 w-4" />
           </Button>
-          <Button variant="outline" onClick={() => setParlayDialogOpen(true)}>
-            Create Parlay
-          </Button>
           <Button onClick={() => setDialogOpen(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Log New Bet
+            Log New Bet / Create Parlay
           </Button>
         </div>
       </div>
@@ -217,12 +212,6 @@ export default function MyBetsPage() {
       <CreateBetDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        isCommunityBet={false}
-      />
-
-      <CreateParlayDialog
-        open={parlayDialogOpen}
-        onOpenChange={setParlayDialogOpen}
         isCommunityBet={false}
       />
 
