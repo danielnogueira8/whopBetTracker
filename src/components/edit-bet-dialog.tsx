@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useWhop } from "~/lib/whop-context";
 
 interface EditBetDialogProps {
   open: boolean;
@@ -29,6 +30,7 @@ interface EditBetDialogProps {
 
 export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
   const queryClient = useQueryClient();
+  const { experience } = useWhop();
   const [result, setResult] = useState<"pending" | "win" | "lose" | "returned">("pending");
 
   useEffect(() => {
@@ -39,7 +41,8 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
 
   const updateBet = useMutation({
     mutationFn: async (betData: any) => {
-      const response = await fetch(`/api/bets/${bet.id}`, {
+      if (!experience) throw new Error("Experience not found");
+      const response = await fetch(`/api/bets/${bet.id}?experienceId=${experience.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(betData),

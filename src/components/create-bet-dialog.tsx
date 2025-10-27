@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useWhop } from "~/lib/whop-context";
 
 interface CreateBetDialogProps {
   open: boolean;
@@ -34,6 +35,7 @@ export function CreateBetDialog({
   isCommunityBet = false,
 }: CreateBetDialogProps) {
   const queryClient = useQueryClient();
+  const { experience } = useWhop();
   const [sport, setSport] = useState("");
   const [game, setGame] = useState("");
   const [outcome, setOutcome] = useState("");
@@ -87,7 +89,10 @@ export function CreateBetDialog({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!experience) return;
+    
     const betData = {
+      experienceId: experience.id,
       sport,
       game,
       outcome,

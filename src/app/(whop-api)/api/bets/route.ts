@@ -13,18 +13,24 @@ export async function GET(req: NextRequest) {
     
     // Get query parameters
     const { searchParams } = new URL(req.url);
+    const experienceId = searchParams.get("experienceId");
     const isCommunity = searchParams.get("isCommunity");
     const userOnly = searchParams.get("userOnly");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
 
+    // Require experienceId
+    if (!experienceId) {
+      return Response.json({ error: "experienceId is required" }, { status: 400 });
+    }
+
     if (isCommunity === "true") {
       // Community bets (visible to everyone)
       const communityDataQuery = db
         .select()
         .from(bets)
-        .where(eq(bets.isCommunityBet, true))
+        .where(and(eq(bets.isCommunityBet, true), eq(bets.experienceId, experienceId)))
         .orderBy(desc(bets.createdAt))
         .limit(limit)
         .offset(offset);
@@ -32,7 +38,7 @@ export async function GET(req: NextRequest) {
       const communityCountQuery = db
         .select({ count: sql<number>`count(*)` })
         .from(bets)
-        .where(eq(bets.isCommunityBet, true));
+        .where(and(eq(bets.isCommunityBet, true), eq(bets.experienceId, experienceId)));
 
       const results = await communityDataQuery;
       const totalResult = await communityCountQuery;
@@ -54,7 +60,7 @@ export async function GET(req: NextRequest) {
     if (userOnly === "true") {
       // User's personal bets - exclude community bets
       dataQuery = dataQuery.where(
-        and(eq(bets.userId, userId), eq(bets.isCommunityBet, false))
+        and(eq(bets.userId, userId), eq(bets.isCommunityBet, false), eq(bets.experienceId, experienceId))
       ) as any;
     }
 
@@ -63,8 +69,8 @@ export async function GET(req: NextRequest) {
       .select({ count: sql<number>`count(*)` })
       .from(bets)
       .where(userOnly === "true" 
-        ? and(eq(bets.userId, userId), eq(bets.isCommunityBet, false))
-        : undefined
+        ? and(eq(bets.userId, userId), eq(bets.isCommunityBet, false), eq(bets.experienceId, experienceId))
+        : eq(bets.experienceId, experienceId)
       );
 
     const results = await dataQuery
@@ -98,6 +104,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     const {
+      experienceId,
       sport,
       game,
       outcome,
@@ -114,9 +121,9 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Validation
-    if (!game || !outcome || !oddFormat || !oddValue) {
+    if (!experienceId || !game || !outcome || !oddFormat || !oddValue) {
       return Response.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields (experienceId, game, outcome, oddFormat, oddValue)" },
         { status: 400 }
       );
     }
@@ -126,6 +133,7 @@ export async function POST(req: NextRequest) {
     const newBet = await db
       .insert(bets)
       .values({
+        experienceId,
         userId,
         sport,
         game,

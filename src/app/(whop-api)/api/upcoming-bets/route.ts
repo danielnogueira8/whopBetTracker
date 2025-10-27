@@ -3,13 +3,26 @@ import { db } from "~/db";
 import { upcomingBets } from "~/db/schema";
 import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
+import { eq } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
     await verifyUserToken(req.headers);
 
-    // Fetch all upcoming bets - accessible to all users
-    const bets = await db.select().from(upcomingBets).orderBy(upcomingBets.eventDate);
+    // Get query parameters
+    const { searchParams } = new URL(req.url);
+    const experienceId = searchParams.get("experienceId");
+
+    // Require experienceId
+    if (!experienceId) {
+      return Response.json({ error: "experienceId is required" }, { status: 400 });
+    }
+
+    // Fetch upcoming bets for this experience only
+    const bets = await db.select()
+      .from(upcomingBets)
+      .where(eq(upcomingBets.experienceId, experienceId))
+      .orderBy(upcomingBets.eventDate);
 
     return Response.json({ bets });
   } catch (error) {
@@ -26,7 +39,7 @@ export async function POST(req: NextRequest) {
 
     // Get experience ID from request body
     if (!experienceId) {
-      return Response.json({ error: "Experience ID is required" }, { status: 400 });
+      return Response.json({ error: "experienceId is required" }, { status: 400 });
     }
 
     // Check if user is admin
@@ -64,6 +77,7 @@ export async function POST(req: NextRequest) {
     const newBet = await db
       .insert(upcomingBets)
       .values({
+        experienceId,
         sport,
         game,
         outcome,

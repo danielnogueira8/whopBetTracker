@@ -3,7 +3,7 @@ import { db } from "~/db";
 import { upcomingBets } from "~/db/schema";
 import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(
   req: NextRequest,
@@ -12,10 +12,18 @@ export async function GET(
   try {
     const { id } = await params;
 
+    const { searchParams } = new URL(req.url);
+    const experienceId = searchParams.get("experienceId");
+
+    // Require experienceId
+    if (!experienceId) {
+      return Response.json({ error: "experienceId is required" }, { status: 400 });
+    }
+
     const bet = await db
       .select()
       .from(upcomingBets)
-      .where(eq(upcomingBets.id, id))
+      .where(and(eq(upcomingBets.id, id), eq(upcomingBets.experienceId, experienceId)))
       .limit(1);
 
     if (bet.length === 0) {

@@ -51,9 +51,9 @@ export default function PersonalAnalyticsPage() {
   const experienceId = experience.id;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["my-bets"],
+    queryKey: ["my-bets", experienceId],
     queryFn: async () => {
-      const response = await fetch("/api/bets?userOnly=true");
+      const response = await fetch(`/api/bets?experienceId=${experienceId}&userOnly=true`);
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },

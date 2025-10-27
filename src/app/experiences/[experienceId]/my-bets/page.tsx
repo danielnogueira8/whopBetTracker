@@ -84,9 +84,10 @@ export default function MyBetsPage() {
   };
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["my-bets", page],
+    queryKey: ["my-bets", page, experienceId],
     queryFn: async () => {
       const params = new URLSearchParams({
+        experienceId,
         userOnly: "true",
         page: String(page),
         limit: "50"

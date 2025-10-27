@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { verifyUserToken } from "@whop/api";
 import { db } from "~/db";
 import { bets, userStats } from "~/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 /**
  * GET /api/bets/[id] - Get a single bet
@@ -15,7 +15,17 @@ export async function GET(
     await verifyUserToken(req.headers);
     const { id } = await params;
 
-    const result = await db.select().from(bets).where(eq(bets.id, id)).limit(1);
+    const { searchParams } = new URL(req.url);
+    const experienceId = searchParams.get("experienceId");
+
+    // Require experienceId
+    if (!experienceId) {
+      return Response.json({ error: "experienceId is required" }, { status: 400 });
+    }
+
+    const result = await db.select().from(bets).where(
+      and(eq(bets.id, id), eq(bets.experienceId, experienceId))
+    ).limit(1);
 
     if (result.length === 0) {
       return Response.json({ error: "Bet not found" }, { status: 404 });

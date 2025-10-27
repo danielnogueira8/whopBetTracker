@@ -16,6 +16,7 @@ export const adBannerStatusEnum = pgEnum('ad_banner_status', ['active', 'expired
 // Bets table
 export const bets = pgTable('bets', {
 	id: uuid('id').defaultRandom().primaryKey(),
+	experienceId: text('experience_id').notNull(),
 	userId: text('user_id').notNull(),
 	sport: text('sport').notNull().default('Other'),
 	game: text('game').notNull(),
@@ -52,6 +53,7 @@ export const userStats = pgTable('user_stats', {
 // Upcoming bets table for admin predictions
 export const upcomingBets = pgTable('upcoming_bets', {
 	id: uuid('id').defaultRandom().primaryKey(),
+	experienceId: text('experience_id').notNull(),
 	sport: text('sport').notNull(),
 	game: text('game').notNull(),
 	outcome: text('outcome').notNull(),

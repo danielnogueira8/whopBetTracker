@@ -80,9 +80,10 @@ export default function CommunityBetsPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["community-bets", page],
+    queryKey: ["community-bets", page, experienceId],
     queryFn: async () => {
       const params = new URLSearchParams({
+        experienceId,
         isCommunity: "true",
         page: String(page),
         limit: "50"

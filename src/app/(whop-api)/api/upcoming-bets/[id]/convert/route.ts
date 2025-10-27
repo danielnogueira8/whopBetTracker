@@ -51,6 +51,7 @@ export async function POST(
     const newBet = await db
       .insert(bets)
       .values({
+        experienceId: bet.experienceId,
         userId, // Will be used as the userId
         sport: bet.sport,
         game: bet.game,

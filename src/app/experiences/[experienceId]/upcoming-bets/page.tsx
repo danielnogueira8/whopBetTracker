@@ -60,9 +60,9 @@ export default function UpcomingBetsPage() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["upcoming-bets"],
+    queryKey: ["upcoming-bets", experienceId],
     queryFn: async () => {
-      const response = await fetch("/api/upcoming-bets");
+      const response = await fetch(`/api/upcoming-bets?experienceId=${experienceId}`);
       if (!response.ok) throw new Error("Failed to fetch upcoming bets");
       return response.json();
     },

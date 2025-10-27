@@ -52,9 +52,9 @@ export default function AnalyticsPage() {
   const companyName = experience.company.title;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["community-bets"],
+    queryKey: ["community-bets", experienceId],
     queryFn: async () => {
-      const response = await fetch("/api/bets?isCommunity=true");
+      const response = await fetch(`/api/bets?experienceId=${experienceId}&isCommunity=true`);
       if (!response.ok) throw new Error("Failed to fetch bets");
       return response.json();
     },
