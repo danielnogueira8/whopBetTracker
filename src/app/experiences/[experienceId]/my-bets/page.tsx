@@ -204,13 +204,13 @@ export default function MyBetsPage() {
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="pt-6 pb-4">
             <DialogTitle>Display Settings</DialogTitle>
             <DialogDescription>
               Choose how you want to view odds.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-2">
             <label className="text-sm font-medium mb-2 block">Odds Display Format</label>
             <Select
               value={preferredOddsFormat}
