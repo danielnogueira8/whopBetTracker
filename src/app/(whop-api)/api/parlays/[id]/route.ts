@@ -98,6 +98,8 @@ export async function PATCH(
       updateFields.eventDate = updateData.eventDate ? new Date(updateData.eventDate) : null
     if (updateData.explanation !== undefined)
       updateFields.explanation = updateData.explanation || null
+    if (updateData.confidenceLevel !== undefined)
+      updateFields.confidenceLevel = updateData.confidenceLevel || null
 
     // Handle leg updates
     if (updateData.legs && Array.isArray(updateData.legs)) {

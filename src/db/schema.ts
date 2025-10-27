@@ -113,6 +113,7 @@ export const parlays = pgTable('parlays', {
 	forumPostId: text('forum_post_id'), // for upcoming bet parlays
 	eventDate: timestamp('event_date'), // for upcoming bet parlays
 	explanation: text('explanation'), // for upcoming bet parlays
+	confidenceLevel: integer('confidence_level'), // 1-10 scale, for upcoming bet parlays
 	createdById: text('created_by_id').notNull(),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),

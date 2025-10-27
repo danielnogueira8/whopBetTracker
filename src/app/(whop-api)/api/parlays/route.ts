@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
       forumPostId,
       eventDate,
       explanation,
+      confidenceLevel,
       shouldPostToForum,
     } = body
 
@@ -180,6 +181,7 @@ export async function POST(req: NextRequest) {
         forumPostId: forumPostId || null,
         eventDate: eventDate ? new Date(eventDate) : null,
         explanation: explanation || null,
+        confidenceLevel: confidenceLevel || null,
         createdById: userId,
       })
       .returning()

@@ -49,6 +49,7 @@ interface UpcomingParlay {
   combinedOddFormat: "american" | "decimal" | "fractional";
   combinedOddValue: string;
   unitsInvested: string | null;
+  confidenceLevel: number | null;
   result: "pending" | "win" | "lose" | "returned";
   eventDate: string | null;
   explanation: string | null;
@@ -371,6 +372,20 @@ export default function UpcomingBetsPage() {
                         Units
                       </span>
                       <span className="font-medium">{parlay.unitsInvested}</span>
+                    </div>
+                  )}
+                  {parlay.confidenceLevel && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground flex items-center gap-2">
+                        <Gauge className="h-4 w-4" />
+                        Confidence
+                      </span>
+                      <Badge 
+                        variant={parlay.confidenceLevel >= 8 ? "default" : parlay.confidenceLevel >= 6 ? "secondary" : "outline"}
+                        className={parlay.confidenceLevel >= 8 ? "bg-green-500 text-white" : parlay.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
+                      >
+                        {parlay.confidenceLevel}/10
+                      </Badge>
                     </div>
                   )}
                   {parlay.eventDate && (

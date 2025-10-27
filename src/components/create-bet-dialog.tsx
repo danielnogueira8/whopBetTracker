@@ -81,6 +81,7 @@ export function CreateBetDialog({
   // Upcoming bet fields (for parlays)
   const [eventDate, setEventDate] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [parlayConfidenceLevel, setParlayConfidenceLevel] = useState("");
 
   const oddPlaceholders = {
     american: "+150 or -200",
@@ -109,6 +110,9 @@ export function CreateBetDialog({
         { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
         { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
       ]);
+      setEventDate("");
+      setExplanation("");
+      setParlayConfidenceLevel("");
     }
   }, [open]);
 
@@ -176,6 +180,7 @@ export function CreateBetDialog({
       if (isUpcomingBet) {
         parlayData.eventDate = eventDate ? new Date(eventDate).toISOString() : null;
         parlayData.explanation = explanation || null;
+        parlayData.confidenceLevel = parlayConfidenceLevel ? parseInt(parlayConfidenceLevel) : null;
       }
 
       createParlay.mutate(parlayData);
@@ -438,6 +443,18 @@ export function CreateBetDialog({
                         placeholder="Explain your reasoning for this parlay..."
                         value={explanation}
                         onChange={(e) => setExplanation(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="parlay-confidence">Confidence Level (1-10)</Label>
+                      <Input
+                        id="parlay-confidence"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={parlayConfidenceLevel}
+                        onChange={(e) => setParlayConfidenceLevel(e.target.value)}
+                        placeholder="5"
                       />
                     </div>
                   </>
