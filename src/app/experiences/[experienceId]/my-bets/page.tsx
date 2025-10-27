@@ -53,10 +53,6 @@ type Bet = {
 
 export default function MyBetsPage() {
   const { experience, user } = useWhop();
-  
-  if (!experience) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
-  
-  const experienceId = experience.id;
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -78,6 +74,8 @@ export default function MyBetsPage() {
     return "american";
   });
 
+  const experienceId = experience?.id || "";
+
   const formatUnits = (units: string | null | undefined) => {
     if (!units) return "-";
     const numValue = parseFloat(units);
@@ -86,6 +84,7 @@ export default function MyBetsPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["my-bets", page, experienceId],
+    enabled: !!experienceId,
     queryFn: async () => {
       const params = new URLSearchParams({
         experienceId,
@@ -178,6 +177,15 @@ export default function MyBetsPage() {
     lose: "bg-destructive/20 text-destructive border-destructive",
     returned: "bg-muted text-muted-foreground border-border",
   };
+
+  // Show loading if experience is not loaded yet
+  if (!experience) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
