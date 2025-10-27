@@ -12,7 +12,7 @@ import { Progress } from "~/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart";
-import { ArrowLeft, TrendingUp, TrendingDown, Target, BarChart3, Gem, DollarSign, Filter } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Target, BarChart3, Gem, DollarSign, Filter, Download } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ScatterChart, Scatter, ZAxis, ReferenceLine } from "recharts";
 import { Spinner } from "~/components/ui/spinner";
 import { toDecimal, type OddFormat } from "~/lib/bet-utils";
@@ -365,6 +365,36 @@ export default function PersonalAnalyticsPage() {
     };
   }, [filteredBets]);
 
+  // Export function
+  const handleExport = () => {
+    const csvData = [
+      ['Bet ID', 'Sport', 'Game', 'Outcome', 'Result', 'Win Rate', 'Units Invested', 'Dollars Invested', 'Date'].join(','),
+      ...filteredBets.map(bet => [
+        bet.id,
+        bet.sport,
+        `"${bet.game}"`,
+        `"${bet.outcome}"`,
+        bet.result,
+        filteredBets.filter(b => b.result !== 'pending').length > 0 
+          ? ((filteredBets.filter(b => b.result === 'win').length / filteredBets.filter(b => b.result !== 'pending').length) * 100).toFixed(1) + '%'
+          : '0%',
+        bet.unitsInvested || '0',
+        bet.dollarsInvested || '0',
+        new Date(bet.createdAt).toLocaleDateString()
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvData], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `my-analytics-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
@@ -391,6 +421,10 @@ export default function PersonalAnalyticsPage() {
           </Button>
         </Link>
         <h1 className="text-xl font-semibold">My Analytics</h1>
+        <Button onClick={handleExport} variant="outline" size="sm">
+          <Download className="h-4 w-4 mr-2" />
+          Export CSV
+        </Button>
       </div>
 
       <div className="flex-1 p-6 space-y-6">
