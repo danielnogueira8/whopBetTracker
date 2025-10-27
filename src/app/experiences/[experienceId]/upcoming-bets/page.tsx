@@ -56,12 +56,6 @@ export default function UpcomingBetsPage() {
     return "american";
   });
 
-  if (!experience || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
-  
-  const isAdmin = access.accessLevel === "admin";
-  const companyName = experience.company.title;
-  const experienceId = experience.id;
-
   const { data, isLoading } = useQuery({
     queryKey: ["upcoming-bets"],
     queryFn: async () => {
@@ -71,8 +65,8 @@ export default function UpcomingBetsPage() {
     },
   });
 
-  const bets: UpcomingBet[] = data?.bets || [];
-
+  const experienceId = experience?.id || "";
+  
   const deleteBet = useMutation({
     mutationFn: async (betId: string) => {
       const response = await fetch(`/api/upcoming-bets/${betId}?experienceId=${experienceId}`, {
@@ -87,6 +81,12 @@ export default function UpcomingBetsPage() {
       setBetToDelete(null);
     },
   });
+
+  if (!experience || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
+  
+  const isAdmin = access.accessLevel === "admin";
+  const companyName = experience.company.title;
+  const bets: UpcomingBet[] = data?.bets || [];
 
   const formatEventDate = (dateString: string) => {
     const date = new Date(dateString);
