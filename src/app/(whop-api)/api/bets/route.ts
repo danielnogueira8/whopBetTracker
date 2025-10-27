@@ -19,18 +19,6 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
 
-    // Build count query for pagination
-    let countQuery = db.select({ count: sql<number>`count(*)` }).from(bets);
-    
-    // Build data query
-    let dataQuery = db.select().from(bets);
-
-    if (userOnly === "true") {
-      // User's personal bets
-      dataQuery = dataQuery.where(eq(bets.userId, userId)) as any;
-      countQuery = countQuery.where(eq(bets.userId, userId));
-    }
-
     if (isCommunity === "true") {
       // Community bets (visible to everyone)
       const communityDataQuery = db
@@ -60,15 +48,24 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Build queries for user-only bets
+    let dataQuery = db.select().from(bets);
+    
     if (userOnly === "true") {
-      // Exclude community bets
+      // User's personal bets - exclude community bets
       dataQuery = dataQuery.where(
         and(eq(bets.userId, userId), eq(bets.isCommunityBet, false))
       ) as any;
-      countQuery = countQuery.where(
-        and(eq(bets.userId, userId), eq(bets.isCommunityBet, false))
-      );
     }
+
+    // Build count query
+    const countQuery = db
+      .select({ count: sql<number>`count(*)` })
+      .from(bets)
+      .where(userOnly === "true" 
+        ? and(eq(bets.userId, userId), eq(bets.isCommunityBet, false))
+        : undefined
+      );
 
     const results = await dataQuery
       .orderBy(desc(bets.createdAt))
