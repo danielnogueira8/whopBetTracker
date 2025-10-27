@@ -71,7 +71,7 @@ export function AdBannerDisplay() {
 			<img
 				src={banner.imageUrl}
 				alt={banner.title || 'Advertisement'}
-				className="w-full h-full object-contain bg-background"
+				className="w-full h-full object-cover bg-background"
 			/>
 			{timeRemaining && (
 				<div className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 bg-black/70 text-white text-xs rounded">
