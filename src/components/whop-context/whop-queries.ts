@@ -17,7 +17,12 @@ export const serverQueryClient = new QueryClient({
 
 export function getApiUrl(path: string): string {
 	if (typeof window === 'undefined') {
-		return `${env.NEXT_PUBLIC_VERCEL_URL}${path}`
+		const baseUrl = env.NEXT_PUBLIC_VERCEL_URL
+		// Add protocol if missing (common in Vercel deployments)
+		const urlWithProtocol = baseUrl.startsWith('http://') || baseUrl.startsWith('https://')
+			? baseUrl
+			: `https://${baseUrl}`
+		return `${urlWithProtocol}${path}`
 	}
 	return path
 }
