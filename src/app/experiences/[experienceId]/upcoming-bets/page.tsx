@@ -478,6 +478,34 @@ export default function UpcomingBetsPage() {
                       </div>
                     </div>
                   )}
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      className="w-full mt-auto"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch(`/api/parlays/${parlay.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              experienceId: experience?.id,
+                              isUpcomingBet: false,
+                              isCommunityBet: true,
+                            }),
+                          });
+                          if (response.ok) {
+                            queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
+                            queryClient.invalidateQueries({ queryKey: ["community-bets"] });
+                          }
+                        } catch (error) {
+                          console.error("Error converting parlay:", error);
+                        }
+                      }}
+                    >
+                      <TrendingUp className="mr-2 h-4 w-4" />
+                      Convert to Bet
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             ))}
