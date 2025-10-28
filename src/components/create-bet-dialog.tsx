@@ -221,7 +221,6 @@ export function CreateBetDialog({
         isUpcomingBet: isUpcomingBet,
         unitsInvested: unitsInvested || null,
         dollarsInvested: dollarsInvested || null,
-        notes: notes || null,
         userId: user?.id || null,
       };
       
@@ -504,16 +503,6 @@ export function CreateBetDialog({
                       onChange={(e) => setDollarsInvested(e.target.value)}
                     />
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Any additional notes..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
                 </div>
 
                 {/* Upcoming bet fields for parlays */}
