@@ -145,6 +145,13 @@ export async function PATCH(
     // Update parlay
     const [updated] = await db.update(parlays).set(updateFields).where(eq(parlays.id, id)).returning()
 
+    // If an explicit result was set (win/lose), cascade it to all legs
+    if (updateData.result === "win" || updateData.result === "lose") {
+      await db.update(parlayLegs)
+        .set({ result: updateData.result })
+        .where(eq(parlayLegs.parlayId, id))
+    }
+
     // Auto-calculate result based on leg results ONLY if no explicit result was provided
     if ((updateFields.legs || updateData.legs) && updateData.result === undefined) {
       const legs = await db
