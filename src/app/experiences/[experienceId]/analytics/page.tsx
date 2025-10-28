@@ -60,22 +60,55 @@ export default function AnalyticsPage() {
     },
   });
 
+  // Fetch community parlays for analytics
+  const { data: parlaysData, isLoading: isLoadingParlays } = useQuery({
+    queryKey: ["community-parlays-analytics", experienceId],
+    queryFn: async () => {
+      const response = await fetch(`/api/parlays?experienceId=${experienceId}&isCommunity=true&limit=500`);
+      if (!response.ok) throw new Error("Failed to fetch parlays");
+      return response.json();
+    },
+  });
+
   const bets: Bet[] = data?.bets || [];
+  const parlays = parlaysData?.parlays || [];
 
   // Filter state
   const [filterSport, setFilterSport] = useState<string>("all");
   const [filterDateRange, setFilterDateRange] = useState<string>("all");
+  const [filterSlipType, setFilterSlipType] = useState<string>("all");
   const [includePending, setIncludePending] = useState(false);
+
+  // Unified data structure combining bets and parlays
+  const allBets = useMemo(() => {
+    const betItems = bets.map(bet => ({ ...bet, slipType: 'single' as const }));
+    const parlayItems = parlays.map((parlay: any) => ({ ...parlay, slipType: 'parlay' as const }));
+    return [...betItems, ...parlayItems].sort((a, b) => 
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+  }, [bets, parlays]);
 
   // Apply filters
   const filteredBets = useMemo(() => {
-    return bets.filter(bet => {
-      if (filterSport !== "all" && bet.sport !== filterSport) return false;
+    return allBets.filter(item => {
+      // Slip Type filter
+      if (filterSlipType !== "all" && item.slipType !== filterSlipType) return false;
       
-      if (!includePending && bet.result === "pending") return false;
+      // Sport filter - for singles use bet.sport, for parlays check if any leg matches
+      if (filterSport !== "all") {
+        if (item.slipType === 'single') {
+          if (item.sport !== filterSport) return false;
+        } else {
+          // Parlay - check if any leg matches the sport
+          const parlay = item as any;
+          if (!parlay.legs?.some((leg: any) => leg.sport === filterSport)) return false;
+        }
+      }
+      
+      if (!includePending && item.result === "pending") return false;
       
       if (filterDateRange !== "all") {
-        const betDate = new Date(bet.createdAt);
+        const betDate = new Date(item.createdAt);
         const now = new Date();
         
         if (filterDateRange === "last7") {
@@ -92,7 +125,7 @@ export default function AnalyticsPage() {
       
       return true;
     });
-  }, [bets, filterSport, filterDateRange, includePending]);
+  }, [allBets, filterSlipType, filterSport, filterDateRange, includePending]);
 
   // Calculate analytics
   const analytics = useMemo(() => {
@@ -104,16 +137,37 @@ export default function AnalyticsPage() {
     const settledBets = wonBets + lostBets + returnedBets;
     const winRate = settledBets > 0 ? (wonBets / settledBets) * 100 : 0;
 
-    // Sport breakdown
+    // Sport breakdown - for singles use bet.sport, for parlays include all leg sports
     const sportBreakdown: Record<string, { total: number; wins: number; losses: number; pending: number }> = {};
-    filteredBets.forEach(bet => {
-      if (!sportBreakdown[bet.sport]) {
-        sportBreakdown[bet.sport] = { total: 0, wins: 0, losses: 0, pending: 0 };
+    filteredBets.forEach(item => {
+      if (item.slipType === 'single') {
+        const bet = item as any;
+        if (!sportBreakdown[bet.sport]) {
+          sportBreakdown[bet.sport] = { total: 0, wins: 0, losses: 0, pending: 0 };
+        }
+        sportBreakdown[bet.sport].total++;
+        if (bet.result === "win") sportBreakdown[bet.sport].wins++;
+        else if (bet.result === "lose") sportBreakdown[bet.sport].losses++;
+        else if (bet.result === "pending") sportBreakdown[bet.sport].pending++;
+      } else {
+        // Parlay - count for each unique leg sport
+        const parlay = item as any;
+        const uniqueSports = new Set<string>();
+        if (parlay.legs && Array.isArray(parlay.legs)) {
+          parlay.legs.forEach((leg: any) => {
+            if (leg.sport) uniqueSports.add(leg.sport);
+          });
+        }
+        uniqueSports.forEach((sport: string) => {
+          if (!sportBreakdown[sport]) {
+            sportBreakdown[sport] = { total: 0, wins: 0, losses: 0, pending: 0 };
+          }
+          sportBreakdown[sport].total++;
+          if (parlay.result === "win") sportBreakdown[sport].wins++;
+          else if (parlay.result === "lose") sportBreakdown[sport].losses++;
+          else if (parlay.result === "pending") sportBreakdown[sport].pending++;
+        });
       }
-      sportBreakdown[bet.sport].total++;
-      if (bet.result === "win") sportBreakdown[bet.sport].wins++;
-      else if (bet.result === "lose") sportBreakdown[bet.sport].losses++;
-      else if (bet.result === "pending") sportBreakdown[bet.sport].pending++;
     });
 
     // Monthly breakdown
@@ -132,17 +186,25 @@ export default function AnalyticsPage() {
     // Calculate cumulative units over time
     const dailyData: Record<string, { wins: number; losses: number }> = {};
     
-    filteredBets.forEach(bet => {
-      if (bet.unitsInvested && bet.result !== "pending") {
-        const date = new Date(bet.createdAt).toISOString().split("T")[0];
+    filteredBets.forEach(item => {
+      let unitsInvested = null;
+      if (item.slipType === 'single') {
+        unitsInvested = (item as any).unitsInvested;
+      } else {
+        // Parlay
+        unitsInvested = (item as any).unitsInvested;
+      }
+      
+      if (unitsInvested && item.result !== "pending") {
+        const date = new Date(item.createdAt).toISOString().split("T")[0];
         if (!dailyData[date]) {
           dailyData[date] = { wins: 0, losses: 0 };
         }
         
-        if (bet.result === "win") {
-          dailyData[date].wins += parseFloat(bet.unitsInvested);
-        } else if (bet.result === "lose") {
-          dailyData[date].losses += parseFloat(bet.unitsInvested);
+        if (item.result === "win") {
+          dailyData[date].wins += parseFloat(unitsInvested);
+        } else if (item.result === "lose") {
+          dailyData[date].losses += parseFloat(unitsInvested);
         }
       }
     });
@@ -307,6 +369,74 @@ export default function AnalyticsPage() {
       stats.expectedWinRate = (1 / avgOdds) * 100;
     });
 
+    // Slip Type Breakdown
+    const slipTypeBreakdown: Record<string, {
+      total: number;
+      wins: number;
+      losses: number;
+      pending: number;
+      winRate: number;
+      unitsWon: number;
+      unitsLost: number;
+      dollarsWon: number;
+      dollarsLost: number;
+      roi: number;
+    }> = {
+      single: { total: 0, wins: 0, losses: 0, pending: 0, winRate: 0, unitsWon: 0, unitsLost: 0, dollarsWon: 0, dollarsLost: 0, roi: 0 },
+      parlay: { total: 0, wins: 0, losses: 0, pending: 0, winRate: 0, unitsWon: 0, unitsLost: 0, dollarsWon: 0, dollarsLost: 0, roi: 0 }
+    };
+
+    filteredBets.forEach(item => {
+      const slipType = item.slipType;
+      const breakdown = slipTypeBreakdown[slipType];
+      
+      breakdown.total++;
+      if (item.result === "win") breakdown.wins++;
+      else if (item.result === "lose") breakdown.losses++;
+      else if (item.result === "pending") breakdown.pending++;
+      
+      // Calculate financial metrics
+      let unitsInvested = null;
+      let dollarsInvested = null;
+      
+      if (item.slipType === 'single') {
+        unitsInvested = (item as any).unitsInvested;
+        dollarsInvested = (item as any).dollarsInvested;
+      } else {
+        // Parlay
+        unitsInvested = (item as any).unitsInvested;
+        dollarsInvested = (item as any).dollarsInvested;
+      }
+      
+      if (unitsInvested) {
+        if (item.result === "win") {
+          breakdown.unitsWon += parseFloat(unitsInvested);
+        } else if (item.result === "lose") {
+          breakdown.unitsLost += parseFloat(unitsInvested);
+        }
+      }
+      
+      if (dollarsInvested) {
+        const amount = parseFloat(dollarsInvested);
+        if (item.result === "win") {
+          breakdown.dollarsWon += amount;
+        } else if (item.result === "lose") {
+          breakdown.dollarsLost += amount;
+        }
+      }
+    });
+
+    // Post-process slip type data
+    Object.keys(slipTypeBreakdown).forEach(type => {
+      const stats = slipTypeBreakdown[type];
+      const settled = stats.wins + stats.losses;
+      stats.winRate = settled > 0 ? (stats.wins / settled) * 100 : 0;
+      
+      const totalInvested = stats.unitsLost > 0 ? stats.unitsLost : 0;
+      const totalWon = stats.unitsWon > 0 ? stats.unitsWon : 0;
+      stats.roi = totalInvested > 0 ? ((totalWon - totalInvested) / totalInvested) * 100 : 0;
+    });
+
     return {
       totalBets,
       pendingBets,
@@ -320,6 +450,7 @@ export default function AnalyticsPage() {
       cumulativeUnitsData,
       betCategoryBreakdown,
       oddsRangeBreakdown,
+      slipTypeBreakdown,
     };
   }, [filteredBets]);
 
@@ -353,7 +484,7 @@ export default function AnalyticsPage() {
     window.URL.revokeObjectURL(url);
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingParlays) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
         <div className="flex items-center gap-4 p-4 border-b">
@@ -395,7 +526,7 @@ export default function AnalyticsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Sport</label>
                 <Select value={filterSport} onValueChange={setFilterSport}>
@@ -421,6 +552,19 @@ export default function AnalyticsPage() {
                     <SelectItem value="last7">Last 7 Days</SelectItem>
                     <SelectItem value="last30">Last 30 Days</SelectItem>
                     <SelectItem value="last90">Last 90 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Slip Type</label>
+                <Select value={filterSlipType} onValueChange={setFilterSlipType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="single">Single Bets</SelectItem>
+                    <SelectItem value="parlay">Parlays</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -736,6 +880,60 @@ export default function AnalyticsPage() {
                       </TableCell>
                     </TableRow>
                   )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Performance by Slip Type */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance by Slip Type</CardTitle>
+            <CardDescription>Compare single bets vs parlays</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Slip Type</TableHead>
+                    <TableHead>Bets</TableHead>
+                    <TableHead>Wins</TableHead>
+                    <TableHead>Losses</TableHead>
+                    <TableHead>Pending</TableHead>
+                    <TableHead>Win Rate</TableHead>
+                    <TableHead>Units +/-</TableHead>
+                    <TableHead>Dollars +/-</TableHead>
+                    <TableHead>ROI</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(analytics.slipTypeBreakdown)
+                    .map(([type, stats]) => {
+                      const netUnits = stats.unitsWon - stats.unitsLost;
+                      const netDollars = stats.dollarsWon - stats.dollarsLost;
+                      
+                      return (
+                        <TableRow key={type}>
+                          <TableCell className="font-medium">{type === 'single' ? 'Single Bets' : 'Parlays'}</TableCell>
+                          <TableCell>{stats.total}</TableCell>
+                          <TableCell className="text-primary">{stats.wins}</TableCell>
+                          <TableCell className="text-destructive">{stats.losses}</TableCell>
+                          <TableCell>{stats.pending}</TableCell>
+                          <TableCell>{stats.winRate.toFixed(1)}%</TableCell>
+                          <TableCell className={netUnits >= 0 ? "text-primary" : "text-destructive"}>
+                            {netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)}
+                          </TableCell>
+                          <TableCell className={netDollars >= 0 ? "text-primary" : "text-destructive"}>
+                            {netDollars >= 0 ? `+$${netDollars.toFixed(2)}` : `-$${Math.abs(netDollars).toFixed(2)}`}
+                          </TableCell>
+                          <TableCell className={stats.roi >= 0 ? "text-primary" : "text-destructive"}>
+                            {stats.roi >= 0 ? `+${stats.roi.toFixed(1)}%` : `${stats.roi.toFixed(1)}%`}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </div>
