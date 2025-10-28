@@ -101,6 +101,9 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parlays"] });
+      queryClient.invalidateQueries({ queryKey: ["my-parlays"] });
+      queryClient.invalidateQueries({ queryKey: ["community-parlays"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
       queryClient.invalidateQueries({ queryKey: ["community-bets"] });
       queryClient.invalidateQueries({ queryKey: ["my-bets"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
