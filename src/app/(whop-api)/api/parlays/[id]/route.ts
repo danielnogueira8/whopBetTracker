@@ -145,8 +145,8 @@ export async function PATCH(
     // Update parlay
     const [updated] = await db.update(parlays).set(updateFields).where(eq(parlays.id, id)).returning()
 
-    // Auto-calculate result based on leg results
-    if (updateFields.legs || updateData.legs) {
+    // Auto-calculate result based on leg results ONLY if no explicit result was provided
+    if ((updateFields.legs || updateData.legs) && updateData.result === undefined) {
       const legs = await db
         .select()
         .from(parlayLegs)
