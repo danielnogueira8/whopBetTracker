@@ -340,13 +340,15 @@ export default function MyBetsPage() {
     );
   }
 
+  const displayName = user?.username || user?.name || "My";
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <div className="flex items-center gap-4 p-4 border-b">
         <SidebarTrigger />
         <TooltipProvider>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold">My Bet Tracker</h1>
+            <h1 className="text-xl font-semibold">{displayName} Tracker</h1>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />

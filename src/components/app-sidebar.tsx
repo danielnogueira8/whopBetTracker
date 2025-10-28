@@ -84,7 +84,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
                 <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/my-bets` || pathname === `/experiences/${experienceId}/my-bets/analytics`}>
                   <Link href={`/experiences/${experienceId}/my-bets` as any}>
                     <User />
-                    <span>My Bet Tracker</span>
+                    <span>My Tracker</span>
                   </Link>
                 </SidebarMenuButton>
                 <SidebarMenuSub>
