@@ -627,7 +627,7 @@ export default function CommunityBetsPage() {
                             </TableCell>
                             {isAdmin && (
                               <TableCell className="text-right">
-                                <div className="flex gap-2 justify-end">
+                                <div className="flex gap-1 justify-end">
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -703,7 +703,7 @@ export default function CommunityBetsPage() {
                               </TableCell>
                               {isAdmin && (
                                 <TableCell className="text-right">
-                                  <div className="flex gap-2 justify-end">
+                                  <div className="flex gap-1 justify-end">
                                     <Button
                                       variant="ghost"
                                       size="sm"
