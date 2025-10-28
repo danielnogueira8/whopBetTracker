@@ -100,10 +100,16 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["parlays"] });
-      queryClient.invalidateQueries({ queryKey: ["my-parlays"] });
-      queryClient.invalidateQueries({ queryKey: ["community-parlays"] });
-      queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
+      // Invalidate all parlay queries regardless of prefixes
+      queryClient.invalidateQueries({ 
+        predicate: (query) => 
+          query.queryKey[0] === "parlays" || 
+          query.queryKey[0] === "my-parlays" || 
+          query.queryKey[0] === "community-parlays" ||
+          query.queryKey[0] === "upcoming-parlays" ||
+          query.queryKey[0] === "my-parlays-analytics" ||
+          query.queryKey[0] === "community-parlays-analytics"
+      });
       queryClient.invalidateQueries({ queryKey: ["community-bets"] });
       queryClient.invalidateQueries({ queryKey: ["my-bets"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
