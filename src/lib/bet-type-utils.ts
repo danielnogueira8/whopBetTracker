@@ -43,3 +43,4 @@ export const betTypeCategories = {
   'Other': ['other'],
 }
 
+

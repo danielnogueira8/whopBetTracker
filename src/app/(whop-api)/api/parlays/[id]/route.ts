@@ -11,11 +11,11 @@ import { env } from "~/env"
 // GET - Fetch single parlay
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await verifyUserToken(req.headers)
-    const { id } = params
+    const { id } = await params
 
     const parlay = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1)
 
@@ -45,11 +45,11 @@ export async function GET(
 // PATCH - Update parlay
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await verifyUserToken(req.headers)
-    const { id } = params
+    const { id } = await params
     const body = await req.json()
 
     const {
@@ -57,6 +57,18 @@ export async function PATCH(
       shouldUpdateForumPost,
       ...updateData
     } = body
+
+    // Validate legs to avoid inserting undefined values
+    if (updateData.legs && Array.isArray(updateData.legs)) {
+      for (const leg of updateData.legs) {
+        if (leg.oddFormat == null || leg.oddValue == null) {
+          return Response.json(
+            { error: "Each leg requires oddFormat and oddValue" },
+            { status: 400 }
+          )
+        }
+      }
+    }
 
     // Fetch existing parlay
     const existing = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1)
@@ -229,11 +241,11 @@ export async function PATCH(
 // DELETE - Delete parlay
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await verifyUserToken(req.headers)
-    const { id } = params
+    const { id } = await params
 
     // Fetch existing parlay
     const existing = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1)
