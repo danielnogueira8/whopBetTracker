@@ -43,13 +43,15 @@ function LegRow({
   parlayId, 
   resultColors, 
   preferredOddsFormat,
-  onUpdate 
+  onUpdate,
+  isAdmin = false
 }: { 
   leg: any; 
   parlayId: string; 
   resultColors: any;
   preferredOddsFormat: OddFormat;
   onUpdate: () => void;
+  isAdmin?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedResult, setSelectedResult] = useState(leg.result);
@@ -96,7 +98,7 @@ function LegRow({
               setSelectedResult(value);
               updateLeg.mutate(value);
             }}
-            disabled={updateLeg.isPending}
+            disabled={updateLeg.isPending || !isAdmin}
           >
             <SelectTrigger className="w-28 h-8">
               <SelectValue />
@@ -681,6 +683,7 @@ export default function CommunityBetsPage() {
                                 onUpdate={() => {
                                   queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "my-parlays" || query.queryKey[0] === "community-parlays" });
                                 }}
+                                isAdmin={isAdmin}
                               />
                             ))}
                           </>
