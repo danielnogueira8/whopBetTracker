@@ -422,7 +422,7 @@ export function CreateBetDialog({
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="game_match">Match Bets</SelectItem>
-                              <SelectItem value="player">Player Bets (Prop Bets)</SelectItem>
+                              <SelectItem value="player">Prop Bets</SelectItem>
                               <SelectItem value="team">Team Bets</SelectItem>
                               <SelectItem value="corners_cards">Corners & Cards</SelectItem>
                               <SelectItem value="period_time">Period / Time-Based</SelectItem>
@@ -591,7 +591,7 @@ export function CreateBetDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="game_match">Match Bets</SelectItem>
-                      <SelectItem value="player">Player Bets (Prop Bets)</SelectItem>
+                      <SelectItem value="player">Prop Bets</SelectItem>
                       <SelectItem value="team">Team Bets</SelectItem>
                       <SelectItem value="corners_cards">Corners & Cards</SelectItem>
                       <SelectItem value="period_time">Period / Time-Based</SelectItem>

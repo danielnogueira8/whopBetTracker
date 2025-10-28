@@ -19,7 +19,7 @@ export const betCategories: Record<BetCategory, { label: string; examples: strin
     ]
   },
   player: {
-    label: 'Player Bets (Prop Bets)',
+    label: 'Prop Bets',
     examples: [
       'Anytime / First / Last Goalscorer',
       'Player to Score a Hat-Trick',

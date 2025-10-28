@@ -36,7 +36,7 @@ export function getBetTypeLabel(betType: string): string {
 
 export const betTypeCategories = {
   'Game/Match Bets': ['moneyline', 'over_under', 'handicap_spread', 'both_teams_score', 'correct_score', 'half_full_time', 'draw_double_chance'],
-  'Player Bets': ['player_scorer', 'player_prop'],
+  'Prop Bets': ['player_scorer', 'player_prop'],
   'Team Bets': ['team_total', 'team_prop'],
   'Corners & Cards': ['corners_cards'],
   'Period-Based': ['period_based'],
