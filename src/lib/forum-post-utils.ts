@@ -90,7 +90,7 @@ export function formatParlayForForum(parlay: ParlayWithLegs): string {
 	}
 
 	// Add each leg
-	postContent += `### ParlayLegs:\n\n`
+	postContent += `### Parlay Legs:\n\n`
 	legs.forEach((leg, index) => {
 		postContent += `**🔹 LEG ${index + 1}: ${leg.sport}**\n`
 		postContent += `Game: ${leg.game}\n`
@@ -100,7 +100,7 @@ export function formatParlayForForum(parlay: ParlayWithLegs): string {
 
 	// Add explanation
 	if (explanation) {
-		postContent += `### 📝 Explanation:\n${explanation}\n\n`
+		postContent += `### 📝 Explanation:\n\n${explanation}\n\n`
 	}
 
 	// Add footer
