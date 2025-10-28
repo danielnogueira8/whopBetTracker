@@ -330,7 +330,7 @@ export default function CommunityBetsPage() {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p className="max-w-xs">
-                      View the community's betting activity and performance. Includes bets and parlays that have been converted from upcoming picks.
+                      View the community's betting activity and performance. Includes bets and parlays that have been converted from community picks.
                     </p>
                   </TooltipContent>
                 </Tooltip>
