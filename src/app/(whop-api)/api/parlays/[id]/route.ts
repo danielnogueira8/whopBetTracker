@@ -140,6 +140,7 @@ export async function PATCH(
             betCategory: leg.betCategory || "game_match",
             oddFormat: leg.oddFormat,
             oddValue: leg.oddValue.toString(),
+            result: leg.result || "pending",
             legOrder: index + 1,
           })
         )
