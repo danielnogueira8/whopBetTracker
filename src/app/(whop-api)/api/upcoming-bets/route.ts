@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(req.url);
     const experienceId = searchParams.get("experienceId");
-    const order = (searchParams.get("order") || "asc").toLowerCase() === "desc" ? "desc" : "asc";
+    // Remove client-controlled order; rely on default ordering (createdAt desc)
 
     // Require experienceId
     if (!experienceId) {
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const bets = await db.select()
       .from(upcomingBets)
       .where(eq(upcomingBets.experienceId, experienceId))
-      .orderBy(order === "asc" ? asc(upcomingBets.eventDate) : desc(upcomingBets.eventDate));
+      .orderBy(desc(upcomingBets.createdAt));
 
     return Response.json({ bets });
   } catch (error) {

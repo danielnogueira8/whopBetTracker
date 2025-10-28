@@ -29,7 +29,7 @@ import {
 import { displayOdds, toDecimal } from "~/lib/bet-utils";
 import type { OddFormat } from "~/lib/bet-utils";
 import { Spinner } from "~/components/ui/spinner";
-import { SortToggle } from "~/components/sort-toggle";
+// import { SortToggle } from "~/components/sort-toggle";
 
 interface UpcomingBet {
   id: string;
@@ -95,12 +95,12 @@ export default function UpcomingBetsPage() {
     return "american";
   });
 
-  const [order, setOrder] = useState<"asc" | "desc">("asc");
+  // Removed sort-by-date toggle; default API sort applies
 
   const { data, isLoading } = useQuery({
     queryKey: ["upcoming-bets", experienceId],
     queryFn: async () => {
-      const response = await fetch(`/api/upcoming-bets?experienceId=${experienceId}&order=${order}`);
+      const response = await fetch(`/api/upcoming-bets?experienceId=${experienceId}`);
       if (!response.ok) throw new Error("Failed to fetch upcoming bets");
       return response.json();
     },
@@ -279,10 +279,7 @@ export default function UpcomingBetsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">Sort by date</div>
-              <SortToggle value={order} onChange={(next) => setOrder(next)} />
-            </div>
+            {/* Sort by date toggle removed */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {bets.map((bet) => (
               <Card key={bet.id} className="flex flex-col">
