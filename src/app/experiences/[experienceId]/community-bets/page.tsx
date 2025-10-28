@@ -612,7 +612,27 @@ export default function CommunityBetsPage() {
                                 </TooltipProvider>
                               </TableCell>
                             <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
-                            <TableCell>{bet.outcome}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <span className="inline-block align-middle">
+                                  {bet.outcome && bet.outcome.length > 30 ? `${bet.outcome.slice(0, 30)}…` : bet.outcome}
+                                </span>
+                                {bet.outcome && bet.outcome.length > 30 && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <button aria-label="View full outcome" className="text-muted-foreground hover:text-foreground">
+                                          <Info className="h-3.5 w-3.5" />
+                                        </button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <span className="max-w-xs break-words">{bet.outcome}</span>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            </TableCell>
                             <TableCell>
                               {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
                             </TableCell>

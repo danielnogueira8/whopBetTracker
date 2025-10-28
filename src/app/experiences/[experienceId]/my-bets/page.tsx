@@ -618,16 +618,25 @@ export default function MyBetsPage() {
                           </TableCell>
                           <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
                           <TableCell>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="max-w-[220px] truncate inline-block align-middle" title={bet.outcome}>{bet.outcome}</span>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <span className="max-w-xs break-words">{bet.outcome}</span>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <div className="flex items-center gap-1">
+                              <span className="inline-block align-middle">
+                                {bet.outcome.length > 30 ? `${bet.outcome.slice(0, 30)}…` : bet.outcome}
+                              </span>
+                              {bet.outcome.length > 30 && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button aria-label="View full outcome" className="text-muted-foreground hover:text-foreground">
+                                        <Info className="h-3.5 w-3.5" />
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <span className="max-w-xs break-words">{bet.outcome}</span>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
                             {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
