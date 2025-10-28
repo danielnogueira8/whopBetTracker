@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Users, Trophy, BarChart, TrendingUp, Gem, User, DollarSign, Settings, MessagesSquare } from "lucide-react"
+import { Users, Trophy, BarChart, TrendingUp, Gem, User, DollarSign, Settings, MessagesSquare, FileSpreadsheet } from "lucide-react"
 import { useWhop } from "~/lib/whop-context"
 import { ThemeToggle } from "~/components/theme-toggle"
 
@@ -59,7 +59,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
               <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname === communityBetsUrl || pathname === analyticsUrl}>
                   <Link href={communityBetsUrl as any}>
-                    <BarChart />
+                    <FileSpreadsheet />
                     <span>{companyName}</span>
                   </Link>
                 </SidebarMenuButton>
