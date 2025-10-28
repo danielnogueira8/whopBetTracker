@@ -135,9 +135,10 @@ export function CreateBetDialog({
       setEventDate("");
       setExplanation("");
       setParlayConfidenceLevel("");
-      setShouldPostToForum(false);
+      // Reset checkbox based on settings when dialog closes
+      setShouldPostToForum(settings?.autoPostEnabled || false);
     }
-  }, [open]);
+  }, [open, settings?.autoPostEnabled]);
 
   const createBet = useMutation({
     mutationFn: async (betData: any) => {
@@ -549,18 +550,21 @@ export function CreateBetDialog({
                         placeholder="5"
                       />
                     </div>
-                    <div className="flex items-center space-x-2 pt-2">
-                      <input
-                        type="checkbox"
-                        id="post-to-forum-parlay"
-                        checked={shouldPostToForum}
-                        onChange={(e) => setShouldPostToForum(e.target.checked)}
-                        className="rounded"
-                      />
-                      <Label htmlFor="post-to-forum-parlay" className="font-normal">
-                        Post to forum
-                      </Label>
-                    </div>
+                    {settings?.forumId && (
+                      <div className="flex items-center justify-between space-x-2 rounded-lg border p-3 bg-orange-50 dark:bg-orange-950">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="post-to-forum-parlay">Post to Forum</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Share this parlay pick in your selected forum
+                          </p>
+                        </div>
+                        <Switch
+                          id="post-to-forum-parlay"
+                          checked={shouldPostToForum}
+                          onCheckedChange={setShouldPostToForum}
+                        />
+                      </div>
+                    )}
                   </>
                 )}
               </>
@@ -706,18 +710,21 @@ export function CreateBetDialog({
                         placeholder="5"
                       />
                     </div>
-                    <div className="flex items-center space-x-2 pt-2">
-                      <input
-                        type="checkbox"
-                        id="post-to-forum"
-                        checked={shouldPostToForum}
-                        onChange={(e) => setShouldPostToForum(e.target.checked)}
-                        className="rounded"
-                      />
-                      <Label htmlFor="post-to-forum" className="font-normal">
-                        Post to forum
-                      </Label>
-                    </div>
+                    {settings?.forumId && (
+                      <div className="flex items-center justify-between space-x-2 rounded-lg border p-3 bg-orange-50 dark:bg-orange-950">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="post-to-forum">Post to Forum</Label>
+                          <p className="text-sm text-muted-foreground">
+                            Share this pick in your selected forum
+                          </p>
+                        </div>
+                        <Switch
+                          id="post-to-forum"
+                          checked={shouldPostToForum}
+                          onCheckedChange={setShouldPostToForum}
+                        />
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
