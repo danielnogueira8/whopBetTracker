@@ -13,6 +13,7 @@ import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
 import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { ConvertBetDialog } from "~/components/convert-bet-dialog";
+import { ConvertParlayDialog } from "~/components/convert-parlay-dialog";
 import { AdBannerDisplay } from "~/components/ad-banner-display";
 import { PurchaseAdBannerDialog } from "~/components/purchase-ad-banner-dialog";
 import {
@@ -79,6 +80,7 @@ export default function UpcomingBetsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editParlayDialogOpen, setEditParlayDialogOpen] = useState(false);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [convertParlayDialogOpen, setConvertParlayDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedBet, setSelectedBet] = useState<UpcomingBet | null>(null);
   const [selectedParlay, setSelectedParlay] = useState<UpcomingParlay | null>(null);
@@ -218,6 +220,7 @@ export default function UpcomingBetsPage() {
       <EditUpcomingBetDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} bet={selectedBet} />
       <EditParlayDialog open={editParlayDialogOpen} onOpenChange={setEditParlayDialogOpen} parlay={selectedParlay} />
       <ConvertBetDialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen} bet={selectedBet} />
+      <ConvertParlayDialog open={convertParlayDialogOpen} onOpenChange={setConvertParlayDialogOpen} parlay={selectedParlay} />
       <PurchaseAdBannerDialog open={purchaseAdDialogOpen} onOpenChange={setPurchaseAdDialogOpen} />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -482,24 +485,9 @@ export default function UpcomingBetsPage() {
                     <Button
                       variant="outline"
                       className="w-full mt-auto"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch(`/api/parlays/${parlay.id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              experienceId: experience?.id,
-                              isUpcomingBet: false,
-                              isCommunityBet: true,
-                            }),
-                          });
-                          if (response.ok) {
-                            queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
-                            queryClient.invalidateQueries({ queryKey: ["community-bets"] });
-                          }
-                        } catch (error) {
-                          console.error("Error converting parlay:", error);
-                        }
+                      onClick={() => {
+                        setSelectedParlay(parlay);
+                        setConvertParlayDialogOpen(true);
                       }}
                     >
                       <TrendingUp className="mr-2 h-4 w-4" />
