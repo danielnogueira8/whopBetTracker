@@ -116,7 +116,6 @@ export default function UpcomingBetsPage() {
         isUpcoming: "true",
         page: "1",
         limit: "50",
-        order,
       });
       const response = await fetch(`/api/parlays?${params}`);
       if (!response.ok) throw new Error("Failed to fetch upcoming parlays");
