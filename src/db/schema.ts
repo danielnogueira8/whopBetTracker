@@ -60,7 +60,7 @@ export const upcomingBets = pgTable('upcoming_bets', {
 	betCategory: betCategoryEnum('bet_category').notNull().default('game_match'),
 	oddFormat: oddFormatEnum('odd_format').notNull(),
 	oddValue: decimal('odd_value', { precision: 10, scale: 2 }).notNull(),
-	explanation: text('explanation').notNull(),
+	explanation: text('explanation'), // Optional explanation
 	confidenceLevel: integer('confidence_level').default(5), // 1-10 scale
 	unitsToInvest: decimal('units_to_invest', { precision: 10, scale: 2 }),
 	eventDate: timestamp('event_date').notNull(),
