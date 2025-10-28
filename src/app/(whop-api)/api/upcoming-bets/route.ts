@@ -3,7 +3,7 @@ import { db } from "~/db";
 import { upcomingBets, experienceSettings } from "~/db/schema";
 import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
-import { eq } from "drizzle-orm";
+import { eq, asc, desc } from "drizzle-orm";
 import { formatUpcomingBetForForum } from "~/lib/forum-post-utils";
 import { env } from "~/env";
 
@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(req.url);
     const experienceId = searchParams.get("experienceId");
+    const order = (searchParams.get("order") || "asc").toLowerCase() === "desc" ? "desc" : "asc";
 
     // Require experienceId
     if (!experienceId) {
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     const bets = await db.select()
       .from(upcomingBets)
       .where(eq(upcomingBets.experienceId, experienceId))
-      .orderBy(upcomingBets.eventDate);
+      .orderBy(order === "asc" ? asc(upcomingBets.eventDate) : desc(upcomingBets.eventDate));
 
     return Response.json({ bets });
   } catch (error) {

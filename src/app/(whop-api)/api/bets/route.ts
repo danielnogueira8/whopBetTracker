@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { verifyUserToken } from "@whop/api";
 import { db } from "~/db";
 import { bets, userStats } from "~/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 
 /**
  * GET /api/bets - Fetch all bets for a user
@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = (page - 1) * limit;
+    const order = (searchParams.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc";
 
     // Require experienceId
     if (!experienceId) {
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
         .select()
         .from(bets)
         .where(and(eq(bets.isCommunityBet, true), eq(bets.experienceId, experienceId)))
-        .orderBy(desc(bets.createdAt))
+        .orderBy(order === "asc" ? asc(bets.createdAt) : desc(bets.createdAt))
         .limit(limit)
         .offset(offset);
       
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
       );
 
     const results = await dataQuery
-      .orderBy(desc(bets.createdAt))
+      .orderBy(order === "asc" ? asc(bets.createdAt) : desc(bets.createdAt))
       .limit(limit)
       .offset(offset);
     

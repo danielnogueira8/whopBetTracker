@@ -3,7 +3,7 @@ import { db } from "~/db"
 import { parlays, parlayLegs, experienceSettings } from "~/db/schema"
 import { verifyUserToken } from "@whop/api"
 import { whop } from "~/lib/whop"
-import { eq, and, desc, count } from "drizzle-orm"
+import { eq, and, desc, asc, count } from "drizzle-orm"
 import { calculateParlayOdds } from "~/lib/parlay-utils"
 import { formatParlayForForum } from "~/lib/forum-post-utils"
 import { env } from "~/env"
@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "50")
     const offset = (page - 1) * limit
+    const order = (searchParams.get("order") || "desc").toLowerCase() === "asc" ? "asc" : "desc"
 
     if (!experienceId) {
       return Response.json({ error: "experienceId is required" }, { status: 400 })
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
       .select()
       .from(parlays)
       .where(whereClause)
-      .orderBy(desc(parlays.createdAt))
+      .orderBy(order === "asc" ? asc(parlays.createdAt) : desc(parlays.createdAt))
       .limit(limit)
       .offset(offset)
 

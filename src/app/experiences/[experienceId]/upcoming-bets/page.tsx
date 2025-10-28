@@ -29,6 +29,7 @@ import {
 import { displayOdds, toDecimal } from "~/lib/bet-utils";
 import type { OddFormat } from "~/lib/bet-utils";
 import { Spinner } from "~/components/ui/spinner";
+import { SortToggle } from "~/components/sort-toggle";
 
 interface UpcomingBet {
   id: string;
@@ -94,10 +95,12 @@ export default function UpcomingBetsPage() {
     return "american";
   });
 
+  const [order, setOrder] = useState<"asc" | "desc">("asc");
+
   const { data, isLoading } = useQuery({
     queryKey: ["upcoming-bets", experienceId],
     queryFn: async () => {
-      const response = await fetch(`/api/upcoming-bets?experienceId=${experienceId}`);
+      const response = await fetch(`/api/upcoming-bets?experienceId=${experienceId}&order=${order}`);
       if (!response.ok) throw new Error("Failed to fetch upcoming bets");
       return response.json();
     },
@@ -112,7 +115,8 @@ export default function UpcomingBetsPage() {
         experienceId,
         isUpcoming: "true",
         page: "1",
-        limit: "50"
+        limit: "50",
+        order,
       });
       const response = await fetch(`/api/parlays?${params}`);
       if (!response.ok) throw new Error("Failed to fetch upcoming parlays");
@@ -274,6 +278,10 @@ export default function UpcomingBetsPage() {
             </p>
           </div>
         ) : (
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-muted-foreground">Sort by date</div>
+            <SortToggle value={order} onChange={(next) => setOrder(next)} />
+          </div>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {bets.map((bet) => (
               <Card key={bet.id} className="flex flex-col">

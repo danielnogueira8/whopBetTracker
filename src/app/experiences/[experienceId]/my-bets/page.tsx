@@ -17,6 +17,7 @@ import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
 import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp, Edit, Info } from "lucide-react";
+import { SortToggle } from "~/components/sort-toggle";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
@@ -159,6 +160,7 @@ export default function MyBetsPage() {
     return "american";
   });
   const [expandedParlays, setExpandedParlays] = useState<Set<string>>(new Set());
+  const [order, setOrder] = useState<"asc" | "desc">("desc");
 
   const experienceId = experience?.id || "";
 
@@ -188,7 +190,8 @@ export default function MyBetsPage() {
         experienceId,
         userOnly: "true",
         page: String(page),
-        limit: "50"
+        limit: "50",
+        order,
       });
       const response = await fetch(`/api/bets?${params}`);
       if (!response.ok) throw new Error("Failed to fetch bets");
@@ -203,7 +206,8 @@ export default function MyBetsPage() {
       const params = new URLSearchParams({
         experienceId,
         page: String(page),
-        limit: "50"
+        limit: "50",
+        order,
       });
       const response = await fetch(`/api/parlays?${params}`);
       if (!response.ok) throw new Error("Failed to fetch parlays");
@@ -350,7 +354,7 @@ export default function MyBetsPage() {
             size="sm"
             asChild
           >
-            <Link href={`/experiences/${experienceId}/my-bets/analytics`}>
+            <Link href={`/experiences/${experienceId}/my-bets/analytics` as any}>
               <TrendingUp className="h-4 w-4 mr-2" />
               Analytics
             </Link>
@@ -552,7 +556,12 @@ export default function MyBetsPage() {
                   <TableHead>Units</TableHead>
                   <TableHead>$ Invested</TableHead>
                   <TableHead>Result</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>
+                    <div className="flex items-center">
+                      Date
+                      <SortToggle value={order} onChange={(next) => setOrder(next)} />
+                    </div>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>

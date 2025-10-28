@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/comp
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
+import { SortToggle } from "~/components/sort-toggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -164,6 +165,7 @@ export default function CommunityBetsPage() {
     return "american";
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [expandedParlays, setExpandedParlays] = useState<Set<string>>(new Set());
 
   const toggleParlayExpansion = (parlayId: string) => {
@@ -185,7 +187,8 @@ export default function CommunityBetsPage() {
         experienceId,
         isCommunity: "true",
         page: String(page),
-        limit: "50"
+        limit: "50",
+        order,
       });
       const response = await fetch(`/api/bets?${params}`);
       if (!response.ok) throw new Error("Failed to fetch bets");
@@ -201,7 +204,8 @@ export default function CommunityBetsPage() {
         experienceId,
         isCommunity: "true",
         page: String(page),
-        limit: "50"
+        limit: "50",
+        order,
       });
       const response = await fetch(`/api/parlays?${params}`);
       if (!response.ok) throw new Error("Failed to fetch parlays");
@@ -547,7 +551,12 @@ export default function CommunityBetsPage() {
                     <TableHead>Odds</TableHead>
                     <TableHead>Units</TableHead>
                     <TableHead>Result</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>
+                      <div className="flex items-center">
+                        Date
+                        <SortToggle value={order} onChange={(next) => setOrder(next)} />
+                      </div>
+                    </TableHead>
                     {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
