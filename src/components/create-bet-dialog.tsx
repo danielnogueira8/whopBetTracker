@@ -78,10 +78,11 @@ export function CreateBetDialog({
     { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
   ]);
   
-  // Upcoming bet fields (for parlays)
+  // Upcoming bet fields (for parlays and single bets)
   const [eventDate, setEventDate] = useState("");
   const [explanation, setExplanation] = useState("");
   const [parlayConfidenceLevel, setParlayConfidenceLevel] = useState("");
+  const [shouldPostToForum, setShouldPostToForum] = useState(false);
 
   const oddPlaceholders = {
     american: "+150 or -200",
@@ -113,6 +114,7 @@ export function CreateBetDialog({
       setEventDate("");
       setExplanation("");
       setParlayConfidenceLevel("");
+      setShouldPostToForum(false);
     }
   }, [open]);
 
@@ -145,8 +147,26 @@ export function CreateBetDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["parlays"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
       queryClient.invalidateQueries({ queryKey: ["community-bets"] });
       queryClient.invalidateQueries({ queryKey: ["my-bets"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
+      onOpenChange(false);
+    },
+  });
+
+  const createUpcomingBet = useMutation({
+    mutationFn: async (betData: any) => {
+      const response = await fetch("/api/upcoming-bets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(betData),
+      });
+      if (!response.ok) throw new Error("Failed to create upcoming bet");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
       onOpenChange(false);
     },
   });
@@ -186,24 +206,43 @@ export function CreateBetDialog({
       createParlay.mutate(parlayData);
     } else {
       // Single bet
-      const betData = {
-        experienceId: experience.id,
-        sport,
-        game,
-        outcome,
-        betCategory,
-        oddFormat,
-        oddValue: parseFloat(oddValue),
-        unitsInvested: unitsInvested ? parseFloat(unitsInvested) : null,
-        dollarsInvested: dollarsInvested ? parseFloat(dollarsInvested) : null,
-        notes: notes || null,
-        confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
-        date: date || new Date().toISOString().split("T")[0],
-        result,
-        isCommunityBet,
-      };
-
-      createBet.mutate(betData);
+      if (isUpcomingBet) {
+        // Create upcoming bet
+        const betData = {
+          experienceId: experience.id,
+          sport,
+          game,
+          outcome,
+          betCategory,
+          oddFormat,
+          oddValue: parseFloat(oddValue),
+          explanation: explanation || null,
+          confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
+          unitsToInvest: unitsInvested ? parseFloat(unitsInvested) : null,
+          eventDate: eventDate ? new Date(eventDate).toISOString() : null,
+          shouldPostToForum,
+        };
+        createUpcomingBet.mutate(betData);
+      } else {
+        // Create regular bet
+        const betData = {
+          experienceId: experience.id,
+          sport,
+          game,
+          outcome,
+          betCategory,
+          oddFormat,
+          oddValue: parseFloat(oddValue),
+          unitsInvested: unitsInvested ? parseFloat(unitsInvested) : null,
+          dollarsInvested: dollarsInvested ? parseFloat(dollarsInvested) : null,
+          notes: notes || null,
+          confidenceLevel: confidenceLevel ? parseInt(confidenceLevel) : 5,
+          date: date || new Date().toISOString().split("T")[0],
+          result,
+          isCommunityBet,
+        };
+        createBet.mutate(betData);
+      }
     }
   };
 
@@ -567,59 +606,100 @@ export function CreateBetDialog({
                     />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="confidence">Confidence Level (1-10)</Label>
-                  <Input
-                    id="confidence"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={confidenceLevel}
-                    onChange={(e) => setConfidenceLevel(e.target.value)}
-                    placeholder="5"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="notes">Notes (optional)</Label>
-                  <Textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add any additional context or thoughts about this bet..."
-                    rows={3}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="date">Date</Label>
-                    <Input
-                      id="date"
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="result">Result</Label>
-                    <Select
-                      value={result}
-                      onValueChange={(value: "pending" | "win" | "lose" | "returned") =>
-                        setResult(value)
-                      }
-                    >
-                      <SelectTrigger id="result">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="win">Win</SelectItem>
-                        <SelectItem value="lose">Lose</SelectItem>
-                        <SelectItem value="returned">Returned</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                {isUpcomingBet ? (
+                  <>
+                    {/* Upcoming bet specific fields */}
+                    <div className="space-y-2">
+                      <Label htmlFor="event-date">Event Date</Label>
+                      <Input
+                        id="event-date"
+                        type="datetime-local"
+                        value={eventDate}
+                        onChange={(e) => setEventDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="explanation">Explanation (Optional)</Label>
+                      <Textarea
+                        id="explanation"
+                        placeholder="Explain your reasoning for this bet..."
+                        value={explanation}
+                        onChange={(e) => setExplanation(e.target.value)}
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confidence">Confidence Level (1-10)</Label>
+                      <Input
+                        id="confidence"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={confidenceLevel}
+                        onChange={(e) => setConfidenceLevel(e.target.value)}
+                        placeholder="5"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Regular bet fields */}
+                    <div className="grid gap-2">
+                      <Label htmlFor="confidence">Confidence Level (1-10)</Label>
+                      <Input
+                        id="confidence"
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={confidenceLevel}
+                        onChange={(e) => setConfidenceLevel(e.target.value)}
+                        placeholder="5"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="notes">Notes (optional)</Label>
+                      <Textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Add any additional context or thoughts about this bet..."
+                        rows={3}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="date">Date</Label>
+                        <Input
+                          id="date"
+                          type="date"
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="result">Result</Label>
+                        <Select
+                          value={result}
+                          onValueChange={(value: "pending" | "win" | "lose" | "returned") =>
+                            setResult(value)
+                          }
+                        >
+                          <SelectTrigger id="result">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="win">Win</SelectItem>
+                            <SelectItem value="lose">Lose</SelectItem>
+                            <SelectItem value="returned">Returned</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -633,10 +713,10 @@ export function CreateBetDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createBet.isPending || createParlay.isPending}>
-              {createBet.isPending || createParlay.isPending
-                ? isParlay ? "Creating Parlay..." : "Creating Bet..."
-                : isParlay ? "Create Parlay" : "Create Bet"}
+            <Button type="submit" disabled={createBet.isPending || createParlay.isPending || createUpcomingBet.isPending}>
+              {createBet.isPending || createParlay.isPending || createUpcomingBet.isPending
+                ? isParlay ? "Creating Parlay..." : isUpcomingBet ? "Creating Pick..." : "Creating Bet..."
+                : isParlay ? "Create Parlay" : isUpcomingBet ? "Create Pick" : "Create Bet"}
             </Button>
           </DialogFooter>
         </form>
