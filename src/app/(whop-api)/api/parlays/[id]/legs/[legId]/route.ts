@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "~/db";
 import { parlayLegs, parlays } from "~/db/schema";
 import { eq } from "drizzle-orm";
-import { verifyUserToken } from "~/lib/auth";
+import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
 import { calculateParlayResult } from "~/lib/parlay-utils";
 
