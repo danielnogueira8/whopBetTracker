@@ -709,9 +709,6 @@ export default function MyBetsPage() {
                             </TableCell>
                             <TableCell>-</TableCell>
                             <TableCell>{parlay.legs.length} legs</TableCell>
-                            <TableCell>
-                              {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
-                            </TableCell>
                             <TableCell>{formatUnits(parlay.unitsInvested)}</TableCell>
                             <TableCell>{parlay.dollarsInvested || "-"}</TableCell>
                             <TableCell>
