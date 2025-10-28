@@ -740,8 +740,12 @@ export default function PersonalAnalyticsPage() {
                       }}
                       className="h-[300px] w-full"
                     >
-                      <LineChart data={analytics.cumulativeUnitsData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                      <LineChart
+                        accessibilityLayer
+                        data={analytics.cumulativeUnitsData}
+                        margin={{ left: 12, right: 12 }}
+                      >
+                        <CartesianGrid vertical={false} />
                         <XAxis
                           dataKey="date"
                           tickLine={false}
@@ -757,39 +761,31 @@ export default function PersonalAnalyticsPage() {
                           }}
                         />
                         <YAxis />
-                        <ChartTooltip
-                          content={<ChartTooltipContent />}
-                        />
+                        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                         <Line
-                          type="linear"
+                          type="natural"
                           dataKey="wins"
-                          stroke="hsl(var(--chart-1))"
+                          stroke="var(--color-wins)"
                           strokeWidth={2}
-                          strokeOpacity={1}
-                          dot={{ r: 2, fill: 'hsl(var(--chart-1))', stroke: 'transparent' }}
-                          activeDot={{ r: 3, fill: 'hsl(var(--chart-1))', stroke: 'transparent' }}
+                          dot={false}
                           connectNulls
                           strokeLinecap="round"
                         />
                         <Line
-                          type="linear"
+                          type="natural"
                           dataKey="losses"
-                          stroke="hsl(var(--chart-2))"
+                          stroke="var(--color-losses)"
                           strokeWidth={2}
-                          strokeOpacity={1}
-                          dot={{ r: 2, fill: 'hsl(var(--chart-2))', stroke: 'transparent' }}
-                          activeDot={{ r: 3, fill: 'hsl(var(--chart-2))', stroke: 'transparent' }}
+                          dot={false}
                           connectNulls
                           strokeLinecap="round"
                         />
                         <Line
-                          type="linear"
+                          type="natural"
                           dataKey="net"
-                          stroke="hsl(var(--chart-3))"
-                          strokeWidth={3}
-                          strokeOpacity={1}
-                          dot={{ r: 3, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
-                          activeDot={{ r: 4, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
+                          stroke="var(--color-net)"
+                          strokeWidth={2}
+                          dot={false}
                           connectNulls
                           strokeLinecap="round"
                           isAnimationActive={false}
@@ -802,7 +798,7 @@ export default function PersonalAnalyticsPage() {
             </TabsContent>
             
             <TabsContent value="bankroll">
-              {analytics.cumulativeDollarsData.length > 0 && (
+              {analytics.cumulativeDollarsData.length > 0 ? (
                 <Card>
                   <CardHeader>
                     <CardTitle>Bankroll Over Time</CardTitle>
@@ -818,8 +814,12 @@ export default function PersonalAnalyticsPage() {
                       }}
                       className="h-[300px] w-full"
                     >
-                      <LineChart data={analytics.cumulativeDollarsData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                      <LineChart
+                        accessibilityLayer
+                        data={analytics.cumulativeDollarsData}
+                        margin={{ left: 12, right: 12 }}
+                      >
+                        <CartesianGrid vertical={false} />
                         <XAxis
                           dataKey="date"
                           tickLine={false}
@@ -837,25 +837,31 @@ export default function PersonalAnalyticsPage() {
                         <YAxis 
                           tickFormatter={(value) => `$${value.toFixed(0)}`}
                         />
-                        <ChartTooltip
-                          content={<ChartTooltipContent 
-                            formatter={(value) => `$${Number(value).toFixed(2)}`}
-                          />}
-                        />
+                        <ChartTooltip cursor={false} content={<ChartTooltipContent formatter={(value) => `$${Number(value).toFixed(2)}`} />} />
                         <Line
-                          type="linear"
+                          type="natural"
                           dataKey="net"
-                          stroke="hsl(var(--chart-3))"
-                          strokeWidth={3}
-                          strokeOpacity={1}
-                          dot={{ r: 3, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
-                          activeDot={{ r: 4, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
+                          stroke="var(--color-net)"
+                          strokeWidth={2}
+                          dot={false}
                           connectNulls
                           strokeLinecap="round"
                           isAnimationActive={false}
                         />
                       </LineChart>
                     </ChartContainer>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bankroll Over Time</CardTitle>
+                    <CardDescription>Cumulative dollar profit/loss</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-center py-16 text-muted-foreground">
+                      No dollar amounts found yet. Add bets with $ invested to see bankroll over time.
+                    </div>
                   </CardContent>
                 </Card>
               )}
