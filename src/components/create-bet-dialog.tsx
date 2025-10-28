@@ -178,9 +178,16 @@ export function CreateBetDialog({
 
     if (isParlay) {
       // Validate parlay
-      const validLegs = legs.filter(leg => leg.sport && leg.game && leg.outcome && leg.oddValue);
+      const validLegs = legs.filter(leg => 
+        leg.sport && 
+        leg.game && 
+        leg.outcome && 
+        leg.oddFormat && 
+        leg.oddValue && 
+        !isNaN(parseFloat(leg.oddValue))
+      );
       if (validLegs.length < 2) {
-        alert("Please add at least 2 valid legs");
+        alert("Please add at least 2 valid legs with all required fields");
         return;
       }
 
@@ -206,6 +213,12 @@ export function CreateBetDialog({
       createParlay.mutate(parlayData);
     } else {
       // Single bet
+      // Validate required fields
+      if (!sport || !game || !outcome || !oddValue) {
+        alert("Please fill in all required fields");
+        return;
+      }
+
       if (isUpcomingBet) {
         // Create upcoming bet
         const betData = {
@@ -375,6 +388,24 @@ export function CreateBetDialog({
                             onChange={(e) => updateLeg(index, "game", e.target.value)}
                             required
                           />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`betCategory-${index}`}>Bet Category</Label>
+                          <Select
+                            value={leg.betCategory}
+                            onValueChange={(value) => updateLeg(index, "betCategory", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="game_match">Match Bets</SelectItem>
+                              <SelectItem value="player">Player Bets (Prop Bets)</SelectItem>
+                              <SelectItem value="team">Team Bets</SelectItem>
+                              <SelectItem value="corners_cards">Corners & Cards</SelectItem>
+                              <SelectItem value="period_time">Period / Time-Based</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor={`outcome-${index}`}>Outcome</Label>

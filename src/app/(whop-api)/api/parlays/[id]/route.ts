@@ -145,15 +145,8 @@ export async function PATCH(
     // Update parlay
     const [updated] = await db.update(parlays).set(updateFields).where(eq(parlays.id, id)).returning()
 
-    // If an explicit result was set (win/lose), cascade it to all legs
-    if (updateData.result === "win" || updateData.result === "lose") {
-      await db.update(parlayLegs)
-        .set({ result: updateData.result })
-        .where(eq(parlayLegs.parlayId, id))
-    }
-
     // Auto-calculate result based on leg results ONLY if no explicit result was provided
-    if ((updateFields.legs || updateData.legs) && updateData.result === undefined) {
+    if (updateData.result === undefined) {
       const legs = await db
         .select()
         .from(parlayLegs)
@@ -165,6 +158,13 @@ export async function PATCH(
 
       await db.update(parlays).set({ result: newResult }).where(eq(parlays.id, id))
       updated.result = newResult
+    } else {
+      // If an explicit result was set (win/lose), cascade it to all legs
+      if (updateData.result === "win" || updateData.result === "lose") {
+        await db.update(parlayLegs)
+          .set({ result: updateData.result })
+          .where(eq(parlayLegs.parlayId, id))
+      }
     }
 
     // Update forum post if requested
@@ -253,6 +253,22 @@ export async function DELETE(
       }
     } else if (parlay.userId !== userId) {
       return Response.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    // Delete forum post if it exists
+    if (parlay.forumPostId) {
+      try {
+        await fetch(`https://api.whop.com/api/v1/forum_posts/${parlay.forumPostId}`, {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${env.WHOP_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+        })
+      } catch (error) {
+        console.error("Error deleting forum post:", error)
+        // Continue with parlay deletion even if forum post deletion fails
+      }
     }
 
     // Delete parlay (legs will be deleted via cascade)

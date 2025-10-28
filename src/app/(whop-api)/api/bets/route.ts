@@ -121,9 +121,9 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Validation
-    if (!experienceId || !game || !outcome || !oddFormat || !oddValue) {
+    if (!experienceId || !sport || !game || !outcome || !oddFormat || !oddValue) {
       return Response.json(
-        { error: "Missing required fields (experienceId, game, outcome, oddFormat, oddValue)" },
+        { error: "Missing required fields (experienceId, sport, game, outcome, oddFormat, oddValue)" },
         { status: 400 }
       );
     }
