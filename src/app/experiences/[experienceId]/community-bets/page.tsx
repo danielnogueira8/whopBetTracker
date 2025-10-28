@@ -599,7 +599,18 @@ export default function CommunityBetsPage() {
                               <Badge variant="outline" className="text-xs">Single</Badge>
                             </TableCell>
                             <TableCell className="font-medium">{bet.sport}</TableCell>
-                            <TableCell className="font-medium">{bet.game}</TableCell>
+                            <TableCell className="font-medium">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="max-w-[220px] truncate inline-block align-middle" title={bet.game}>{bet.game}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <span className="max-w-xs break-words">{bet.game}</span>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
                             <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
                             <TableCell>{bet.outcome}</TableCell>
                             <TableCell>
@@ -664,7 +675,18 @@ export default function CommunityBetsPage() {
                                 </div>
                               </TableCell>
                               <TableCell>-</TableCell>
-                              <TableCell className="font-medium">{parlay.name}</TableCell>
+                              <TableCell className="font-medium">
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="max-w-[220px] truncate inline-block align-middle" title={parlay.name}>{parlay.name}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <span className="max-w-xs break-words">{parlay.name}</span>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              </TableCell>
                               <TableCell>-</TableCell>
                               <TableCell>{parlay.legs.length} legs</TableCell>
                               <TableCell>
