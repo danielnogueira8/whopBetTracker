@@ -223,9 +223,16 @@ export async function POST(req: NextRequest) {
     let updatedParlay = newParlay
     if (shouldPost && forumId && isUpcomingBet) {
       try {
+        // Fetch legs from database to ensure proper structure
+        const createdLegsForForum = await db
+          .select()
+          .from(parlayLegs)
+          .where(eq(parlayLegs.parlayId, newParlay.id))
+          .orderBy(parlayLegs.legOrder)
+
         const parlayWithLegs = {
           ...newParlay,
-          legs: newLegs.map((l: any) => l[0]),
+          legs: createdLegsForForum,
         }
 
         const postContent = formatParlayForForum(parlayWithLegs as any)
