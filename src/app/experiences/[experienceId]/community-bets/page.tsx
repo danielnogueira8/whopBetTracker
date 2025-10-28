@@ -157,6 +157,7 @@ export default function CommunityBetsPage() {
   const [filterOddMax, setFilterOddMax] = useState("");
   const [filterSport, setFilterSport] = useState<string>("all");
   const [filterBetCategory, setFilterBetCategory] = useState<string>("all");
+  const [filterSlipType, setFilterSlipType] = useState<"all" | "single" | "parlay">("all");
   const [page, setPage] = useState(1);
   const [preferredOddsFormat, setPreferredOddsFormat] = useState<OddFormat>(() => {
     if (typeof window !== "undefined") {
@@ -237,6 +238,8 @@ export default function CommunityBetsPage() {
   // Filter bets and parlays
   const filteredBets = useMemo(() => {
     return allBets.filter((item) => {
+      // Slip type filter (applies to both singles and parlays)
+      if (filterSlipType !== "all" && item.type !== filterSlipType) return false;
       if (item.type === 'single') {
         const bet = item as any;
         const matchesSearch =
@@ -273,7 +276,7 @@ export default function CommunityBetsPage() {
         return parlayMatches.search && parlayMatches.result && parlayMatches.sport && parlayMatches.category;
       }
     });
-  }, [allBets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory, preferredOddsFormat]);
+  }, [allBets, searchQuery, filterResult, filterOddMin, filterOddMax, filterSport, filterBetCategory, filterSlipType, preferredOddsFormat]);
 
   const handleOddsFormatChange = (format: OddFormat) => {
     setPreferredOddsFormat(format);
@@ -485,6 +488,16 @@ export default function CommunityBetsPage() {
                   <SelectItem value="win">Win</SelectItem>
                   <SelectItem value="lose">Lose</SelectItem>
                   <SelectItem value="returned">Returned</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterSlipType} onValueChange={(value: any) => setFilterSlipType(value)}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Filter by slip" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Slip Types</SelectItem>
+                  <SelectItem value="single">Single</SelectItem>
+                  <SelectItem value="parlay">Parlay</SelectItem>
                 </SelectContent>
               </Select>
               <div className="flex gap-2 items-center">
