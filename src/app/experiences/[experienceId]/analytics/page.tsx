@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Progress } from "~/components/ui/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart";
-import { ArrowLeft, TrendingUp, TrendingDown, Target, DollarSign, BarChart3, Gem, Filter, Download } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Target, DollarSign, BarChart3, Gem, Filter, Download, RotateCcw } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Spinner } from "~/components/ui/spinner";
 import { toDecimal, type OddFormat } from "~/lib/bet-utils";
@@ -135,7 +135,8 @@ export default function AnalyticsPage() {
     const lostBets = filteredBets.filter(b => b.result === "lose").length;
     const returnedBets = filteredBets.filter(b => b.result === "returned").length;
     const settledBets = wonBets + lostBets + returnedBets;
-    const winRate = settledBets > 0 ? (wonBets / settledBets) * 100 : 0;
+    const decisiveBets = wonBets + lostBets;
+    const winRate = decisiveBets > 0 ? (wonBets / decisiveBets) * 100 : 0;
 
     // Sport breakdown - for singles use bet.sport, for parlays include all leg sports
     const sportBreakdown: Record<string, { total: number; wins: number; losses: number; pending: number }> = {};
@@ -247,49 +248,63 @@ export default function AnalyticsPage() {
       avgOdds: number;
     }> = {};
 
-    filteredBets.forEach(bet => {
-      if (!betCategoryBreakdown[bet.betCategory]) {
-        betCategoryBreakdown[bet.betCategory] = { 
-          total: 0, 
-          wins: 0, 
-          losses: 0, 
-          pending: 0,
-          winRate: 0,
-          unitsWon: 0,
-          unitsLost: 0,
-          dollarsWon: 0,
-          dollarsLost: 0,
-          roi: 0,
-          avgOdds: 0
-        };
-      }
-      
-      betCategoryBreakdown[bet.betCategory].total++;
-      if (bet.result === "win") betCategoryBreakdown[bet.betCategory].wins++;
-      else if (bet.result === "lose") betCategoryBreakdown[bet.betCategory].losses++;
-      else if (bet.result === "pending") betCategoryBreakdown[bet.betCategory].pending++;
-      
-      // Calculate financial metrics
-      if (bet.unitsInvested) {
-        if (bet.result === "win") {
-          betCategoryBreakdown[bet.betCategory].unitsWon += parseFloat(bet.unitsInvested);
-        } else if (bet.result === "lose") {
-          betCategoryBreakdown[bet.betCategory].unitsLost += parseFloat(bet.unitsInvested);
+    filteredBets.forEach(item => {
+      if (item.type === 'single') {
+        const bet = item as any;
+        const key = bet.betCategory ?? 'undefined';
+        if (!betCategoryBreakdown[key]) {
+          betCategoryBreakdown[key] = {
+            total: 0, wins: 0, losses: 0, pending: 0, winRate: 0,
+            unitsWon: 0, unitsLost: 0, dollarsWon: 0, dollarsLost: 0, roi: 0, avgOdds: 0,
+          };
         }
-      }
-      
-      if (bet.dollarsInvested) {
-        const amount = parseFloat(bet.dollarsInvested);
-        if (bet.result === "win") {
-          betCategoryBreakdown[bet.betCategory].dollarsWon += amount;
-        } else if (bet.result === "lose") {
-          betCategoryBreakdown[bet.betCategory].dollarsLost += amount;
+        betCategoryBreakdown[key].total++;
+        if (bet.result === 'win') betCategoryBreakdown[key].wins++;
+        else if (bet.result === 'lose') betCategoryBreakdown[key].losses++;
+        else if (bet.result === 'pending') betCategoryBreakdown[key].pending++;
+
+        if (bet.unitsInvested) {
+          const u = parseFloat(bet.unitsInvested);
+          if (bet.result === 'win') betCategoryBreakdown[key].unitsWon += u;
+          else if (bet.result === 'lose') betCategoryBreakdown[key].unitsLost += u;
         }
+        if (bet.dollarsInvested) {
+          const d = parseFloat(bet.dollarsInvested);
+          if (bet.result === 'win') betCategoryBreakdown[key].dollarsWon += d;
+          else if (bet.result === 'lose') betCategoryBreakdown[key].dollarsLost += d;
+        }
+        const decimalOdds = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
+        betCategoryBreakdown[key].avgOdds += decimalOdds;
+      } else {
+        const parlay = item as any;
+        const legs = Array.isArray(parlay.legs) ? parlay.legs : [];
+        const unitsPerLeg = legs.length > 0 && parlay.unitsInvested ? parseFloat(parlay.unitsInvested) / legs.length : 0;
+        const dollarsPerLeg = legs.length > 0 && parlay.dollarsInvested ? parseFloat(parlay.dollarsInvested) / legs.length : 0;
+        legs.forEach((leg: any) => {
+          const key = leg?.betCategory ?? 'undefined';
+          if (!betCategoryBreakdown[key]) {
+            betCategoryBreakdown[key] = {
+              total: 0, wins: 0, losses: 0, pending: 0, winRate: 0,
+              unitsWon: 0, unitsLost: 0, dollarsWon: 0, dollarsLost: 0, roi: 0, avgOdds: 0,
+            };
+          }
+          betCategoryBreakdown[key].total++;
+          if (leg.result === 'win') betCategoryBreakdown[key].wins++;
+          else if (leg.result === 'lose') betCategoryBreakdown[key].losses++;
+          else if (leg.result === 'pending') betCategoryBreakdown[key].pending++;
+
+          if (unitsPerLeg) {
+            if (leg.result === 'win') betCategoryBreakdown[key].unitsWon += unitsPerLeg;
+            else if (leg.result === 'lose') betCategoryBreakdown[key].unitsLost += unitsPerLeg;
+          }
+          if (dollarsPerLeg) {
+            if (leg.result === 'win') betCategoryBreakdown[key].dollarsWon += dollarsPerLeg;
+            else if (leg.result === 'lose') betCategoryBreakdown[key].dollarsLost += dollarsPerLeg;
+          }
+          const decimalOdds = toDecimal(parseFloat(leg.oddValue), leg.oddFormat);
+          betCategoryBreakdown[key].avgOdds += decimalOdds;
+        });
       }
-      
-      // Calculate average odds
-      const decimalOdds = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
-      betCategoryBreakdown[bet.betCategory].avgOdds += decimalOdds;
     });
 
     // Post-process bet category data
@@ -591,7 +606,7 @@ export default function AnalyticsPage() {
         </Card>
 
         {/* Overview Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Bets</CardTitle>
@@ -612,9 +627,7 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{analytics.winRate.toFixed(1)}%</div>
-              <p className="text-xs text-muted-foreground">
-                {analytics.wonBets} wins / {analytics.settledBets} settled
-              </p>
+              <p className="text-xs text-muted-foreground">{analytics.wonBets} wins / {analytics.lostBets} losses</p>
             </CardContent>
           </Card>
 
@@ -640,6 +653,19 @@ export default function AnalyticsPage() {
               <div className="text-2xl font-bold text-destructive">{analytics.lostBets}</div>
               <p className="text-xs text-muted-foreground">
                 {analytics.totalBets > 0 ? ((analytics.lostBets / analytics.totalBets) * 100).toFixed(1) : 0}% of total
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Returned</CardTitle>
+              <RotateCcw className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{analytics.returnedBets}</div>
+              <p className="text-xs text-muted-foreground">
+                {analytics.totalBets > 0 ? ((analytics.returnedBets / analytics.totalBets) * 100).toFixed(1) : 0}% of total
               </p>
             </CardContent>
           </Card>
