@@ -341,6 +341,7 @@ export default function MyBetsPage() {
   }
 
   const displayName = user?.username || user?.name || "My";
+  const capitalizedDisplay = displayName.replace(/^./, (c) => c.toUpperCase());
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -348,7 +349,7 @@ export default function MyBetsPage() {
         <SidebarTrigger />
         <TooltipProvider>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold">{displayName} Tracker</h1>
+            <h1 className="text-xl font-semibold">{capitalizedDisplay} Tracker</h1>
             <Tooltip>
               <TooltipTrigger>
                 <Info className="h-4 w-4 text-muted-foreground" />
