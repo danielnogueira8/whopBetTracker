@@ -38,6 +38,97 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 
+// Component for rendering individual parlay leg rows with editing capability
+function LegRow({ 
+  leg, 
+  parlayId, 
+  resultColors, 
+  preferredOddsFormat,
+  onUpdate 
+}: { 
+  leg: any; 
+  parlayId: string; 
+  resultColors: any;
+  preferredOddsFormat: OddFormat;
+  onUpdate: () => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedResult, setSelectedResult] = useState(leg.result);
+
+  const updateLeg = useMutation({
+    mutationFn: async (result: string) => {
+      const response = await fetch(`/api/parlays/${parlayId}/legs/${leg.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result }),
+      });
+      if (!response.ok) throw new Error("Failed to update leg result");
+      return response.json();
+    },
+    onSuccess: () => {
+      onUpdate();
+      setIsEditing(false);
+    },
+  });
+
+  return (
+    <TableRow className="bg-muted/10">
+      <TableCell>
+        <span className="text-xs text-muted-foreground ml-4">Leg</span>
+      </TableCell>
+      <TableCell className="font-medium">{leg.sport}</TableCell>
+      <TableCell className="font-medium">{leg.game}</TableCell>
+      <TableCell>{getBetCategoryLabel(leg.betCategory as any)}</TableCell>
+      <TableCell>{leg.outcome}</TableCell>
+      <TableCell>
+        {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
+      </TableCell>
+      <TableCell>-</TableCell>
+      <TableCell>-</TableCell>
+      <TableCell>
+        {isEditing ? (
+          <div className="flex gap-2 items-center">
+            <Select value={selectedResult} onValueChange={setSelectedResult}>
+              <SelectTrigger className="w-24 h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="win">Win</SelectItem>
+                <SelectItem value="lose">Lose</SelectItem>
+                <SelectItem value="returned">Returned</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => updateLeg.mutate(selectedResult)}
+              disabled={updateLeg.isPending}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2 items-center">
+            <Badge className={resultColors[leg.result as keyof typeof resultColors]}>
+              {leg.result}
+            </Badge>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsEditing(true)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </TableCell>
+      <TableCell>-</TableCell>
+      <TableCell></TableCell>
+    </TableRow>
+  );
+}
+
 type Bet = {
   id: string;
   sport: string;
@@ -590,27 +681,16 @@ export default function MyBetsPage() {
                           </TableRow>
                           {/* Expanded Parlay Legs */}
                           {isExpanded && parlay.legs.map((leg: any, index: number) => (
-                            <TableRow key={`${parlay.id}-leg-${leg.id}`} className="bg-muted/10">
-                              <TableCell>
-                                <span className="text-xs text-muted-foreground ml-4">Leg {index + 1}</span>
-                              </TableCell>
-                              <TableCell className="font-medium">{leg.sport}</TableCell>
-                              <TableCell className="font-medium">{leg.game}</TableCell>
-                              <TableCell>{getBetCategoryLabel(leg.betCategory as any)}</TableCell>
-                              <TableCell>{leg.outcome}</TableCell>
-                              <TableCell>
-                                {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
-                              </TableCell>
-                              <TableCell>-</TableCell>
-                              <TableCell>-</TableCell>
-                              <TableCell>
-                                <Badge className={resultColors[leg.result as keyof typeof resultColors]}>
-                                  {leg.result}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>-</TableCell>
-                              <TableCell></TableCell>
-                            </TableRow>
+                            <LegRow 
+                              key={`${parlay.id}-leg-${leg.id}`} 
+                              leg={leg} 
+                              parlayId={parlay.id}
+                              resultColors={resultColors}
+                              preferredOddsFormat={preferredOddsFormat}
+                              onUpdate={() => {
+                                queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "my-parlays" || query.queryKey[0] === "community-parlays" });
+                              }}
+                            />
                           ))}
                         </>
                       );
