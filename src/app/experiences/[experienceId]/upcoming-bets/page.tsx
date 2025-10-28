@@ -278,11 +278,12 @@ export default function UpcomingBetsPage() {
             </p>
           </div>
         ) : (
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-muted-foreground">Sort by date</div>
-            <SortToggle value={order} onChange={(next) => setOrder(next)} />
-          </div>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">Sort by date</div>
+              <SortToggle value={order} onChange={(next) => setOrder(next)} />
+            </div>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {bets.map((bet) => (
               <Card key={bet.id} className="flex flex-col">
                 <CardHeader>
