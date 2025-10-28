@@ -762,30 +762,30 @@ export default function PersonalAnalyticsPage() {
                         <Line
                           type="monotone"
                           dataKey="wins"
-                          stroke="var(--color-wins)"
+                          stroke="hsl(var(--chart-1))"
                           strokeWidth={2}
-                          dot={{ r: 2, fill: 'var(--color-wins)', stroke: 'transparent' }}
-                          activeDot={{ r: 3, fill: 'var(--color-wins)', stroke: 'transparent' }}
+                          dot={{ r: 2, fill: 'hsl(var(--chart-1))', stroke: 'transparent' }}
+                          activeDot={{ r: 3, fill: 'hsl(var(--chart-1))', stroke: 'transparent' }}
                           connectNulls
                           strokeLinecap="round"
                         />
                         <Line
                           type="monotone"
                           dataKey="losses"
-                          stroke="var(--color-losses)"
+                          stroke="hsl(var(--chart-2))"
                           strokeWidth={2}
-                          dot={{ r: 2, fill: 'var(--color-losses)', stroke: 'transparent' }}
-                          activeDot={{ r: 3, fill: 'var(--color-losses)', stroke: 'transparent' }}
+                          dot={{ r: 2, fill: 'hsl(var(--chart-2))', stroke: 'transparent' }}
+                          activeDot={{ r: 3, fill: 'hsl(var(--chart-2))', stroke: 'transparent' }}
                           connectNulls
                           strokeLinecap="round"
                         />
                         <Line
                           type="monotone"
                           dataKey="net"
-                          stroke="var(--color-net)"
+                          stroke="hsl(var(--chart-3))"
                           strokeWidth={2}
-                          dot={{ r: 2, fill: 'var(--color-net)', stroke: 'transparent' }}
-                          activeDot={{ r: 3, fill: 'var(--color-net)', stroke: 'transparent' }}
+                          dot={{ r: 2, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
+                          activeDot={{ r: 3, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
                           connectNulls
                           strokeLinecap="round"
                         />
@@ -839,10 +839,10 @@ export default function PersonalAnalyticsPage() {
                         <Line
                           type="monotone"
                           dataKey="net"
-                          stroke="var(--color-net)"
+                          stroke="hsl(var(--chart-3))"
                           strokeWidth={2}
-                          dot={{ r: 2, fill: 'var(--color-net)', stroke: 'transparent' }}
-                          activeDot={{ r: 3, fill: 'var(--color-net)', stroke: 'transparent' }}
+                          dot={{ r: 2, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
+                          activeDot={{ r: 3, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
                           connectNulls
                           strokeLinecap="round"
                         />
