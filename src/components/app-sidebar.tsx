@@ -31,7 +31,8 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
 
   if (!experience) return null
 
-  const companyName = `${experience.company.title} Bet Tracker`
+  const companyDisplay = experience.company.title.replace(/^./, (c) => c.toUpperCase())
+  const companyName = `${companyDisplay} Tracker`
   const userDisplay = (user?.username || user?.name || "My").replace(/^./, (c) => c.toUpperCase())
   const communityBetsUrl = `/experiences/${experienceId}/community-bets`
   const analyticsUrl = `/experiences/${experienceId}/analytics`
