@@ -151,8 +151,8 @@ export default function PersonalAnalyticsPage() {
       } else {
         // Parlay - count for each unique leg sport
         const parlay = item as any;
-        const uniqueSports = new Set(parlay.legs?.map((leg: any) => leg.sport) || []);
-        uniqueSports.forEach(sport => {
+        const uniqueSports = new Set<string>(parlay.legs?.map((leg: any) => leg.sport) || []);
+        uniqueSports.forEach((sport: string) => {
           if (!sportBreakdown[sport]) {
             sportBreakdown[sport] = { total: 0, wins: 0, losses: 0, pending: 0 };
           }
