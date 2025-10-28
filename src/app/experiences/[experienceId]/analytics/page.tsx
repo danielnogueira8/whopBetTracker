@@ -172,6 +172,8 @@ export default function AnalyticsPage() {
     });
 
     // Monthly breakdown
+    // `total` counts only decisive outcomes (wins + losses). Returned are tracked separately
+    // so they don't inflate totals or distort win rate.
     const monthlyBreakdown: Record<string, { total: number; wins: number; losses: number; returned: number }> = {};
     filteredBets.forEach(bet => {
       const date = new Date(bet.createdAt);
@@ -179,10 +181,15 @@ export default function AnalyticsPage() {
       if (!monthlyBreakdown[monthKey]) {
         monthlyBreakdown[monthKey] = { total: 0, wins: 0, losses: 0, returned: 0 };
       }
-      monthlyBreakdown[monthKey].total++;
-      if (bet.result === "win") monthlyBreakdown[monthKey].wins++;
-      else if (bet.result === "lose") monthlyBreakdown[monthKey].losses++;
-      else if (bet.result === "returned") monthlyBreakdown[monthKey].returned++;
+      if (bet.result === "win") {
+        monthlyBreakdown[monthKey].wins++;
+        monthlyBreakdown[monthKey].total++;
+      } else if (bet.result === "lose") {
+        monthlyBreakdown[monthKey].losses++;
+        monthlyBreakdown[monthKey].total++;
+      } else if (bet.result === "returned") {
+        monthlyBreakdown[monthKey].returned++;
+      }
     });
 
     // Calculate cumulative units over time
@@ -250,7 +257,7 @@ export default function AnalyticsPage() {
     }> = {};
 
     filteredBets.forEach(item => {
-      if (item.type === 'single') {
+      if (item.slipType === 'single') {
         const bet = item as any;
         const key = bet.betCategory ?? 'undefined';
         if (!betCategoryBreakdown[key]) {
@@ -259,7 +266,9 @@ export default function AnalyticsPage() {
             unitsWon: 0, unitsLost: 0, dollarsWon: 0, dollarsLost: 0, roi: 0, avgOdds: 0,
           };
         }
-        betCategoryBreakdown[key].total++;
+        if (bet.result !== 'returned') {
+          betCategoryBreakdown[key].total++;
+        }
         if (bet.result === 'win') betCategoryBreakdown[key].wins++;
         else if (bet.result === 'lose') betCategoryBreakdown[key].losses++;
         else if (bet.result === 'pending') betCategoryBreakdown[key].pending++;
@@ -274,8 +283,10 @@ export default function AnalyticsPage() {
           if (bet.result === 'win') betCategoryBreakdown[key].dollarsWon += d;
           else if (bet.result === 'lose') betCategoryBreakdown[key].dollarsLost += d;
         }
-        const decimalOdds = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
-        betCategoryBreakdown[key].avgOdds += decimalOdds;
+        if (bet.result !== 'returned') {
+          const decimalOdds = toDecimal(parseFloat(bet.oddValue), bet.oddFormat);
+          betCategoryBreakdown[key].avgOdds += decimalOdds;
+        }
       } else {
         const parlay = item as any;
         const legs = Array.isArray(parlay.legs) ? parlay.legs : [];
@@ -289,7 +300,9 @@ export default function AnalyticsPage() {
               unitsWon: 0, unitsLost: 0, dollarsWon: 0, dollarsLost: 0, roi: 0, avgOdds: 0,
             };
           }
-          betCategoryBreakdown[key].total++;
+          if (leg.result !== 'returned') {
+            betCategoryBreakdown[key].total++;
+          }
           if (leg.result === 'win') betCategoryBreakdown[key].wins++;
           else if (leg.result === 'lose') betCategoryBreakdown[key].losses++;
           else if (leg.result === 'pending') betCategoryBreakdown[key].pending++;
@@ -302,8 +315,10 @@ export default function AnalyticsPage() {
             if (leg.result === 'win') betCategoryBreakdown[key].dollarsWon += dollarsPerLeg;
             else if (leg.result === 'lose') betCategoryBreakdown[key].dollarsLost += dollarsPerLeg;
           }
-          const decimalOdds = toDecimal(parseFloat(leg.oddValue), leg.oddFormat);
-          betCategoryBreakdown[key].avgOdds += decimalOdds;
+          if (leg.result !== 'returned') {
+            const decimalOdds = toDecimal(parseFloat(leg.oddValue), leg.oddFormat);
+            betCategoryBreakdown[key].avgOdds += decimalOdds;
+          }
         });
       }
     });
@@ -311,7 +326,7 @@ export default function AnalyticsPage() {
     // Post-process bet category data
     Object.keys(betCategoryBreakdown).forEach(category => {
       const stats = betCategoryBreakdown[category];
-      const settled = stats.wins + stats.losses;
+      const settled = stats.wins + stats.losses; // returned excluded above
       stats.winRate = settled > 0 ? (stats.wins / settled) * 100 : 0;
       
       const totalInvested = stats.unitsLost > 0 ? stats.unitsLost : 0;

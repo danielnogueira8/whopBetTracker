@@ -53,9 +53,9 @@ export default function LeaderboardPage() {
   });
 
   const { data: communityBetsData } = useQuery({
-    queryKey: ["community-bets"],
+    queryKey: ["community-bets", experience.id],
     queryFn: async () => {
-      const response = await fetch("/api/bets?isCommunity=true");
+      const response = await fetch(`/api/bets?experienceId=${experience.id}&isCommunity=true`);
       if (!response.ok) throw new Error("Failed to fetch community bets");
       return response.json();
     },
@@ -63,6 +63,16 @@ export default function LeaderboardPage() {
 
   const leaderboard: LeaderboardEntry[] = data?.leaderboard || [];
   const communityBets: any[] = communityBetsData?.bets || [];
+
+  // Global communities leaderboard
+  const { data: communitiesData, isLoading: isLoadingCommunities } = useQuery({
+    queryKey: ["communities-leaderboard"],
+    queryFn: async () => {
+      const response = await fetch("/api/leaderboard/communities");
+      if (!response.ok) throw new Error("Failed to fetch communities leaderboard");
+      return response.json();
+    },
+  });
 
   // Extract unique user IDs from community bets
   const uniqueUserIds = useMemo(() => {
@@ -483,12 +493,12 @@ export default function LeaderboardPage() {
 
           {/* Global Leaderboard */}
           <TabsContent value="global" className="space-y-4">
-            {isLoading ? (
+            {isLoading || isLoadingCommunities ? (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
                 <Spinner className="size-8 text-primary animate-spin" />
                 <p className="text-muted-foreground">Loading leaderboard...</p>
               </div>
-            ) : leaderboard.length === 0 && !communityForGlobal ? (
+            ) : (!communitiesData || (communitiesData?.leaderboard?.length ?? 0) === 0) ? (
               <div className="text-center py-8">
                 <p className="text-muted-foreground">
                   No stats available yet. Start tracking bets to see rankings!
@@ -500,7 +510,7 @@ export default function LeaderboardPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12">Rank</TableHead>
-                      <TableHead>Username</TableHead>
+                      <TableHead>Community</TableHead>
                       <TableHead className="text-right">Total Bets</TableHead>
                       <TableHead className="text-right">Wins</TableHead>
                       <TableHead className="text-right">Win Rate</TableHead>
@@ -524,46 +534,42 @@ export default function LeaderboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* Only show community aggregates on Global leaderboard */}
-                    {communityForGlobal ? (
-                      <TableRow className="bg-primary/10 hover:bg-primary/15">
+                    {communitiesData.leaderboard.map((row: any, index: number) => (
+                      <TableRow key={row.experienceId} className="bg-primary/10/0 hover:bg-primary/15/0">
                         <TableCell>
-                          <Trophy className="h-4 w-4 text-primary" />
+                          <div className="flex items-center gap-2">
+                            {index === 0 && <Trophy className="h-4 w-4 text-primary" />}
+                            {index === 1 && <Trophy className="h-4 w-4 text-primary opacity-70" />}
+                            {index === 2 && <Trophy className="h-4 w-4 text-primary opacity-50" />}
+                            <span className="ml-2 font-medium">{index + 1}</span>
+                          </div>
                         </TableCell>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            {communityForGlobal.username}
+                            {row.companyName}
                             <Badge variant="secondary" className="bg-primary/20 text-primary border-primary">
                               Community
                             </Badge>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">{communityForGlobal.totalBets}</TableCell>
-                        <TableCell className="text-right">{communityForGlobal.wonBets}</TableCell>
+                        <TableCell className="text-right">{row.totalBets}</TableCell>
+                        <TableCell className="text-right">{row.wonBets}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                            {communityForGlobal.winRate.toFixed(1)}%
+                            {row.winRate.toFixed(1)}%
                           </div>
                         </TableCell>
+                        <TableCell className="text-right">{formatAvgOdds(row.avgOdds)}</TableCell>
                         <TableCell className="text-right">
-                          {formatAvgOdds(communityForGlobal.avgOdds)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {communityForGlobal.roi > 0 ? (
-                            <span className="text-primary font-medium">+{communityForGlobal.roi.toFixed(1)}%</span>
+                          {row.roi > 0 ? (
+                            <span className="text-primary font-medium">+{row.roi.toFixed(1)}%</span>
                           ) : (
-                            <span className="text-muted-foreground">{communityForGlobal.roi.toFixed(1)}%</span>
+                            <span className="text-muted-foreground">{row.roi.toFixed(1)}%</span>
                           )}
                         </TableCell>
                       </TableRow>
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          No community stats available yet.
-                        </TableCell>
-                      </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
               </div>
