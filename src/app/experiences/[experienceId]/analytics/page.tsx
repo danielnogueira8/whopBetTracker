@@ -735,12 +735,13 @@ export default function AnalyticsPage() {
                     type="linear"
                     dataKey="net"
                     stroke="hsl(var(--chart-3))"
-                    strokeWidth={2}
+                    strokeWidth={3}
                     strokeOpacity={1}
-                    dot={{ r: 2, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
-                    activeDot={{ r: 3, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
+                    dot={{ r: 3, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
+                    activeDot={{ r: 4, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
                     connectNulls
                     strokeLinecap="round"
+                    isAnimationActive={false}
                   />
                 </LineChart>
               </ChartContainer>
