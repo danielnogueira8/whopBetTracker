@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { Fragment, useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { useWhop } from "~/lib/whop-context";
@@ -222,11 +222,10 @@ export default function MyBetsPage() {
 
   // Unified data structure combining bets and parlays
   const allBets = useMemo(() => {
-    const betItems = bets.map(bet => ({ ...bet, type: 'single' as const }));
+    const betItems = bets.map((bet) => ({ ...bet, type: 'single' as const }));
     const parlayItems = parlays.map((parlay: any) => ({ ...parlay, type: 'parlay' as const }));
-    return [...betItems, ...parlayItems].sort((a, b) => 
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    // Preserve server-provided ordering
+    return [...betItems, ...parlayItems];
   }, [bets, parlays]);
 
   // Extract unique values for filters (include parlay legs)
@@ -630,9 +629,9 @@ export default function MyBetsPage() {
                       const parlay = item as any;
                       const isExpanded = expandedParlays.has(parlay.id);
                       return (
-                        <>
+                        <Fragment key={parlay.id}>
                           {/* Main Parlay Row */}
-                          <TableRow key={parlay.id} className="bg-muted/20">
+                          <TableRow className="bg-muted/20">
                             <TableCell>
                               <div className="flex items-center gap-2">
                                 <Badge variant="secondary">Parlay</Badge>
@@ -706,7 +705,7 @@ export default function MyBetsPage() {
                               }}
                             />
                           ))}
-                        </>
+                        </Fragment>
                       );
                     }
                   })

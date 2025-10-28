@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import React, { Fragment, useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
@@ -219,11 +219,10 @@ export default function CommunityBetsPage() {
 
   // Unified data structure combining bets and parlays
   const allBets = useMemo(() => {
-    const betItems = bets.map(bet => ({ ...bet, type: 'single' as const }));
+    const betItems = bets.map((bet) => ({ ...bet, type: 'single' as const }));
     const parlayItems = parlays.map((parlay: any) => ({ ...parlay, type: 'parlay' as const }));
-    return [...betItems, ...parlayItems].sort((a, b) => 
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
+    // Preserve server-provided ordering
+    return [...betItems, ...parlayItems];
   }, [bets, parlays]);
 
   // Filter bets and parlays
@@ -626,8 +625,8 @@ export default function CommunityBetsPage() {
                         const parlay = item as any;
                         const isExpanded = expandedParlays.has(parlay.id);
                         return (
-                          <>
-                            <TableRow key={parlay.id} className="bg-muted/20">
+                        <Fragment key={parlay.id}>
+                          <TableRow className="bg-muted/20">
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <Badge variant="secondary">Parlay</Badge>
@@ -695,7 +694,7 @@ export default function CommunityBetsPage() {
                                 isAdmin={isAdmin}
                               />
                             ))}
-                          </>
+                        </Fragment>
                         );
                       }
                     })
