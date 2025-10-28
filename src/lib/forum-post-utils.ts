@@ -90,7 +90,7 @@ export function formatParlayForForum(parlay: ParlayWithLegs): string {
 	}
 
 	// Add each leg
-	postContent += `### 🏀 Legs:\n\n`
+	postContent += `### ParlayLegs:\n\n`
 	legs.forEach((leg, index) => {
 		postContent += `**🔹 LEG ${index + 1}: ${leg.sport}**\n`
 		postContent += `Game: ${leg.game}\n`
