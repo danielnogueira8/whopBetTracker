@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
+import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { Pagination } from "~/components/pagination";
 import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
@@ -64,6 +65,8 @@ export default function CommunityBetsPage() {
   const [selectedBet, setSelectedBet] = useState<Bet | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [betToDelete, setBetToDelete] = useState<Bet | null>(null);
+  const [editParlayDialogOpen, setEditParlayDialogOpen] = useState(false);
+  const [selectedParlay, setSelectedParlay] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterResult, setFilterResult] = useState<"all" | "pending" | "win" | "lose" | "returned">("all");
   const [filterOddMin, setFilterOddMin] = useState("");
@@ -275,6 +278,12 @@ export default function CommunityBetsPage() {
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
         bet={selectedBet}
+      />
+
+      <EditParlayDialog
+        open={editParlayDialogOpen}
+        onOpenChange={setEditParlayDialogOpen}
+        parlay={selectedParlay}
       />
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
@@ -544,13 +553,26 @@ export default function CommunityBetsPage() {
                               </TableCell>
                               {isAdmin && (
                                 <TableCell className="text-right">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="hover:bg-destructive/10 hover:text-destructive"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="hover:bg-primary/10 hover:text-primary"
+                                      onClick={() => {
+                                        setSelectedParlay(parlay);
+                                        setEditParlayDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
                                 </TableCell>
                               )}
                             </TableRow>
