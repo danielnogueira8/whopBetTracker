@@ -203,22 +203,29 @@ export default function PersonalAnalyticsPage() {
       }
     });
 
-    // Sort by date and calculate cumulative
-    const sortedDates = Object.keys(dailyData).sort();
+    // Sort by date and calculate cumulative, filling missing calendar days
+    const existingDates = Object.keys(dailyData).sort();
     let cumulativeWins = 0;
     let cumulativeLosses = 0;
 
-    const cumulativeUnitsData = sortedDates.map(date => {
-      cumulativeWins += dailyData[date].wins;
-      cumulativeLosses += dailyData[date].losses;
-      
-      return {
-        date,
-        wins: cumulativeWins,
-        losses: cumulativeLosses,
-        net: cumulativeWins - cumulativeLosses,
-      };
-    });
+    const cumulativeUnitsData: Array<{ date: string; wins: number; losses: number; net: number }> = [];
+    if (existingDates.length > 0) {
+      const start = new Date(existingDates[0]);
+      const end = new Date(); // include today so the line extends even on quiet days
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateKey = d.toISOString().split("T")[0];
+        const delta = dailyData[dateKey] ?? { wins: 0, losses: 0 };
+        cumulativeWins += delta.wins;
+        cumulativeLosses += delta.losses;
+        cumulativeUnitsData.push({
+          date: dateKey,
+          wins: cumulativeWins,
+          losses: cumulativeLosses,
+          net: cumulativeWins - cumulativeLosses,
+        });
+      }
+    }
 
     // Calculate cumulative dollars over time
     const dailyDollarData: Record<string, { wins: number; losses: number }> = {};
@@ -247,22 +254,28 @@ export default function PersonalAnalyticsPage() {
       }
     });
 
-    // Sort and calculate cumulative dollars
-    const sortedDollarDates = Object.keys(dailyDollarData).sort();
+    // Sort and calculate cumulative dollars, filling missing days
+    const existingDollarDates = Object.keys(dailyDollarData).sort();
     let cumulativeDollarWins = 0;
     let cumulativeDollarLosses = 0;
 
-    const cumulativeDollarsData = sortedDollarDates.map(date => {
-      cumulativeDollarWins += dailyDollarData[date].wins;
-      cumulativeDollarLosses += dailyDollarData[date].losses;
-      
-      return {
-        date,
-        wins: cumulativeDollarWins,
-        losses: cumulativeDollarLosses,
-        net: cumulativeDollarWins - cumulativeDollarLosses,
-      };
-    });
+    const cumulativeDollarsData: Array<{ date: string; wins: number; losses: number; net: number }> = [];
+    if (existingDollarDates.length > 0) {
+      const start$ = new Date(existingDollarDates[0]);
+      const end$ = new Date();
+      for (let d = new Date(start$); d <= end$; d.setDate(d.getDate() + 1)) {
+        const dateKey = d.toISOString().split("T")[0];
+        const delta = dailyDollarData[dateKey] ?? { wins: 0, losses: 0 };
+        cumulativeDollarWins += delta.wins;
+        cumulativeDollarLosses += delta.losses;
+        cumulativeDollarsData.push({
+          date: dateKey,
+          wins: cumulativeDollarWins,
+          losses: cumulativeDollarLosses,
+          net: cumulativeDollarWins - cumulativeDollarLosses,
+        });
+      }
+    }
 
     // Calculate net dollars
     const netDollars = cumulativeDollarsData.length > 0 

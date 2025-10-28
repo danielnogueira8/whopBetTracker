@@ -209,22 +209,28 @@ export default function AnalyticsPage() {
       }
     });
 
-    // Sort by date and calculate cumulative
-    const sortedDates = Object.keys(dailyData).sort();
+    // Sort by date and calculate cumulative, filling missing calendar days
+    const existingDates = Object.keys(dailyData).sort();
     let cumulativeWins = 0;
     let cumulativeLosses = 0;
 
-    const cumulativeUnitsData = sortedDates.map(date => {
-      cumulativeWins += dailyData[date].wins;
-      cumulativeLosses += dailyData[date].losses;
-      
-      return {
-        date,
-        wins: cumulativeWins,
-        losses: cumulativeLosses,
-        net: cumulativeWins - cumulativeLosses,
-      };
-    });
+    const cumulativeUnitsData: Array<{ date: string; wins: number; losses: number; net: number }> = [];
+    if (existingDates.length > 0) {
+      const start = new Date(existingDates[0]);
+      const end = new Date();
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateKey = d.toISOString().split("T")[0];
+        const delta = dailyData[dateKey] ?? { wins: 0, losses: 0 };
+        cumulativeWins += delta.wins;
+        cumulativeLosses += delta.losses;
+        cumulativeUnitsData.push({
+          date: dateKey,
+          wins: cumulativeWins,
+          losses: cumulativeLosses,
+          net: cumulativeWins - cumulativeLosses,
+        });
+      }
+    }
 
     // Bet Category Breakdown
     const betCategoryBreakdown: Record<string, { 
