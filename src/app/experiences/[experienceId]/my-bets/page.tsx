@@ -325,7 +325,7 @@ export default function MyBetsPage() {
     pending: "bg-primary/20 text-primary border-primary",
     win: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500",
     lose: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500",
-    returned: "bg-muted text-muted-foreground border-border",
+    returned: "bg-white text-black border-black",
   };
 
   // Show loading if experience is not loaded yet
