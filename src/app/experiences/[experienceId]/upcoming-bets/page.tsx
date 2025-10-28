@@ -83,6 +83,7 @@ export default function UpcomingBetsPage() {
   const [selectedBet, setSelectedBet] = useState<UpcomingBet | null>(null);
   const [selectedParlay, setSelectedParlay] = useState<UpcomingParlay | null>(null);
   const [betToDelete, setBetToDelete] = useState<UpcomingBet | null>(null);
+  const [parlayToDelete, setParlayToDelete] = useState<UpcomingParlay | null>(null);
   const [purchaseAdDialogOpen, setPurchaseAdDialogOpen] = useState(false);
   const [preferredOddsFormat, setPreferredOddsFormat] = useState<OddFormat>(() => {
     if (typeof window !== "undefined") {
@@ -131,6 +132,22 @@ export default function UpcomingBetsPage() {
       queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
       setDeleteDialogOpen(false);
       setBetToDelete(null);
+    },
+  });
+
+  const deleteParlay = useMutation({
+    mutationFn: async (parlayId: string) => {
+      const response = await fetch(`/api/parlays/${parlayId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete parlay");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
+      queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
+      setDeleteDialogOpen(false);
+      setParlayToDelete(null);
     },
   });
 
@@ -214,6 +231,11 @@ export default function UpcomingBetsPage() {
                   <strong>{betToDelete.sport}</strong> - {betToDelete.game} - {betToDelete.outcome}
                 </div>
               )}
+              {parlayToDelete && (
+                <div className="mt-2 p-2 bg-muted rounded text-sm">
+                  <strong>{parlayToDelete.name}</strong> - {parlayToDelete.legs.length} leg parlay
+                </div>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -222,6 +244,9 @@ export default function UpcomingBetsPage() {
               onClick={() => {
                 if (betToDelete) {
                   deleteBet.mutate(betToDelete.id);
+                }
+                if (parlayToDelete) {
+                  deleteParlay.mutate(parlayToDelete.id);
                 }
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -372,7 +397,9 @@ export default function UpcomingBetsPage() {
                           size="sm"
                           className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => {
-                            // Handle parlay delete
+                            setParlayToDelete(parlay);
+                            setBetToDelete(null);
+                            setDeleteDialogOpen(true);
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
