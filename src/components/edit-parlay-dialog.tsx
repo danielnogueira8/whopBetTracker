@@ -163,7 +163,7 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
   const combinedOdds = useMemo(() => {
     const validLegs = legs.filter(leg => leg.oddValue && !isNaN(parseFloat(leg.oddValue)));
     if (validLegs.length < 2) return 0;
-    return calculateParlayOdds(validLegs).combinedOddValue;
+    return calculateParlayOdds(validLegs);
   }, [legs]);
 
   if (!parlay) return null;
