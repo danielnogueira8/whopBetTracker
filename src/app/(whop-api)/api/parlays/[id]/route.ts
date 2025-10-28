@@ -102,6 +102,10 @@ export async function PATCH(
       updateFields.confidenceLevel = updateData.confidenceLevel || null
     if (updateData.result !== undefined)
       updateFields.result = updateData.result
+    if (updateData.isUpcomingBet !== undefined)
+      updateFields.isUpcomingBet = updateData.isUpcomingBet
+    if (updateData.isCommunityBet !== undefined)
+      updateFields.isCommunityBet = updateData.isCommunityBet
 
     // Handle leg updates
     if (updateData.legs && Array.isArray(updateData.legs)) {
