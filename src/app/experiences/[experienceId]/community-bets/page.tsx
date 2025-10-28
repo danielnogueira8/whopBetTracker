@@ -142,7 +142,8 @@ export default function CommunityBetsPage() {
   
   const queryClient = useQueryClient();
   const isAdmin = access.accessLevel === "admin";
-  const companyName = experience.company.title;
+  const companyNameRaw = experience.company.title;
+  const companyName = companyNameRaw.replace(/^./, (c) => c.toUpperCase());
   const experienceId = experience.id;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -340,7 +341,7 @@ export default function CommunityBetsPage() {
             <SidebarTrigger />
             <TooltipProvider>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-semibold">{companyName} Bet Tracker</h1>
+                <h1 className="text-xl font-semibold">{companyName} Tracker</h1>
                 <Tooltip>
                   <TooltipTrigger>
                     <Info className="h-4 w-4 text-muted-foreground" />
