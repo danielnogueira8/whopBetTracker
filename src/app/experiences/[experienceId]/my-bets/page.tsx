@@ -221,12 +221,21 @@ export default function MyBetsPage() {
   const parlays = parlaysData?.parlays || [];
 
   // Unified data structure combining bets and parlays
+  const getItemTimestamp = (item: any) => {
+    const raw = item?.eventDate ?? item?.createdAt;
+    return raw ? new Date(raw).getTime() : 0;
+  };
+
   const allBets = useMemo(() => {
     const betItems = bets.map((bet) => ({ ...bet, type: 'single' as const }));
     const parlayItems = parlays.map((parlay: any) => ({ ...parlay, type: 'parlay' as const }));
-    // Preserve server-provided ordering
-    return [...betItems, ...parlayItems];
-  }, [bets, parlays]);
+    const items = [...betItems, ...parlayItems];
+    return items.sort((a, b) => {
+      const da = getItemTimestamp(a);
+      const db = getItemTimestamp(b);
+      return order === 'asc' ? da - db : db - da;
+    });
+  }, [bets, parlays, order]);
 
   // Extract unique values for filters (include parlay legs)
   const uniqueSports = useMemo(() => {
