@@ -88,42 +88,27 @@ function LegRow({
       </TableCell>
       <TableCell>-</TableCell>
       <TableCell>
-        {isEditing ? (
-          <div className="flex gap-2 items-center">
-            <Select value={selectedResult} onValueChange={setSelectedResult}>
-              <SelectTrigger className="w-24 h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="win">Win</SelectItem>
-                <SelectItem value="lose">Lose</SelectItem>
-                <SelectItem value="returned">Returned</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => updateLeg.mutate(selectedResult)}
-              disabled={updateLeg.isPending}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex gap-2 items-center">
-            <Badge className={resultColors[leg.result as keyof typeof resultColors]}>
-              {leg.result}
-            </Badge>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsEditing(true)}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        <div className="flex gap-2 items-center">
+          <Select 
+            value={selectedResult} 
+            onValueChange={(value) => {
+              setSelectedResult(value);
+              updateLeg.mutate(value);
+            }}
+            disabled={updateLeg.isPending}
+          >
+            <SelectTrigger className="w-28 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="win">Win</SelectItem>
+              <SelectItem value="lose">Lose</SelectItem>
+              <SelectItem value="returned">Returned</SelectItem>
+            </SelectContent>
+          </Select>
+          {updateLeg.isPending && <span className="text-xs text-muted-foreground">Saving...</span>}
+        </div>
       </TableCell>
       <TableCell>-</TableCell>
       <TableCell></TableCell>
