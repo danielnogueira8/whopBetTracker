@@ -572,7 +572,7 @@ export default function MyBetsPage() {
                   <TableHead>Slip Type</TableHead>
                   <TableHead>Sport</TableHead>
                   <TableHead>Game</TableHead>
-                  
+                  <TableHead>Bet Type</TableHead>
                   <TableHead>Outcome</TableHead>
                   <TableHead>Odds</TableHead>
                   <TableHead>Units</TableHead>
@@ -590,7 +590,7 @@ export default function MyBetsPage() {
               <TableBody>
                 {filteredBets.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                       No bets found matching your filters.
                     </TableCell>
                   </TableRow>
@@ -616,7 +616,7 @@ export default function MyBetsPage() {
                               </Tooltip>
                             </TooltipProvider>
                           </TableCell>
-                          
+                          <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
                           <TableCell>
                             <TooltipProvider>
                               <Tooltip>
@@ -643,7 +643,7 @@ export default function MyBetsPage() {
                             {new Date(bet.createdAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex gap-1 justify-end">
+                            <div className="flex gap-2 justify-end">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -709,6 +709,9 @@ export default function MyBetsPage() {
                             </TableCell>
                             <TableCell>-</TableCell>
                             <TableCell>{parlay.legs.length} legs</TableCell>
+                            <TableCell>
+                              {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
+                            </TableCell>
                             <TableCell>{formatUnits(parlay.unitsInvested)}</TableCell>
                             <TableCell>{parlay.dollarsInvested || "-"}</TableCell>
                             <TableCell>
@@ -720,7 +723,7 @@ export default function MyBetsPage() {
                               {new Date(parlay.createdAt).toLocaleDateString()}
                             </TableCell>
                             <TableCell className="text-right">
-                              <div className="flex gap-1 justify-end">
+                              <div className="flex gap-2 justify-end">
                                 <Button
                                   variant="ghost"
                                   size="sm"

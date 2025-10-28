@@ -568,7 +568,7 @@ export default function CommunityBetsPage() {
                     <TableHead>Slip Type</TableHead>
                     <TableHead>Sport</TableHead>
                     <TableHead>Game</TableHead>
-                    
+                    <TableHead>Bet Type</TableHead>
                     <TableHead>Outcome</TableHead>
                     <TableHead>Odds</TableHead>
                     <TableHead>Units</TableHead>
@@ -585,7 +585,7 @@ export default function CommunityBetsPage() {
                 <TableBody>
                   {filteredBets.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isAdmin ? 9 : 8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={isAdmin ? 10 : 9} className="text-center py-8 text-muted-foreground">
                         No bets found matching your filters.
                       </TableCell>
                     </TableRow>
@@ -611,7 +611,7 @@ export default function CommunityBetsPage() {
                                   </Tooltip>
                                 </TooltipProvider>
                               </TableCell>
-                            
+                            <TableCell>{getBetCategoryLabel(bet.betCategory as any)}</TableCell>
                             <TableCell>{bet.outcome}</TableCell>
                             <TableCell>
                               {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
@@ -627,7 +627,7 @@ export default function CommunityBetsPage() {
                             </TableCell>
                             {isAdmin && (
                               <TableCell className="text-right">
-                                <div className="flex gap-1 justify-end">
+                                <div className="flex gap-2 justify-end">
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -703,7 +703,7 @@ export default function CommunityBetsPage() {
                               </TableCell>
                               {isAdmin && (
                                 <TableCell className="text-right">
-                                  <div className="flex gap-1 justify-end">
+                                  <div className="flex gap-2 justify-end">
                                     <Button
                                       variant="ghost"
                                       size="sm"
