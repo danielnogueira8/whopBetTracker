@@ -711,27 +711,30 @@ export default function AnalyticsPage() {
                   <Line
                     type="monotone"
                     dataKey="wins"
-                    stroke="hsl(var(--chart-1))"
+                    stroke="var(--color-wins)"
                     strokeWidth={2}
-                    dot={{ r: 2 }}
+                    dot={{ r: 2, fill: 'var(--color-wins)', stroke: 'transparent' }}
+                    activeDot={{ r: 3, fill: 'var(--color-wins)', stroke: 'transparent' }}
                     connectNulls
                     strokeLinecap="round"
                   />
                   <Line
                     type="monotone"
                     dataKey="losses"
-                    stroke="hsl(var(--chart-2))"
+                    stroke="var(--color-losses)"
                     strokeWidth={2}
-                    dot={{ r: 2 }}
+                    dot={{ r: 2, fill: 'var(--color-losses)', stroke: 'transparent' }}
+                    activeDot={{ r: 3, fill: 'var(--color-losses)', stroke: 'transparent' }}
                     connectNulls
                     strokeLinecap="round"
                   />
                   <Line
                     type="monotone"
                     dataKey="net"
-                    stroke="hsl(var(--chart-3))"
+                    stroke="var(--color-net)"
                     strokeWidth={2}
-                    dot={{ r: 2 }}
+                    dot={{ r: 2, fill: 'var(--color-net)', stroke: 'transparent' }}
+                    activeDot={{ r: 3, fill: 'var(--color-net)', stroke: 'transparent' }}
                     connectNulls
                     strokeLinecap="round"
                   />
