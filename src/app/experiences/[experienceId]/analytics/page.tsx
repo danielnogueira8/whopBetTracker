@@ -172,16 +172,17 @@ export default function AnalyticsPage() {
     });
 
     // Monthly breakdown
-    const monthlyBreakdown: Record<string, { total: number; wins: number; losses: number }> = {};
+    const monthlyBreakdown: Record<string, { total: number; wins: number; losses: number; returned: number }> = {};
     filteredBets.forEach(bet => {
       const date = new Date(bet.createdAt);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       if (!monthlyBreakdown[monthKey]) {
-        monthlyBreakdown[monthKey] = { total: 0, wins: 0, losses: 0 };
+        monthlyBreakdown[monthKey] = { total: 0, wins: 0, losses: 0, returned: 0 };
       }
       monthlyBreakdown[monthKey].total++;
       if (bet.result === "win") monthlyBreakdown[monthKey].wins++;
       else if (bet.result === "lose") monthlyBreakdown[monthKey].losses++;
+      else if (bet.result === "returned") monthlyBreakdown[monthKey].returned++;
     });
 
     // Calculate cumulative units over time
