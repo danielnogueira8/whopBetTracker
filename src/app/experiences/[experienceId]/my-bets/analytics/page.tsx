@@ -764,21 +764,27 @@ export default function PersonalAnalyticsPage() {
                           dataKey="wins"
                           stroke="hsl(var(--chart-1))"
                           strokeWidth={2}
-                          dot={false}
+                          dot={{ r: 2 }}
+                          connectNulls
+                          strokeLinecap="round"
                         />
                         <Line
                           type="monotone"
                           dataKey="losses"
                           stroke="hsl(var(--chart-2))"
                           strokeWidth={2}
-                          dot={false}
+                          dot={{ r: 2 }}
+                          connectNulls
+                          strokeLinecap="round"
                         />
                         <Line
                           type="monotone"
                           dataKey="net"
                           stroke="hsl(var(--chart-3))"
                           strokeWidth={2}
-                          dot={false}
+                          dot={{ r: 2 }}
+                          connectNulls
+                          strokeLinecap="round"
                         />
                       </LineChart>
                     </ChartContainer>
@@ -832,7 +838,9 @@ export default function PersonalAnalyticsPage() {
                           dataKey="net"
                           stroke="hsl(var(--chart-3))"
                           strokeWidth={2}
-                          dot={false}
+                          dot={{ r: 2 }}
+                          connectNulls
+                          strokeLinecap="round"
                         />
                       </LineChart>
                     </ChartContainer>
