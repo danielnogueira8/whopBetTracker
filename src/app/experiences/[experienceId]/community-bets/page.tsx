@@ -13,7 +13,7 @@ import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { Pagination } from "~/components/pagination";
-import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp, Info, Percent } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
@@ -369,6 +369,7 @@ export default function CommunityBetsPage() {
                 size="sm"
                 onClick={() => setSettingsOpen(true)}
               >
+                <Percent className="h-4 w-4 mr-2" />
                 Odds Format
               </Button>
               {isAdmin && (
