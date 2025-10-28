@@ -507,6 +507,7 @@ export default function UpcomingBetsPage() {
               </Card>
             ))}
           </div>
+        </div>
         )}
       </div>
     </div>
