@@ -689,13 +689,14 @@ export default function AnalyticsPage() {
                 }}
                 className="h-[300px] w-full"
               >
-                <LineChart data={analytics.cumulativeUnitsData}>
+                <LineChart data={analytics.cumulativeUnitsData} margin={{ right: 12 }}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="date"
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
+                    padding={{ left: 8, right: 16 }}
                     tickFormatter={(value) => {
                       const date = new Date(value);
                       return date.toLocaleDateString("en-US", {
@@ -709,30 +710,33 @@ export default function AnalyticsPage() {
                     content={<ChartTooltipContent />}
                   />
                   <Line
-                    type="monotone"
+                    type="linear"
                     dataKey="wins"
                     stroke="hsl(var(--chart-1))"
                     strokeWidth={2}
+                    strokeOpacity={1}
                     dot={{ r: 2, fill: 'hsl(var(--chart-1))', stroke: 'transparent' }}
                     activeDot={{ r: 3, fill: 'hsl(var(--chart-1))', stroke: 'transparent' }}
                     connectNulls
                     strokeLinecap="round"
                   />
                   <Line
-                    type="monotone"
+                    type="linear"
                     dataKey="losses"
                     stroke="hsl(var(--chart-2))"
                     strokeWidth={2}
+                    strokeOpacity={1}
                     dot={{ r: 2, fill: 'hsl(var(--chart-2))', stroke: 'transparent' }}
                     activeDot={{ r: 3, fill: 'hsl(var(--chart-2))', stroke: 'transparent' }}
                     connectNulls
                     strokeLinecap="round"
                   />
                   <Line
-                    type="monotone"
+                    type="linear"
                     dataKey="net"
                     stroke="hsl(var(--chart-3))"
                     strokeWidth={2}
+                    strokeOpacity={1}
                     dot={{ r: 2, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
                     activeDot={{ r: 3, fill: 'hsl(var(--chart-3))', stroke: 'transparent' }}
                     connectNulls
