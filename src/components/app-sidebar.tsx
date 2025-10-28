@@ -27,11 +27,12 @@ interface AppSidebarProps {
 
 export function AppSidebar({ experienceId }: AppSidebarProps) {
   const pathname = usePathname()
-  const { experience, access } = useWhop()
+  const { experience, access, user } = useWhop()
 
   if (!experience) return null
 
   const companyName = `${experience.company.title} Bet Tracker`
+  const userDisplay = (user?.username || user?.name || "My").replace(/^./, (c) => c.toUpperCase())
   const communityBetsUrl = `/experiences/${experienceId}/community-bets`
   const analyticsUrl = `/experiences/${experienceId}/analytics`
   const isAdmin = access?.accessLevel === "admin"
@@ -84,7 +85,7 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
                 <SidebarMenuButton asChild isActive={pathname === `/experiences/${experienceId}/my-bets` || pathname === `/experiences/${experienceId}/my-bets/analytics`}>
                   <Link href={`/experiences/${experienceId}/my-bets` as any}>
                     <User />
-                    <span>My Tracker</span>
+                    <span>{userDisplay} Tracker</span>
                   </Link>
                 </SidebarMenuButton>
                 <SidebarMenuSub>
