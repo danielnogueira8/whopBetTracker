@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -83,6 +83,27 @@ export function CreateBetDialog({
   const [explanation, setExplanation] = useState("");
   const [parlayConfidenceLevel, setParlayConfidenceLevel] = useState("");
   const [shouldPostToForum, setShouldPostToForum] = useState(false);
+
+  // Fetch settings for forum posting
+  const { data: settings } = useQuery({
+    queryKey: ["experience-settings", experience?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/settings?experienceId=${experience?.id}`);
+      if (!response.ok) throw new Error("Failed to fetch settings");
+      const data = await response.json();
+      return data.settings;
+    },
+    enabled: !!experience?.id && isUpcomingBet,
+  });
+
+  // Set default checkbox state based on auto-post setting
+  useEffect(() => {
+    if (settings?.autoPostEnabled) {
+      setShouldPostToForum(true);
+    } else if (settings && !settings.autoPostEnabled) {
+      setShouldPostToForum(false);
+    }
+  }, [settings]);
 
   const oddPlaceholders = {
     american: "+150 or -200",
@@ -208,6 +229,7 @@ export function CreateBetDialog({
         parlayData.eventDate = eventDate ? new Date(eventDate).toISOString() : null;
         parlayData.explanation = explanation || null;
         parlayData.confidenceLevel = parlayConfidenceLevel ? parseInt(parlayConfidenceLevel) : null;
+        parlayData.shouldPostToForum = shouldPostToForum && settings?.forumId;
       }
 
       createParlay.mutate(parlayData);
@@ -527,6 +549,18 @@ export function CreateBetDialog({
                         placeholder="5"
                       />
                     </div>
+                    <div className="flex items-center space-x-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="post-to-forum-parlay"
+                        checked={shouldPostToForum}
+                        onChange={(e) => setShouldPostToForum(e.target.checked)}
+                        className="rounded"
+                      />
+                      <Label htmlFor="post-to-forum-parlay" className="font-normal">
+                        Post to forum
+                      </Label>
+                    </div>
                   </>
                 )}
               </>
@@ -671,6 +705,18 @@ export function CreateBetDialog({
                         onChange={(e) => setConfidenceLevel(e.target.value)}
                         placeholder="5"
                       />
+                    </div>
+                    <div className="flex items-center space-x-2 pt-2">
+                      <input
+                        type="checkbox"
+                        id="post-to-forum"
+                        checked={shouldPostToForum}
+                        onChange={(e) => setShouldPostToForum(e.target.checked)}
+                        className="rounded"
+                      />
+                      <Label htmlFor="post-to-forum" className="font-normal">
+                        Post to forum
+                      </Label>
                     </div>
                   </>
                 ) : (
