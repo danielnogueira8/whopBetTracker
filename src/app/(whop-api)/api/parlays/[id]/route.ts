@@ -11,11 +11,11 @@ import { env } from "~/env"
 // GET - Fetch single parlay
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     await verifyUserToken(req.headers)
-    const { id } = await params
+    const { id } = params
 
     const parlay = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1)
 
@@ -45,11 +45,11 @@ export async function GET(
 // PATCH - Update parlay
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const { userId } = await verifyUserToken(req.headers)
-    const { id } = await params
+    const { id } = params
     const body = await req.json()
 
     const {
@@ -229,11 +229,11 @@ export async function PATCH(
 // DELETE - Delete parlay
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   try {
     const { userId } = await verifyUserToken(req.headers)
-    const { id } = await params
+    const { id } = params
 
     // Fetch existing parlay
     const existing = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1)

@@ -229,7 +229,7 @@ export function CreateBetDialog({
         parlayData.eventDate = eventDate ? new Date(eventDate).toISOString() : null;
         parlayData.explanation = explanation || null;
         parlayData.confidenceLevel = parlayConfidenceLevel ? parseInt(parlayConfidenceLevel) : null;
-        parlayData.shouldPostToForum = shouldPostToForum && settings?.forumId;
+        parlayData.shouldPostToForum = !!shouldPostToForum;
       }
 
       createParlay.mutate(parlayData);

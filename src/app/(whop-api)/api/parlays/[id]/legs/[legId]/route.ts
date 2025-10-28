@@ -9,11 +9,11 @@ import { calculateParlayResult } from "~/lib/parlay-utils";
 // PATCH - Update individual parlay leg result
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string; legId: string }> }
+  { params }: { params: { id: string; legId: string } }
 ) {
   try {
     const { userId } = await verifyUserToken(req.headers);
-    const { id, legId } = await params;
+    const { id, legId } = params;
     const body = await req.json();
 
     const { result } = body;
