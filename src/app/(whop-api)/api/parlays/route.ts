@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 import { db } from "~/db"
-import { parlays, parlayLegs } from "~/db/schema"
+import { parlays, parlayLegs, experienceSettings } from "~/db/schema"
 import { verifyUserToken } from "@whop/api"
 import { whop } from "~/lib/whop"
 import { eq, and, desc, count } from "drizzle-orm"
@@ -202,54 +202,61 @@ export async function POST(req: NextRequest) {
       )
     )
 
+    // Check forum integration settings
+    const settings = await db
+      .select()
+      .from(experienceSettings)
+      .where(eq(experienceSettings.experienceId, experienceId))
+      .limit(1)
+
+    const shouldPost = shouldPostToForum || (settings[0]?.autoPostEnabled && settings[0]?.forumId)
+    const forumId = settings[0]?.forumId
+
+    // Debug logging
+    console.log("[Parlay Forum] shouldPostToForum:", shouldPostToForum)
+    console.log("[Parlay Forum] isUpcomingBet:", isUpcomingBet)
+    console.log("[Parlay Forum] settings:", settings[0])
+    console.log("[Parlay Forum] shouldPost:", shouldPost)
+    console.log("[Parlay Forum] forumId:", forumId)
+
     // Post to forum if enabled
     let updatedParlay = newParlay
-    if (shouldPostToForum && isUpcomingBet) {
+    if (shouldPost && forumId && isUpcomingBet) {
       try {
-        const settings = await db
-          .select()
-          .from(await import("~/db/schema").then((m) => m.experienceSettings))
-          .where(
-            eq(
-              (await import("~/db/schema")).experienceSettings.experienceId,
-              experienceId
-            )
-          )
-          .limit(1)
+        const parlayWithLegs = {
+          ...newParlay,
+          legs: newLegs.map((l: any) => l[0]),
+        }
 
-        const forumId = settings[0]?.forumId
+        const postContent = formatParlayForForum(parlayWithLegs as any)
 
-        if (forumId) {
-          const parlayWithLegs = {
-            ...newParlay,
-            legs: newLegs.map((l: any) => l[0]),
-          }
+        console.log("[Parlay Forum] Creating forum post with content length:", postContent.length)
 
-          const postContent = formatParlayForForum(parlayWithLegs as any)
+        // Use direct API call since whop.forumPosts is not available in the SDK
+        const response = await fetch(`https://api.whop.com/api/v1/forum_posts`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${env.WHOP_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            experience_id: forumId,
+            content: postContent,
+          }),
+        })
 
-          // Use direct API call since whop.forumPosts is not available in the SDK
-          const response = await fetch(`https://api.whop.com/api/v1/forum_posts`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${env.WHOP_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              experience_id: forumId,
-              content: postContent,
-            }),
-          })
-
-          if (response.ok) {
-            const forumPost = await response.json()
-            await db.update(parlays).set({ forumPostId: forumPost.id }).where(eq(parlays.id, newParlay.id))
-            updatedParlay = { ...newParlay, forumPostId: forumPost.id }
-          } else {
-            console.error("Forum API error:", await response.text())
-          }
+        if (response.ok) {
+          const forumPost = await response.json()
+          console.log("[Parlay Forum] Forum post created successfully:", forumPost.id)
+          await db.update(parlays).set({ forumPostId: forumPost.id }).where(eq(parlays.id, newParlay.id))
+          updatedParlay = { ...newParlay, forumPostId: forumPost.id }
+        } else {
+          const errorText = await response.text()
+          console.error("[Parlay Forum] API error:", errorText)
+          console.error("[Parlay Forum] Status:", response.status)
         }
       } catch (error) {
-        console.error("Error posting to forum:", error)
+        console.error("[Parlay Forum] Error posting to forum:", error)
         // Continue even if forum posting fails
       }
     }
