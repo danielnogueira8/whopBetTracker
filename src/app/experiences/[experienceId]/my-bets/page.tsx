@@ -16,7 +16,8 @@ import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
-import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp, Edit } from "lucide-react";
+import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp, Edit, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
 import {
@@ -328,7 +329,21 @@ export default function MyBetsPage() {
     <div className="flex flex-col min-h-screen bg-background">
       <div className="flex items-center gap-4 p-4 border-b">
         <SidebarTrigger />
-        <h1 className="text-xl font-semibold">My Bet Tracker</h1>
+        <TooltipProvider>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold">My Bet Tracker</h1>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">
+                  Track and manage your personal bets and parlays. Record results, set units invested, and monitor your betting performance.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
         <div className="ml-auto flex gap-2">
           <Button
             variant="outline"

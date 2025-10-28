@@ -7,7 +7,8 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
 import { EditParlayDialog } from "~/components/edit-parlay-dialog";
@@ -162,7 +163,21 @@ export default function UpcomingBetsPage() {
     <div className="flex flex-col min-h-screen bg-background">
       <div className="flex items-center gap-4 p-4 border-b">
         <SidebarTrigger />
-        <h1 className="text-xl font-semibold">{companyName} Picks</h1>
+        <TooltipProvider>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold">{companyName} Picks</h1>
+            <Tooltip>
+              <TooltipTrigger>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs">
+                  These are upcoming bets/picks. Once they are resolved and converted, they will appear in the Community Bet Tracker.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={() => setPurchaseAdDialogOpen(true)}>
             <Megaphone className="mr-2 h-4 w-4" />

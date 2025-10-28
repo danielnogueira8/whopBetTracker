@@ -13,7 +13,8 @@ import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { Pagination } from "~/components/pagination";
-import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import { Spinner } from "~/components/ui/spinner";
@@ -320,7 +321,21 @@ export default function CommunityBetsPage() {
         <div className="flex flex-col min-h-screen bg-background">
           <div className="flex items-center gap-4 p-4 border-b">
             <SidebarTrigger />
-            <h1 className="text-xl font-semibold">{companyName} Bet Tracker</h1>
+            <TooltipProvider>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-semibold">{companyName} Bet Tracker</h1>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs">
+                      View the community's betting activity and performance. Includes bets and parlays that have been converted from upcoming picks.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
             <div className="ml-auto flex gap-2">
               <Button
                 variant="outline"
