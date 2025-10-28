@@ -100,6 +100,8 @@ export async function PATCH(
       updateFields.explanation = updateData.explanation || null
     if (updateData.confidenceLevel !== undefined)
       updateFields.confidenceLevel = updateData.confidenceLevel || null
+    if (updateData.result !== undefined)
+      updateFields.result = updateData.result
 
     // Handle leg updates
     if (updateData.legs && Array.isArray(updateData.legs)) {
