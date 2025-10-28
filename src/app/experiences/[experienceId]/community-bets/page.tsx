@@ -326,8 +326,8 @@ export default function CommunityBetsPage() {
 
   const resultColors = {
     pending: "bg-primary/20 text-primary border-primary",
-    win: "bg-primary/80 text-primary-foreground border-primary",
-    lose: "bg-destructive/20 text-destructive border-destructive",
+    win: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500",
+    lose: "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500",
     returned: "bg-muted text-muted-foreground border-border",
   };
 
