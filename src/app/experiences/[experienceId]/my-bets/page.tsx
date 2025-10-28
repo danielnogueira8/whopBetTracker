@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { useWhop } from "~/lib/whop-context";
@@ -54,6 +54,11 @@ function LegRow({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedResult, setSelectedResult] = useState(leg.result);
+
+  // Update selectedResult when leg.result changes
+  useEffect(() => {
+    setSelectedResult(leg.result);
+  }, [leg.result]);
 
   const updateLeg = useMutation({
     mutationFn: async (result: string) => {
