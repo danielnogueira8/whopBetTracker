@@ -36,6 +36,7 @@ interface CreateBetDialogProps {
 
 interface Leg {
   sport: string;
+  league?: string;
   game: string;
   outcome: string;
   betCategory: string;
@@ -57,6 +58,7 @@ export function CreateBetDialog({
   
   // Single bet fields
   const [sport, setSport] = useState("");
+  const [league, setLeague] = useState("");
   const [game, setGame] = useState("");
   const [outcome, setOutcome] = useState("");
   const [betCategory, setBetCategory] = useState<string>("game_match");
@@ -74,8 +76,8 @@ export function CreateBetDialog({
   // Parlay fields
   const [parlayName, setParlayName] = useState("");
   const [legs, setLegs] = useState<Leg[]>([
-    { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
-    { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
+    { sport: "", league: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
+    { sport: "", league: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
   ]);
   
   // Upcoming bet fields (for parlays and single bets)
@@ -116,6 +118,7 @@ export function CreateBetDialog({
     if (!open) {
       setIsParlay(false);
       setSport("");
+      setLeague("");
       setGame("");
       setOutcome("");
       setBetCategory("game_match");
@@ -129,8 +132,8 @@ export function CreateBetDialog({
       setResult("pending");
       setParlayName("");
       setLegs([
-        { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
-        { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
+        { sport: "", league: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
+        { sport: "", league: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" },
       ]);
       setEventDate("");
       setExplanation("");
@@ -246,6 +249,7 @@ export function CreateBetDialog({
         const betData = {
           experienceId: experience.id,
           sport,
+          league: league || null,
           game,
           outcome,
           betCategory,
@@ -263,6 +267,7 @@ export function CreateBetDialog({
         const betData = {
           experienceId: experience.id,
           sport,
+          league: league || null,
           game,
           outcome,
           betCategory,
@@ -292,7 +297,7 @@ export function CreateBetDialog({
     : 1;
 
   const addLeg = () => {
-    setLegs([...legs, { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" }]);
+    setLegs([...legs, { sport: "", league: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" }]);
   };
 
   const removeLeg = (index: number) => {
@@ -399,6 +404,15 @@ export function CreateBetDialog({
                             value={leg.sport}
                             onChange={(e) => updateLeg(index, "sport", e.target.value)}
                             required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor={`league-${index}`}>League (optional)</Label>
+                          <Input
+                            id={`league-${index}`}
+                            placeholder="e.g., NFL, NCAAF, MLB"
+                            value={leg.league || ""}
+                            onChange={(e) => updateLeg(index, "league", e.target.value)}
                           />
                         </div>
                         <div className="space-y-2">
@@ -568,6 +582,15 @@ export function CreateBetDialog({
                     onChange={(e) => setSport(e.target.value)}
                     placeholder="e.g., Basketball, Football"
                     required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="league">League (optional)</Label>
+                  <Input
+                    id="league"
+                    value={league}
+                    onChange={(e) => setLeague(e.target.value)}
+                    placeholder="e.g., NFL, NCAAF, ATP"
                   />
                 </div>
                 <div className="grid gap-2">

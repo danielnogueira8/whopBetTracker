@@ -34,6 +34,7 @@ interface EditParlayDialogProps {
 
 interface Leg {
   sport: string;
+  league?: string;
   game: string;
   outcome: string;
   betCategory: string;
@@ -61,6 +62,7 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
       setName(parlay.name || "");
       setLegs(parlay.legs?.map((leg: any) => ({
         sport: leg.sport || "",
+        league: leg.league || "",
         game: leg.game || "",
         outcome: leg.outcome || "",
         betCategory: leg.betCategory || "game_match",
@@ -145,7 +147,7 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
   };
 
   const addLeg = () => {
-    setLegs([...legs, { sport: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" }]);
+    setLegs([...legs, { sport: "", league: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" }]);
   };
 
   const removeLeg = (index: number) => {
@@ -239,6 +241,15 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
                           value={leg.sport}
                           onChange={(e) => updateLeg(index, "sport", e.target.value)}
                           required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`league-${index}`}>League (optional)</Label>
+                        <Input
+                          id={`league-${index}`}
+                          placeholder="e.g., NFL, NCAAF, MLB"
+                          value={leg.league || ""}
+                          onChange={(e) => updateLeg(index, "league", e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">

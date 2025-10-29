@@ -147,6 +147,7 @@ export async function PATCH(
           db.insert(parlayLegs).values({
             parlayId: id,
             sport: leg.sport,
+            league: leg.league || null,
             game: leg.game,
             outcome: leg.outcome,
             betCategory: leg.betCategory || "game_match",

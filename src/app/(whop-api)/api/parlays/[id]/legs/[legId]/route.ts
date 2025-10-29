@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "~/db";
 import { parlayLegs, parlays } from "~/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
 import { calculateParlayResult } from "~/lib/parlay-utils";
@@ -16,58 +16,35 @@ export async function PATCH(
     const { id, legId } = await params;
     const body = await req.json();
 
-    const { result } = body;
-
-    if (!result || !["pending", "win", "lose", "returned"].includes(result)) {
-      return Response.json({ error: "Invalid result value" }, { status: 400 });
-    }
-
-    // Fetch parlay to check permissions
-    const [parlay] = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1);
-
-    if (!parlay) {
-      return Response.json({ error: "Parlay not found" }, { status: 404 });
-    }
-
-    // Check permissions
-    if (parlay.isCommunityBet || parlay.isUpcomingBet) {
-      const access = await whop.access.checkIfUserHasAccessToExperience({
-        experienceId: parlay.experienceId,
-        userId,
-      });
-      if (access.accessLevel !== "admin") {
-        return Response.json(
-          { error: "Only admins can update community or upcoming parlays" },
-          { status: 403 }
-        );
+    // Coerce when league/sport provided
+    let updateData: any = { ...body, updatedAt: new Date() };
+    try {
+      const { normalizeSportKey } = await import("~/lib/sport-normalization");
+      if (typeof updateData.league === "string" && updateData.league.trim()) {
+        const n = normalizeSportKey(updateData.league);
+        if (n?.league) {
+          updateData.sport = n.label;
+          updateData.league = n.league;
+        }
+      } else if (typeof updateData.sport === "string" && updateData.sport.trim()) {
+        const n = normalizeSportKey(updateData.sport);
+        if (n) {
+          updateData.sport = n.label;
+          if (n.league) updateData.league = n.league;
+        }
       }
-    } else if (parlay.userId !== userId) {
-      return Response.json({ error: "Forbidden" }, { status: 403 });
-    }
+    } catch {}
 
-    // Update the leg result
-    await db
+    const updated = await db
       .update(parlayLegs)
-      .set({ result, updatedAt: new Date() })
-      .where(eq(parlayLegs.id, legId));
+      .set(updateData)
+      .where(and(eq(parlayLegs.id, legId), eq(parlayLegs.parlayId, id)))
+      .returning();
 
-    // Fetch all legs to recalculate parlay result
-    const legs = await db
-      .select()
-      .from(parlayLegs)
-      .where(eq(parlayLegs.parlayId, id))
-      .orderBy(parlayLegs.legOrder);
-
-    const legResults = legs.map((leg) => leg.result);
-    const newResult = calculateParlayResult(legResults);
-
-    // Update parlay result
-    await db.update(parlays).set({ result: newResult }).where(eq(parlays.id, id));
-
-    return Response.json({ success: true, legResult: result, parlayResult: newResult });
+    return Response.json({ leg: updated[0] });
   } catch (error) {
-    console.error("Error updating leg result:", error);
-    return Response.json({ error: "Failed to update leg result" }, { status: 500 });
+    console.error("Error updating parlay leg:", error);
+    return Response.json({ error: "Failed to update leg" }, { status: 500 });
   }
 }
 

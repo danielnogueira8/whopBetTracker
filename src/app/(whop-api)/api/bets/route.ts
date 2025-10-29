@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
     const {
       experienceId,
       sport,
+      league: inputLeague,
       game,
       outcome,
       betCategory = "game_match",
@@ -129,6 +130,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Canonicalize sport/league conservatively
+    let canonicalSport = sport as string;
+    let league: string | null = inputLeague ?? null;
+    try {
+      const { normalizeSportKey } = await import("~/lib/sport-normalization");
+      if (league && typeof league === "string") {
+        // If a league is explicitly provided and maps to a sport, align sport
+        const n = normalizeSportKey(league);
+        if (n?.league && n.label) {
+          canonicalSport = n.label; // label is canonical sport name
+          league = n.league;
+        }
+      } else {
+        // If sport itself is an alias that carries a league (e.g., nfl)
+        const n = normalizeSportKey(canonicalSport);
+        if (n?.league) {
+          canonicalSport = n.label;
+          league = n.league;
+        } else if (n) {
+          canonicalSport = n.label;
+        }
+      }
+    } catch {}
+
     const betDate = date ? new Date(date) : new Date();
 
     const newBet = await db
@@ -136,7 +161,8 @@ export async function POST(req: NextRequest) {
       .values({
         experienceId,
         userId,
-        sport,
+        sport: canonicalSport,
+        league,
         game,
         outcome,
         betCategory,

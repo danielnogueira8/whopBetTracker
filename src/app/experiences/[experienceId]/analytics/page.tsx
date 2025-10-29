@@ -18,6 +18,7 @@ import { Spinner } from "~/components/ui/spinner";
 import { toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
 import Link from "next/link";
+import { buildSportBreakdown } from "~/lib/analytics";
 
 // Helper function to get odds range label
 function getOddsRange(decimalOdds: number): string {
@@ -94,14 +95,17 @@ export default function AnalyticsPage() {
       // Slip Type filter
       if (filterSlipType !== "all" && item.slipType !== filterSlipType) return false;
       
-      // Sport filter - for singles use bet.sport, for parlays check if any leg matches
+      // Sport filter using normalized labels
       if (filterSport !== "all") {
+        const { normalizeSportKey } = require("~/lib/sport-normalization");
+        const wanted = normalizeSportKey(filterSport)?.label ?? filterSport;
         if (item.slipType === 'single') {
-          if (item.sport !== filterSport) return false;
+          const label = normalizeSportKey(item.sport)?.label ?? item.sport;
+          if (label !== wanted) return false;
         } else {
-          // Parlay - check if any leg matches the sport
           const parlay = item as any;
-          if (!parlay.legs?.some((leg: any) => leg.sport === filterSport)) return false;
+          const has = parlay.legs?.some((leg: any) => (normalizeSportKey(leg.sport)?.label ?? leg.sport) === wanted);
+          if (!has) return false;
         }
       }
       
@@ -138,38 +142,8 @@ export default function AnalyticsPage() {
     const decisiveBets = wonBets + lostBets;
     const winRate = decisiveBets > 0 ? (wonBets / decisiveBets) * 100 : 0;
 
-    // Sport breakdown - for singles use bet.sport, for parlays include all leg sports
-    const sportBreakdown: Record<string, { total: number; wins: number; losses: number; pending: number }> = {};
-    filteredBets.forEach(item => {
-      if (item.slipType === 'single') {
-        const bet = item as any;
-        if (!sportBreakdown[bet.sport]) {
-          sportBreakdown[bet.sport] = { total: 0, wins: 0, losses: 0, pending: 0 };
-        }
-        sportBreakdown[bet.sport].total++;
-        if (bet.result === "win") sportBreakdown[bet.sport].wins++;
-        else if (bet.result === "lose") sportBreakdown[bet.sport].losses++;
-        else if (bet.result === "pending") sportBreakdown[bet.sport].pending++;
-      } else {
-        // Parlay - count for each unique leg sport
-        const parlay = item as any;
-        const uniqueSports = new Set<string>();
-        if (parlay.legs && Array.isArray(parlay.legs)) {
-          parlay.legs.forEach((leg: any) => {
-            if (leg.sport) uniqueSports.add(leg.sport);
-          });
-        }
-        uniqueSports.forEach((sport: string) => {
-          if (!sportBreakdown[sport]) {
-            sportBreakdown[sport] = { total: 0, wins: 0, losses: 0, pending: 0 };
-          }
-          sportBreakdown[sport].total++;
-          if (parlay.result === "win") sportBreakdown[sport].wins++;
-          else if (parlay.result === "lose") sportBreakdown[sport].losses++;
-          else if (parlay.result === "pending") sportBreakdown[sport].pending++;
-        });
-      }
-    });
+    // Sport + League breakdown using normalized keys
+    const { sportBreakdown, leagueBreakdown } = buildSportBreakdown(filteredBets as any[]);
 
     // Monthly breakdown
     // `total` counts only decisive outcomes (wins + losses). Returned are tracked separately
@@ -483,6 +457,7 @@ export default function AnalyticsPage() {
       settledBets,
       winRate,
       sportBreakdown,
+      leagueBreakdown,
       monthlyBreakdown,
       cumulativeUnitsData,
       betCategoryBreakdown,
@@ -494,10 +469,11 @@ export default function AnalyticsPage() {
   // Export function
   const handleExport = () => {
     const csvData = [
-      ['Bet ID', 'Sport', 'Game', 'Outcome', 'Result', 'Win Rate', 'Units Invested', 'Dollars Invested', 'Date'].join(','),
+      ['Bet ID', 'Sport', 'League', 'Game', 'Outcome', 'Result', 'Win Rate', 'Units Invested', 'Dollars Invested', 'Date'].join(','),
       ...filteredBets.map(bet => [
         bet.id,
         bet.sport,
+        bet.league ?? '',
         `"${bet.game}"`,
         `"${bet.outcome}"`,
         bet.result,
@@ -572,9 +548,13 @@ export default function AnalyticsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Sports</SelectItem>
-                    {Array.from(new Set(bets.map(b => b.sport))).map(sport => (
-                      <SelectItem key={sport} value={sport}>{sport}</SelectItem>
-                    ))}
+                    {Array.from(new Set(allBets.flatMap((b: any) => b.slipType === 'single' ? [b.sport] : (b.legs?.map((l: any) => l.sport) ?? []))))
+                      .map((s) => require("~/lib/sport-normalization").normalizeSportKey(s)?.label ?? s)
+                      .filter(Boolean)
+                      .filter((v, i, arr) => arr.indexOf(v) === i)
+                      .map((sport) => (
+                        <SelectItem key={sport} value={sport}>{sport}</SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -799,7 +779,9 @@ export default function AnalyticsPage() {
           </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {Object.entries(analytics.sportBreakdown).map(([sport, stats]) => {
+                  {Object.entries(analytics.sportBreakdown)
+                    .sort(([, a], [, b]) => b.total - a.total)
+                    .map(([sportKey, stats]) => {
                     const sportWinRate = stats.total - stats.pending > 0 
                       ? (stats.wins / (stats.total - stats.pending)) * 100 
                       : 0;
@@ -808,10 +790,10 @@ export default function AnalyticsPage() {
                       : 0;
 
                     return (
-                      <div key={sport} className="space-y-2">
+                      <div key={sportKey} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{sport}</span>
+                            <span className="font-medium">{stats.label}</span>
                             <Badge variant="outline">{stats.total} bets</Badge>
                           </div>
                           <div className="flex items-center gap-4 text-sm">
@@ -835,10 +817,57 @@ export default function AnalyticsPage() {
                         </div>
                       </div>
                     );
-                  })}
+                    })
+                  }
                 </div>
               </CardContent>
         </Card>
+
+        {/* Performance by League */}
+        {Object.keys(analytics.leagueBreakdown ?? {}).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance by League</CardTitle>
+              <CardDescription>Drill down by NFL, NBA, NCAAF, etc.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {Object.entries(analytics.leagueBreakdown)
+                  .sort(([, a], [, b]) => b.total - a.total)
+                  .map(([leagueKey, stats]) => {
+                    const settled = stats.total - stats.pending;
+                    const leagueWinRate = settled > 0 ? (stats.wins / settled) * 100 : 0;
+                    const progress = analytics.settledBets > 0 
+                      ? ((stats.wins + stats.losses) / analytics.settledBets) * 100 
+                      : 0;
+                    return (
+                      <div key={leagueKey} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{stats.label}</span>
+                            <Badge variant="outline">{stats.total} bets</Badge>
+                            <span className="text-xs text-muted-foreground">{stats.sport}</span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-primary font-medium">{stats.wins} wins</span>
+                            <span className="text-destructive font-medium">{stats.losses} losses</span>
+                            <span className="text-muted-foreground">{stats.pending} pending</span>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Win Rate: {leagueWinRate.toFixed(1)}%</span>
+                            <span>{progress.toFixed(0)}% of all settled bets</span>
+                          </div>
+                          <Progress value={progress} className="h-2" />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Performance Over Time */}
         <Card>

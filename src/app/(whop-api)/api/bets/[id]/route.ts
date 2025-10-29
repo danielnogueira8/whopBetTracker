@@ -71,11 +71,30 @@ export async function PATCH(
       );
     }
 
+    // Coerce sport/league conservatively when provided
+    let updateData: any = { ...body };
+    try {
+      const { normalizeSportKey } = await import("~/lib/sport-normalization");
+      if (typeof updateData.league === "string" && updateData.league.trim()) {
+        const n = normalizeSportKey(updateData.league);
+        if (n?.league) {
+          updateData.sport = n.label;
+          updateData.league = n.league;
+        }
+      } else if (typeof updateData.sport === "string" && updateData.sport.trim()) {
+        const n = normalizeSportKey(updateData.sport);
+        if (n) {
+          updateData.sport = n.label;
+          if (n.league) updateData.league = n.league;
+        }
+      }
+    } catch {}
+
     // Update bet
     const updated = await db
       .update(bets)
       .set({
-        ...body,
+        ...updateData,
         updatedAt: new Date(),
       })
       .where(eq(bets.id, id))

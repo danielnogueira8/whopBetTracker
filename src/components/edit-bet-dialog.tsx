@@ -35,6 +35,7 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
   const { experience } = useWhop();
   
   const [sport, setSport] = useState("");
+  const [league, setLeague] = useState("");
   const [game, setGame] = useState("");
   const [outcome, setOutcome] = useState("");
   const [betCategory, setBetCategory] = useState("");
@@ -48,6 +49,7 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
   useEffect(() => {
     if (bet) {
       setSport(bet.sport || "");
+      setLeague(bet.league || "");
       setGame(bet.game || "");
       setOutcome(bet.outcome || "");
       setBetCategory(bet.betCategory || "");
@@ -82,6 +84,7 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
     e.preventDefault();
     updateBet.mutate({
       sport,
+      league: league || null,
       game,
       outcome,
       betCategory,
@@ -116,6 +119,15 @@ export function EditBetDialog({ open, onOpenChange, bet }: EditBetDialogProps) {
                   onChange={(e) => setSport(e.target.value)}
                   placeholder="e.g., Basketball, Football"
                   required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="league">League (optional)</Label>
+                <Input
+                  id="league"
+                  value={league}
+                  onChange={(e) => setLeague(e.target.value)}
+                  placeholder="e.g., NFL, NCAAF, ATP"
                 />
               </div>
               <div className="grid gap-2">

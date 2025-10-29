@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     const {
       sport,
+      league: inputLeague,
       game,
       outcome,
       betCategory = "game_match",
@@ -80,22 +81,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check forum integration settings
-    const settings = await db
-      .select()
-      .from(experienceSettings)
-      .where(eq(experienceSettings.experienceId, experienceId))
-      .limit(1);
-
-    const shouldPost = shouldPostToForum || (settings[0]?.autoPostEnabled && settings[0]?.forumId);
-    const forumId = settings[0]?.forumId;
+    // Canonicalize conservatively
+    let canonicalSport = sport as string;
+    let league: string | null = inputLeague ?? null;
+    try {
+      const { normalizeSportKey } = await import("~/lib/sport-normalization");
+      if (league) {
+        const n = normalizeSportKey(league);
+        if (n?.league) {
+          canonicalSport = n.label;
+          league = n.league;
+        }
+      } else {
+        const n = normalizeSportKey(canonicalSport);
+        if (n) {
+          canonicalSport = n.label;
+          if (n.league) league = n.league;
+        }
+      }
+    } catch {}
 
     // Create the bet
     const newBet = await db
       .insert(upcomingBets)
       .values({
         experienceId,
-        sport,
+        sport: canonicalSport,
+        league,
         game,
         outcome,
         betCategory,

@@ -27,6 +27,7 @@ import {
 interface UpcomingBet {
   id: string;
   sport: string;
+  league?: string | null;
   game: string;
   outcome: string;
   betCategory: string;
@@ -52,6 +53,7 @@ export function EditUpcomingBetDialog({
 }: EditUpcomingBetDialogProps) {
   const queryClient = useQueryClient();
   const [sport, setSport] = useState("");
+  const [league, setLeague] = useState("");
   const [game, setGame] = useState("");
   const [outcome, setOutcome] = useState("");
   const [betCategory, setBetCategory] = useState<string>("game_match");
@@ -66,6 +68,7 @@ export function EditUpcomingBetDialog({
   useEffect(() => {
     if (bet) {
       setSport(bet.sport);
+      setLeague(bet.league || "");
       setGame(bet.game);
       setOutcome(bet.outcome);
       setBetCategory(bet.betCategory);
@@ -116,6 +119,7 @@ export function EditUpcomingBetDialog({
     const betData = {
       experienceId: experience.id,
       sport,
+      league: league || null,
       game,
       outcome,
       betCategory,
@@ -150,6 +154,15 @@ export function EditUpcomingBetDialog({
                 onChange={(e) => setSport(e.target.value)}
                 placeholder="e.g., Basketball, Football"
                 required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="league">League (optional)</Label>
+              <Input
+                id="league"
+                value={league}
+                onChange={(e) => setLeague(e.target.value)}
+                placeholder="e.g., NFL, NCAAF, ATP"
               />
             </div>
             <div className="grid gap-2">

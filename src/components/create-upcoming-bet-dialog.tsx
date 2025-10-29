@@ -35,6 +35,7 @@ export function CreateUpcomingBetDialog({
 }: CreateUpcomingBetDialogProps) {
   const queryClient = useQueryClient();
   const [sport, setSport] = useState("");
+  const [league, setLeague] = useState("");
   const [game, setGame] = useState("");
   const [outcome, setOutcome] = useState("");
   const [betCategory, setBetCategory] = useState<string>("game_match");
@@ -99,6 +100,7 @@ export function CreateUpcomingBetDialog({
       onOpenChange(false);
       // Reset form
       setSport("");
+      setLeague("");
       setGame("");
       setOutcome("");
       setBetCategory("game_match");
@@ -118,6 +120,7 @@ export function CreateUpcomingBetDialog({
     const betData = {
       experienceId: experience.id,
       sport,
+      league: league || null,
       game,
       outcome,
       betCategory,
@@ -154,6 +157,15 @@ export function CreateUpcomingBetDialog({
                 required
               />
             </div>
+          <div className="grid gap-2">
+            <Label htmlFor="league">League (optional)</Label>
+            <Input
+              id="league"
+              value={league}
+              onChange={(e) => setLeague(e.target.value)}
+              placeholder="e.g., NFL, NCAAF, ATP"
+            />
+          </div>
             <div className="grid gap-2">
               <Label htmlFor="game">Game</Label>
               <Input

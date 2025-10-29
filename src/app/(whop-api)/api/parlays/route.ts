@@ -189,18 +189,38 @@ export async function POST(req: NextRequest) {
 
     // Create legs
     const newLegs = await Promise.all(
-      legs.map((leg: any, index: number) =>
-        db.insert(parlayLegs).values({
+      legs.map((leg: any, index: number) => {
+        let sport = leg.sport;
+        let league: string | null = leg.league ?? null;
+        try {
+          const { normalizeSportKey } = require("~/lib/sport-normalization");
+          if (league) {
+            const n = normalizeSportKey(league);
+            if (n?.league) {
+              sport = n.label;
+              league = n.league;
+            }
+          } else {
+            const n = normalizeSportKey(sport);
+            if (n) {
+              sport = n.label;
+              if (n.league) league = n.league;
+            }
+          }
+        } catch {}
+
+        return db.insert(parlayLegs).values({
           parlayId: newParlay.id,
-          sport: leg.sport,
+          sport,
+          league,
           game: leg.game,
           outcome: leg.outcome,
           betCategory: leg.betCategory || "game_match",
           oddFormat: leg.oddFormat,
           oddValue: leg.oddValue.toString(),
           legOrder: index + 1,
-        })
-      )
+        });
+      })
     )
 
     // Check forum integration settings
