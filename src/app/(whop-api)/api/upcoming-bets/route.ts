@@ -121,9 +121,17 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
+    // Resolve forum settings
+    const settings = await db
+      .select()
+      .from(experienceSettings)
+      .where(eq(experienceSettings.experienceId, experienceId))
+      .limit(1);
+    const forumId = settings[0]?.forumId as string | undefined;
+
     // Post to forum if enabled
     let forumPostId = null;
-    if (shouldPost && forumId) {
+    if (shouldPostToForum && forumId) {
       try {
         const postContent = formatUpcomingBetForForum(newBet[0]);
         
