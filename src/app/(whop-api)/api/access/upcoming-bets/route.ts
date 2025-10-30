@@ -42,22 +42,36 @@ export async function GET(req: NextRequest) {
       try {
         const exp = await whop.experiences.getExperience({ experienceId })
         const expAny = exp as any
-        let expProducts: string[] = (expAny?.products ?? []).map((p: any) => p?.id).filter(Boolean)
-
-        // If not present on the experience, list company products as a stronger fallback
-        if (expProducts.length === 0 && expAny?.company?.id) {
+        // Try multiple sources in order: payments.listProductsForCompany -> companies.listAccessPasses -> products.listProducts -> experience.products
+        let expProducts: string[] = []
+        if (expAny?.company?.id) {
+          const companyIdForProducts = expAny.company.id as string
+          // 1) Payments API
           try {
-            const companyIdForProducts = expAny.company.id as string
-            // @ts-ignore - products API surface; fallback to any to avoid type coupling
-            const listed = await (whop as any).products?.listProducts?.({ companyId: companyIdForProducts })
-            const nodes: any[] = listed?.products?.nodes ?? []
+            const list = await (whop as any)?.payments?.listProductsForCompany?.({ companyId: companyIdForProducts })
+            const nodes: any[] = list?.products?.nodes ?? []
             expProducts = nodes.map((p: any) => p?.id).filter(Boolean)
-            if (expProducts.length > 0) {
-              console.log('[paywall] derived productIds from company products', { expProducts })
-            }
-          } catch (err) {
-            console.warn('[paywall] failed to list company products', err)
+          } catch {}
+          // 2) Company access passes
+          if (expProducts.length === 0) {
+            try {
+              const passes = await (whop as any)?.companies?.listAccessPasses?.({ companyId: companyIdForProducts })
+              const nodes: any[] = passes?.accessPasses?.nodes ?? []
+              expProducts = nodes.map((p: any) => p?.id).filter(Boolean)
+            } catch {}
           }
+          // 3) Products API
+          if (expProducts.length === 0) {
+            try {
+              const listed = await (whop as any)?.products?.listProducts?.({ companyId: companyIdForProducts })
+              const nodes: any[] = listed?.products?.nodes ?? []
+              expProducts = nodes.map((p: any) => p?.id).filter(Boolean)
+            } catch {}
+          }
+        }
+        // 4) Experience products as last resort
+        if (expProducts.length === 0) {
+          expProducts = (expAny?.products ?? []).map((p: any) => p?.id).filter(Boolean)
         }
 
         if (expProducts.length > 0) {

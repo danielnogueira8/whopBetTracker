@@ -29,27 +29,49 @@ export async function GET(req: NextRequest) {
     const companyId = exp?.company?.id
     if (!companyId) return Response.json({ products: [] })
 
-    // Scoped SDK (ensures calls are made on behalf of the verified user within the company)
-    const scoped = (whop as any)?.withUser?.(verifiedUserId)?.withCompany?.(companyId) ?? whop
-
-    // List access passes / products for the company (includes hidden/non-discoverable)
-    // Prefer company access passes, then fall back to products APIs, then experience products.
+    // Prefer payments.listProductsForCompany (most universal), then companies.listAccessPasses, then products.listProducts, then exp.products
     let nodes: any[] = []
+    let source: string | null = null
+
+    // 1) Payments API
     try {
-      const passes = await (scoped as any)?.companies?.listAccessPasses?.({ companyId })
-      nodes = passes?.accessPasses?.nodes ?? []
+      const list = await (whop as any)?.payments?.listProductsForCompany?.({ companyId })
+      const arr = list?.products?.nodes ?? []
+      if (arr?.length) {
+        nodes = arr
+        source = 'payments.listProductsForCompany'
+      }
     } catch {}
+
+    // 2) Company access passes
     if (!nodes?.length) {
-      const listResp = (
-        (await (scoped as any)?.products?.listProducts?.({ companyId })) ??
-        (await (scoped as any)?.payments?.listProductsForCompany?.({ companyId })) ??
-        null
-      ) as any
-      nodes = listResp?.products?.nodes ?? []
+      try {
+        const passes = await (whop as any)?.companies?.listAccessPasses?.({ companyId })
+        const arr = passes?.accessPasses?.nodes ?? []
+        if (arr?.length) {
+          nodes = arr
+          source = 'companies.listAccessPasses'
+        }
+      } catch {}
     }
+
+    // 3) Products API
+    if (!nodes?.length) {
+      try {
+        const listResp = await (whop as any)?.products?.listProducts?.({ companyId })
+        const arr = listResp?.products?.nodes ?? []
+        if (arr?.length) {
+          nodes = arr
+          source = 'products.listProducts'
+        }
+      } catch {}
+    }
+
+    // 4) Experience products as last resort (may be empty for non-owner viewers)
     if (!nodes?.length) {
       const expProducts = (exp as any)?.products ?? []
       nodes = expProducts
+      if (nodes?.length) source = 'experience.products'
     }
 
     const products = nodes.map((p: any) => ({
@@ -69,6 +91,7 @@ export async function GET(req: NextRequest) {
         referer: req.headers.get('referer'),
         headerKeys,
         count: products.length,
+        source,
       })
     }
 
