@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       .where(eq(experienceSettings.experienceId, experienceId))
       .limit(1)
 
-    const paywallConfig = settings[0]?.paywallConfig ?? { 
+    const paywallConfig = (settings[0]?.paywallConfig as any) ?? { 
       enabled: false, 
       productIds: [], 
       rule: 'any',
