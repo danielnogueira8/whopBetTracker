@@ -89,25 +89,34 @@ export async function POST(req: NextRequest) {
 
       let payoutTransferId: string | undefined
       try {
-        // Attempt to create transfer of net to seller
-        // Prefer paying out to the experience company (creator/owner of the install)
-        // Use payouts API; provide both camelCase and snake_case for destination
-        // @ts-ignore - SDK surface
-        const transfer = await (whop as any).payouts?.createTransfer?.({
-          amountCents: net,
-          currency: (data as any)?.currency || purchase.currency,
-          destinationCompanyId: destinationCompanyId,
-          destination_company_id: destinationCompanyId,
-          description: isParlay ? `Parlay sale payout (${listingId})` : `Bet access sale payout (${betId})`,
-        })
-        payoutTransferId = transfer?.id
-        console.log('[payout] transfer created', { payoutTransferId, net, destinationCompanyId })
+        // Retrieve our app company's ledger account
+        const appCompanyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID as string | undefined
+        const ledgerResp = appCompanyId
+          ? await (whop as any).companies?.getCompanyLedgerAccount?.({ companyId: appCompanyId })
+          : undefined
+        const ledgerAccountId = ledgerResp?.company?.ledgerAccount?.id
+
+        const destinationId = listing?.sellerUserId
+        const currency = (data as any)?.currency || purchase.currency || 'usd'
+
+        if (ledgerAccountId && destinationId && net > 0) {
+          // Pay the seller user from our ledger (90% net)
+          // @ts-ignore - SDK surface
+          const payout = await (whop as any).payments?.payUser?.({
+            amount: net,
+            currency,
+            destinationId,
+            ledgerAccountId,
+            idempotenceKey: purchase.id,
+            notes: isParlay ? `Parlay sale payout (${listingId})` : `Bet sale payout (${betId})`,
+          })
+          payoutTransferId = payout?.id
+          console.log('[payout] payUser created', { payoutTransferId, net, destinationId, ledgerAccountId })
+        } else {
+          console.warn('[payout] missing ledgerAccountId or destinationId; skipping', { ledgerAccountId, destinationId, net })
+        }
       } catch (e) {
-        console.error('[whop] transfer failed, will remain unset', {
-          err: String(e),
-          destinationCompanyId,
-          net,
-        })
+        console.error('[payout] payUser failed', { err: String(e) })
       }
 
       if (isParlay) {
