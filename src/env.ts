@@ -5,6 +5,7 @@ import z from 'zod'
 export const env = createEnv({
 	server: {
 		WHOP_API_KEY: z.string(),
+            WHOP_WEBHOOK_SECRET: z.string().optional(),
 
 		// Whop Payments
 		ONE_TIME_PURCHASE_ACCESS_PASS_PLAN_ID: z.string(),
@@ -35,9 +36,10 @@ export const env = createEnv({
 		NEXT_PUBLIC_WHOP_AGENT_USER_ID: z.string(),
 		NEXT_PUBLIC_WHOP_COMPANY_ID: z.string(),
 	},
-	runtimeEnv: {
+		runtimeEnv: {
 		// Server
 		WHOP_API_KEY: process.env.WHOP_API_KEY,
+            WHOP_WEBHOOK_SECRET: process.env.WHOP_WEBHOOK_SECRET,
 		ONE_TIME_PURCHASE_ACCESS_PASS_PLAN_ID: process.env.ONE_TIME_PURCHASE_ACCESS_PASS_PLAN_ID,
 		ONE_TIME_PURCHASE_ACCESS_PASS_ID: process.env.ONE_TIME_PURCHASE_ACCESS_PASS_ID,
 		SUBSCRIPTION_PURCHASE_ACCESS_PASS_PLAN_ID:
