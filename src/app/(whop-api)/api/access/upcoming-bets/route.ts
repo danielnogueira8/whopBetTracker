@@ -35,7 +35,28 @@ export async function GET(req: NextRequest) {
       return Response.json({ hasAccess: true })
     }
 
-    const productIds: string[] = Array.isArray(cfg.productIds) ? cfg.productIds : []
+    let productIds: string[] = Array.isArray(cfg.productIds) ? cfg.productIds : []
+
+    // Fallback: if paywall is enabled but no productIds were configured, try to derive from experience
+    if (productIds.length === 0) {
+      try {
+        const exp = await whop.experiences.getExperience({ experienceId })
+        const expProducts = (exp?.products ?? []).map((p: any) => p?.id).filter(Boolean)
+        if (expProducts.length > 0) {
+          productIds = expProducts as string[]
+          console.log('[paywall] derived productIds from experience', { productIds })
+        }
+      } catch (err) {
+        console.warn('[paywall] could not derive productIds from experience', err)
+      }
+    }
+
+    // If we still have no products, treat as locked to avoid fail-open when paywall is on
+    if (productIds.length === 0) {
+      console.warn('[paywall] enabled but no products found; treating as no access')
+      return Response.json({ hasAccess: false })
+    }
+
     console.log('[paywall] checking access', { userId, productIds, enabled: cfg.enabled, companyId })
     
     const hasAccess = await userHasAccessToAnyProducts({ userId, productIds, companyId })
