@@ -9,7 +9,7 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent, Info, Lock, Gem } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent, Info, Lock, Gem, BanknoteArrowUp } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
@@ -316,9 +316,14 @@ export default function UpcomingBetsPage() {
               <Card key={bet.id} className="flex flex-col">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary">
-                      {bet.sport}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="bg-primary/10 text-primary border-primary">
+                        {bet.sport}
+                      </Badge>
+                      {isAdmin && (
+                        <AdminSalesBadge betId={bet.id} />
+                      )}
+                    </div>
                     {isAdmin && (
                       <div className="flex gap-2">
                         <Button
@@ -552,6 +557,37 @@ export default function UpcomingBetsPage() {
       </div>
     </div>
   );
+}
+
+function AdminSalesBadge({ betId }: { betId: string }) {
+  const { data } = useQuery({
+    queryKey: ["bet-listing", betId],
+    queryFn: async () => {
+      const res = await fetch(`/api/bets/${betId}/listings`)
+      if (!res.ok) return { listing: null }
+      return res.json()
+    },
+  })
+
+  const listing = data?.listing as any
+  if (!listing || !listing.active) return null
+
+  const sales = Number(listing?.salesCount ?? 0)
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="outline" className="flex items-center gap-1">
+            <BanknoteArrowUp className="h-3.5 w-3.5" />
+            {sales}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span className="text-xs">Number of sales for this pick</span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 function PerBetLockedContent({ betId }: { betId: string }) {

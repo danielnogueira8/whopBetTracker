@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server"
 import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
-import { betSaleListings, upcomingBets } from "~/db/schema"
-import { eq } from "drizzle-orm"
+import { betPurchases, betSaleListings, upcomingBets } from "~/db/schema"
+import { eq, sql } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 
 export async function GET(
@@ -18,7 +18,17 @@ export async function GET(
       .limit(1)
 
     const listing = rows[0] || null
-    return Response.json({ listing })
+
+    let salesCount = 0
+    if (listing) {
+      const countRows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(betPurchases)
+        .where(eq(betPurchases.listingId, listing.id))
+      salesCount = countRows[0]?.count ?? 0
+    }
+
+    return Response.json({ listing: listing ? { ...listing, salesCount } : null })
   } catch (error) {
     console.error("Error fetching bet listing:", error)
     return Response.json({ listing: null })
