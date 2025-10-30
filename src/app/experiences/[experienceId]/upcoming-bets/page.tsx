@@ -352,7 +352,13 @@ export default function UpcomingBetsPage() {
                     )}
                   </div>
                   <CardTitle className="mt-2 line-clamp-2">{bet.game}</CardTitle>
-                  <CardDescription className="mt-1">{shouldLock ? "Locked" : bet.outcome}</CardDescription>
+                  <CardDescription className="mt-1">
+                    {shouldLock ? (
+                      <BetOutcomeStatus betId={bet.id} outcome={bet.outcome} />
+                    ) : (
+                      bet.outcome
+                    )}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
                   {shouldLock ? (
@@ -894,6 +900,21 @@ function PerParlayLockGate({ parlayId, children }: { parlayId: string, children:
     return <>{children}</>
   }
   return <PerParlayLockedContent parlayId={parlayId} />
+}
+
+function BetOutcomeStatus({ betId, outcome }: { betId: string, outcome: string }) {
+  const searchParams = useSearchParams()
+  const forceBuyer = searchParams?.get('as-buyer') === 'true'
+  const { data } = useQuery({
+    queryKey: ["bet-access", betId, "header"],
+    queryFn: async () => {
+      if (forceBuyer) return { hasAccess: false }
+      const res = await fetch(`/api/bets/${betId}/access`)
+      if (!res.ok) return { hasAccess: false }
+      return res.json()
+    },
+  })
+  return <>{data?.hasAccess ? outcome : 'Locked'}</>
 }
 
 function PerParlayLockedContent({ parlayId }: { parlayId: string }) {
