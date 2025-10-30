@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
 import { betPurchases, betSaleListings, upcomingBets, userBetAccess } from "~/db/schema"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 import { env } from "~/env"
 
@@ -48,8 +48,7 @@ export async function POST(
       const existingAccess = await db
         .select({ id: userBetAccess.id })
         .from(userBetAccess)
-        .where(eq(userBetAccess.betId, bet.id))
-        .where(eq(userBetAccess.userId, userId))
+        .where(and(eq(userBetAccess.betId, bet.id), eq(userBetAccess.userId, userId)))
         .limit(1)
       if (existingAccess[0]) {
         return NextResponse.json({ error: 'Already purchased' }, { status: 409 })
