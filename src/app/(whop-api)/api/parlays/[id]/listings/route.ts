@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server"
 import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
-import { parlaySaleListings, parlays } from "~/db/schema"
-import { eq } from "drizzle-orm"
+import { parlayPurchases, parlaySaleListings, parlays } from "~/db/schema"
+import { eq, sql } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 
 export async function GET(
@@ -13,7 +13,17 @@ export async function GET(
     const { id } = await params
     const rows = await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.parlayId, id)).limit(1)
     const listing = rows[0] || null
-    return Response.json({ listing })
+
+    let salesCount = 0
+    if (listing) {
+      const countRows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(parlayPurchases)
+        .where(eq(parlayPurchases.listingId, listing.id))
+      salesCount = countRows[0]?.count ?? 0
+    }
+
+    return Response.json({ listing: listing ? { ...listing, salesCount } : null })
   } catch (e) {
     console.error('Error fetching parlay listing', e)
     return Response.json({ listing: null })
