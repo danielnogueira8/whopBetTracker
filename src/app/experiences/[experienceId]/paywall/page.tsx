@@ -153,7 +153,7 @@ export default function PaywallPage() {
         <CardHeader>
           <CardTitle>Enable Paywall for Bet Picks</CardTitle>
           <CardDescription>
-            Non-eligible users will see the cards but details are hidden until they subscribe
+            Non-eligible users will see the games you picked but details on the bet are hidden until they subscribe to any of your allowed products. The rest of the app will be available for everyone independently of having paywall enabled or disabled.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -218,6 +218,39 @@ export default function PaywallPage() {
             <Button onClick={() => updateSettings.mutate()} disabled={isSaving}>
               {isSaving ? "Saving..." : "Save Paywall Settings"}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Preview Card */}
+      <Card className="border-dashed mt-8">
+        <CardHeader>
+          <CardTitle>Preview</CardTitle>
+          <CardDescription>
+            This is how non-eligible users will see your Bet Picks
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="max-w-sm">
+            <Card className="flex flex-col">
+              <CardHeader>
+                <div className="flex items-start justify-between gap-2">
+                  <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold bg-primary/10 text-primary border-primary">
+                    Basketball
+                  </span>
+                </div>
+                <CardTitle className="mt-2 line-clamp-2">Lakers vs Warriors</CardTitle>
+                <CardDescription className="mt-1">Locked</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-1 space-y-4">
+                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                  <Lock className="h-6 w-6 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    {lockedMessage || "Subscribe to view odds, units, and explanations."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </CardContent>
       </Card>
