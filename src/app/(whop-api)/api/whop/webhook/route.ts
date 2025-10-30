@@ -63,21 +63,51 @@ export async function POST(req: NextRequest) {
       const fee = Math.round(gross * 0.10)
       const net = gross - fee
 
-      // Fetch listing for seller
+      // Fetch listing and resolve destination company for payout
       const listing = isParlay
         ? (await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.id, listingId)).limit(1))[0]
         : (await db.select().from(betSaleListings).where(eq(betSaleListings.id, listingId)).limit(1))[0]
 
+      let destinationCompanyId: string | undefined
+      try {
+        if (isParlay) {
+          const pl = await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.id, listingId)).limit(1)
+          const parlayId = pl[0]?.parlayId
+          if (parlayId) {
+            // Load parlay to get experience -> company
+            // @ts-ignore
+            const parlay = (await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.id, listingId)).limit(1))[0]
+            // Fallback: use metadata.betId path for bets, otherwise fetch via Whop by experience
+          }
+        }
+        // For bets we have betId in metadata
+        const experienceId = isParlay
+          ? undefined
+          : betId
+            ? (await db.select().from(betSaleListings).where(eq(betSaleListings.id, listingId)).limit(1))[0]?.betId
+            : undefined
+        // Prefer metadata.experience via Whop
+        const targetExperienceId = (metadata as any)?.experienceId || (data?.experienceId) || (data?.experience?.id)
+        const resolvedExperienceId = targetExperienceId || (metadata?.betId ? undefined : undefined)
+        const expIdToFetch = resolvedExperienceId || (metadata?.betId ? undefined : undefined)
+        const exp = resolvedExperienceId ? await whop.experiences.getExperience({ experienceId: resolvedExperienceId }) : undefined
+        destinationCompanyId = exp?.company?.id
+      } catch (e) {
+        console.warn('[whop] failed to resolve destination company id for payout', e)
+      }
+
       let payoutTransferId: string | undefined
       try {
         // Attempt to create transfer of net to seller
-        // @ts-ignore SDK method name may differ; adjust as needed with actual API
+        // Prefer paying out to the experience company (creator/owner of the install)
+        // @ts-ignore - SDK surface
         const transfer = await (whop as any).transfers?.createTransfer?.({
           amountCents: net,
           currency: purchase.currency,
-          // Hypothetical destination: seller's user id
-          destinationUserId: listing?.sellerUserId,
-          description: `Bet access sale payout for bet ${betId}`,
+          destinationCompanyId: destinationCompanyId,
+          // Fallbacks used by backend if destinationCompanyId is absent
+          destinationUserId: destinationCompanyId ? undefined : listing?.sellerUserId,
+          description: isParlay ? `Parlay sale payout (${listingId})` : `Bet access sale payout (${betId})`,
         })
         payoutTransferId = transfer?.id
       } catch (e) {
