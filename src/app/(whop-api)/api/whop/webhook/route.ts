@@ -18,16 +18,18 @@ export async function POST(req: NextRequest) {
     if (!secret) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
+    const signatureHeaderName =
+      (req.headers.get('whop-signature') && 'whop-signature') ||
+      (req.headers.get('Whop-Signature') && 'Whop-Signature') ||
+      (req.headers.get('x-whop-signature') && 'x-whop-signature') ||
+      (req.headers.get('X-Whop-Signature') && 'X-Whop-Signature') ||
+      (req.headers.get('x-whop-webhook-signature') && 'x-whop-webhook-signature') ||
+      (req.headers.get('X-Whop-Webhook-Signature') && 'X-Whop-Webhook-Signature') ||
+      null
+
     const validator = makeWebhookValidator({
       webhookSecret: secret,
-      getSignatureHeader: (r: Request) =>
-        r.headers.get('whop-signature') ||
-        r.headers.get('Whop-Signature') ||
-        r.headers.get('x-whop-signature') ||
-        r.headers.get('X-Whop-Signature') ||
-        r.headers.get('x-whop-webhook-signature') ||
-        r.headers.get('X-Whop-Webhook-Signature') ||
-        '',
+      signatureHeaderName,
     })
     // Debug missing signature once
     if (!(
