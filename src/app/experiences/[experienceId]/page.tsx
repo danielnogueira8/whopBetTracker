@@ -13,7 +13,7 @@ export default function Page() {
     if (!experience) return;
     // Redirect to upcoming-bets by default, preserving query params
     const query = searchParams?.toString()
-    const url = `/experiences/${experience.id}/upcoming-bets${query ? `?${query}` : ''}`
+    const url = `/experiences/${experience.id}/upcoming-bets${query ? `?${query}` : ''}` as any
     router.replace(url);
   }, [router, experience?.id, searchParams]);
 
