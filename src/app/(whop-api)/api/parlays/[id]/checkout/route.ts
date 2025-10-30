@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
-import { parlayPurchases, parlaySaleListings, parlays, userParlayAccess } from "~/db/schema"
+import { experienceSettings, parlayPurchases, parlaySaleListings, parlays, userParlayAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 import { env } from "~/env"
+import { userHasAccessToAnyProducts } from "~/lib/whop"
 
 function planIdForPrice(priceCents: number): string | null {
   const key = `BET_PRICE_${priceCents}_PLAN_ID` as const
@@ -32,9 +33,24 @@ export async function POST(
     const forceBuyer = req.headers.get('x-force-buyer') === 'true'
     if (!forceBuyer) {
       const access = await whop.access.checkIfUserHasAccessToExperience({ experienceId: parlay.experienceId, userId })
-      if (access?.accessLevel === 'admin' || access?.accessLevel === 'customer') {
+      if (access?.accessLevel === 'admin') {
         return NextResponse.json({ error: 'Already eligible' }, { status: 409 })
       }
+      try {
+        const s = await db
+          .select({ paywallConfig: experienceSettings.paywallConfig })
+          .from(experienceSettings)
+          .where(eq(experienceSettings.experienceId, parlay.experienceId))
+          .limit(1)
+        const cfg = (s[0]?.paywallConfig as any) || { enabled: false, productIds: [], rule: 'any' }
+        if (cfg?.enabled) {
+          const productIds: string[] = Array.isArray(cfg.productIds) ? cfg.productIds : []
+          if (productIds.length > 0) {
+            const eligible = await userHasAccessToAnyProducts({ userId, productIds })
+            if (eligible) return NextResponse.json({ error: 'Already eligible' }, { status: 409 })
+          }
+        }
+      } catch {}
     }
 
     if (!forceBuyer) {
