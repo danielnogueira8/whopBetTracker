@@ -2,7 +2,7 @@ import { NextRequest } from "next/server"
 import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
 import { parlays, userParlayAccess } from "~/db/schema"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 
 export async function GET(
@@ -29,8 +29,7 @@ export async function GET(
     const existing = await db
       .select({ id: userParlayAccess.id })
       .from(userParlayAccess)
-      .where(eq(userParlayAccess.parlayId, parlay.id))
-      .where(eq(userParlayAccess.userId, userId))
+      .where(and(eq(userParlayAccess.parlayId, parlay.id), eq(userParlayAccess.userId, userId)))
       .limit(1)
 
     return Response.json({ hasAccess: Boolean(existing[0]) })
