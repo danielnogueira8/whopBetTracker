@@ -526,7 +526,86 @@ export default function UpcomingBetsPage() {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
                   {shouldLock ? (
-                    <PerParlayLockedContent parlayId={parlay.id} />
+                    <PerParlayLockGate parlayId={parlay.id}>
+                      <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <Percent className="h-4 w-4" />
+                          Combined Odds
+                        </span>
+                        <span className="font-medium">
+                          {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
+                        </span>
+                      </div>
+                      {parlay.unitsInvested && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Diamond className="h-4 w-4" />
+                            Units
+                          </span>
+                          <span className="font-medium">{parlay.unitsInvested}</span>
+                        </div>
+                      )}
+                      {parlay.confidenceLevel && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Gauge className="h-4 w-4" />
+                            Confidence
+                          </span>
+                          <Badge 
+                            variant={parlay.confidenceLevel >= 8 ? "default" : parlay.confidenceLevel >= 6 ? "secondary" : "outline"}
+                            className={parlay.confidenceLevel >= 8 ? "bg-green-500 text-white" : parlay.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
+                          >
+                            {parlay.confidenceLevel}/10
+                          </Badge>
+                        </div>
+                      )}
+                      {parlay.eventDate && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>{formatEventDate(parlay.eventDate)}</span>
+                        </div>
+                      )}
+                      <div className="pt-4 border-t space-y-3">
+                        <p className="text-sm font-medium text-muted-foreground">Legs</p>
+                        {parlay.legs.map((leg, index) => (
+                          <div key={leg.id} className="p-3 bg-muted/30 rounded-md">
+                            <div className="flex items-start justify-between mb-1">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Leg {index + 1}: {leg.sport}
+                              </span>
+                              <span className="text-xs font-medium">
+                                {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium">{leg.game}</p>
+                            <p className="text-xs text-muted-foreground">{leg.outcome}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {parlay.explanation && (
+                        <div className="pt-4 border-t">
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Explanation</p>
+                          <div className="p-3 bg-muted/50 rounded-md text-sm leading-relaxed">
+                            {parlay.explanation}
+                          </div>
+                        </div>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          className="w-full mt-auto"
+                          onClick={() => {
+                            setSelectedParlay(parlay);
+                            setConvertParlayDialogOpen(true);
+                          }}
+                        >
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Convert to Bet
+                        </Button>
+                      )}
+                      </>
+                    </PerParlayLockGate>
                   ) : (
                     <>
                       <div className="flex items-center justify-between text-sm">
@@ -761,6 +840,26 @@ function PerBetLockGate({ betId, children }: { betId: string, children: React.Re
   return <PerBetLockedContent betId={betId} />
 }
 
+function PerParlayLockGate({ parlayId, children }: { parlayId: string, children: React.ReactNode }) {
+  const searchParams = useSearchParams()
+  const forceBuyer = searchParams?.get('as-buyer') === 'true'
+
+  const { data: accessData } = useQuery({
+    queryKey: ["parlay-access", parlayId, "gate"],
+    queryFn: async () => {
+      if (forceBuyer) return { hasAccess: false }
+      const res = await fetch(`/api/parlays/${parlayId}/access`)
+      if (!res.ok) return { hasAccess: false }
+      return res.json()
+    },
+  })
+
+  if (accessData?.hasAccess) {
+    return <>{children}</>
+  }
+  return <PerParlayLockedContent parlayId={parlayId} />
+}
+
 function PerParlayLockedContent({ parlayId }: { parlayId: string }) {
   const iframeSdk = useIframeSdk()
   const queryClient = useQueryClient()
@@ -796,6 +895,10 @@ function PerParlayLockedContent({ parlayId }: { parlayId: string }) {
       try {
         if (iframeSdk) {
           await iframeSdk.inAppPurchase({ planId: data.planId, id: data.checkoutId })
+          // Best-effort confirmation in case webhook is delayed
+          try {
+            await fetch(`/api/parlays/${parlayId}/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ checkoutId: data.checkoutId }) })
+          } catch {}
           const poll = async (retries = 20) => {
             if (retries === 0) return
             const res = await fetch(`/api/parlays/${parlayId}/access`)
