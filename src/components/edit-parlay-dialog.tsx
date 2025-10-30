@@ -237,7 +237,7 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
                         <Label htmlFor={`sport-${index}`}>Sport</Label>
                         <Input
                           id={`sport-${index}`}
-                          placeholder="NFL, NBA, etc."
+                          placeholder="e.g., Basketball, Football"
                           value={leg.sport}
                           onChange={(e) => updateLeg(index, "sport", e.target.value)}
                           required

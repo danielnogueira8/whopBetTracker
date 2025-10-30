@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useWhop } from "~/lib/whop-context"
+import { SidebarTrigger } from "~/components/ui/sidebar"
 import { Spinner } from "~/components/ui/spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Button } from "~/components/ui/button"
@@ -132,16 +133,20 @@ export default function PaywallPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-2xl p-6">
-      <div className="mb-6">
+    <div className="flex flex-col min-h-screen bg-background">
+      <div className="flex items-center gap-4 p-4 border-b">
+        <SidebarTrigger />
         <div className="flex items-center gap-2">
           <BrickWallShield className="h-6 w-6" />
-          <h1 className="text-3xl font-bold">Paywall</h1>
+          <h1 className="text-xl font-semibold">Paywall</h1>
         </div>
-        <p className="mt-2 text-muted-foreground">
-          Control who can see your Bet Picks content
-        </p>
       </div>
+      <div className="max-w-2xl p-6">
+        <div className="mb-6">
+          <p className="text-muted-foreground">
+            Control who can see your Bet Picks content
+          </p>
+        </div>
 
       {saveMessage && (
         <Alert className={`mb-4 ${saveMessage.type === "success" ? "border-green-500" : "border-red-500"}`}>
@@ -254,6 +259,7 @@ export default function PaywallPage() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   )
 }

@@ -18,11 +18,17 @@ export const env = createEnv({
 		AD_BANNER_1_WEEK_PROD_ID: z.string(),
 		AD_BANNER_1_MONTH_PROD_ID: z.string(),
 		
-		// Ad Banner Plans (Pricing Plans)
+			// Ad Banner Plans (Pricing Plans)
 		AD_BANNER_1_MINUTE_PLAN_ID: z.string(),
 		AD_BANNER_1_DAY_PLAN_ID: z.string(),
 		AD_BANNER_1_WEEK_PLAN_ID: z.string(),
 		AD_BANNER_1_MONTH_PLAN_ID: z.string(),
+
+			// Per-bet price → Whop Plan mappings (one-time plans)
+			BET_PRICE_100_PLAN_ID: z.string().optional(),
+			BET_PRICE_490_PLAN_ID: z.string().optional(),
+			BET_PRICE_990_PLAN_ID: z.string().optional(),
+			BET_PRICE_1990_PLAN_ID: z.string().optional(),
 	},
 	client: {
 		NEXT_PUBLIC_WHOP_APP_ID: z.string(),
@@ -44,11 +50,17 @@ export const env = createEnv({
 		AD_BANNER_1_WEEK_PROD_ID: process.env.AD_BANNER_1_WEEK_PROD_ID,
 		AD_BANNER_1_MONTH_PROD_ID: process.env.AD_BANNER_1_MONTH_PROD_ID,
 		
-		// Ad Banner Plans (Pricing Plans)
+			// Ad Banner Plans (Pricing Plans)
 		AD_BANNER_1_MINUTE_PLAN_ID: process.env.AD_BANNER_1_MINUTE_PLAN_ID,
 		AD_BANNER_1_DAY_PLAN_ID: process.env.AD_BANNER_1_DAY_PLAN_ID,
 		AD_BANNER_1_WEEK_PLAN_ID: process.env.AD_BANNER_1_WEEK_PLAN_ID,
 		AD_BANNER_1_MONTH_PLAN_ID: process.env.AD_BANNER_1_MONTH_PLAN_ID,
+
+			// Per-bet price → Whop Plan mappings (one-time plans)
+			BET_PRICE_100_PLAN_ID: process.env.BET_PRICE_100_PLAN_ID,
+			BET_PRICE_490_PLAN_ID: process.env.BET_PRICE_490_PLAN_ID,
+			BET_PRICE_990_PLAN_ID: process.env.BET_PRICE_990_PLAN_ID,
+			BET_PRICE_1990_PLAN_ID: process.env.BET_PRICE_1990_PLAN_ID,
 
 		// Client
 		NEXT_PUBLIC_WHOP_APP_ID: process.env.NEXT_PUBLIC_WHOP_APP_ID,

@@ -16,7 +16,7 @@ import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { ParlayDisplay } from "~/components/parlay-display";
 import { Pagination } from "~/components/pagination";
-import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp, Edit, Info, Percent } from "lucide-react";
+import { Plus, Trash2, Search, Settings, TrendingUp, ChevronDown, ChevronUp, Edit, Info, Percent, User } from "lucide-react";
 import { SortToggle } from "~/components/sort-toggle";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
@@ -349,6 +349,7 @@ export default function MyBetsPage() {
         <SidebarTrigger />
         <TooltipProvider>
           <div className="flex items-center gap-2">
+            <User className="h-6 w-6" />
             <h1 className="text-xl font-semibold">{capitalizedDisplay} Tracker</h1>
             <Tooltip>
               <TooltipTrigger>

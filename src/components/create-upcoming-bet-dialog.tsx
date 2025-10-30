@@ -46,6 +46,8 @@ export function CreateUpcomingBetDialog({
   const [unitsToInvest, setUnitsToInvest] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [shouldPostToForum, setShouldPostToForum] = useState(false);
+  const [forSale, setForSale] = useState(false);
+  const [price, setPrice] = useState<string>(""); // dollars string
 
   const oddPlaceholders = {
     american: "+150 or -200",
@@ -109,8 +111,25 @@ export function CreateUpcomingBetDialog({
       setConfidenceLevel("5");
       setUnitsToInvest("");
       setEventDate("");
+      setForSale(false);
+      setPrice("");
     },
   });
+
+  const createListing = useMutation({
+    mutationFn: async ({ betId, priceCents }: { betId: string; priceCents: number }) => {
+      const response = await fetch(`/api/bets/${betId}/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceCents, currency: 'usd', active: true }),
+      })
+      if (!response.ok) throw new Error("Failed to create listing")
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] })
+    },
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,8 +151,15 @@ export function CreateUpcomingBetDialog({
       eventDate,
       shouldPostToForum,
     };
-
-    createBet.mutate(betData);
+    createBet.mutate(betData, {
+      onSuccess: (res) => {
+        const betId = res?.bet?.id as string | undefined
+        const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
+        if (forSale && betId && priceCents > 0) {
+          createListing.mutate({ betId, priceCents })
+        }
+      }
+    });
   };
 
   return (
@@ -288,6 +314,21 @@ export function CreateUpcomingBetDialog({
                 required
               />
             </div>
+            {settings?.paywallConfig?.enabled && (
+              <div className="flex items-start justify-between space-x-4 rounded-lg border p-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="for-sale">List for sale</Label>
+                  <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="grid gap-1">
+                    <Label htmlFor="price">Price (USD)</Label>
+                    <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} disabled={!forSale} placeholder="9.99" />
+                  </div>
+                  <Switch id="for-sale" checked={forSale} onCheckedChange={setForSale} />
+                </div>
+              </div>
+            )}
             {settings?.forumId && (
               <div className="flex items-center justify-between space-x-2 rounded-lg border p-3">
                 <div className="space-y-0.5">

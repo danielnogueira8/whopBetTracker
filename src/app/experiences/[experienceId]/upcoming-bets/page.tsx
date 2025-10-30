@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useIframeSdk } from '@whop/react'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { useWhop } from "~/lib/whop-context";
@@ -8,7 +9,7 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent, Info, Lock } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent, Info, Lock, Gem } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
@@ -217,6 +218,7 @@ export default function UpcomingBetsPage() {
         <SidebarTrigger />
         <TooltipProvider>
           <div className="flex items-center gap-2">
+            <Gem className="h-6 w-6" />
             <h1 className="text-xl font-semibold">{companyName} Picks</h1>
             <Tooltip>
               <TooltipTrigger>
@@ -263,14 +265,14 @@ export default function UpcomingBetsPage() {
             <AlertDialogDescription>
               Are you sure you want to delete this pick? This action cannot be undone.
               {betToDelete && (
-                <div className="mt-2 p-2 bg-muted rounded text-sm">
+                <span className="mt-2 p-2 bg-muted rounded text-sm block">
                   <strong>{betToDelete.sport}</strong> - {betToDelete.game} - {betToDelete.outcome}
-                </div>
+                </span>
               )}
               {parlayToDelete && (
-                <div className="mt-2 p-2 bg-muted rounded text-sm">
+                <span className="mt-2 p-2 bg-muted rounded text-sm block">
                   <strong>{parlayToDelete.name}</strong> - {parlayToDelete.legs.length} leg parlay
-                </div>
+                </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -349,12 +351,7 @@ export default function UpcomingBetsPage() {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
                   {shouldLock ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                      <Lock className="h-6 w-6 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {publicSettings?.paywallConfig?.lockedMessage || "Subscribe to view odds, units, and explanations."}
-                      </p>
-                    </div>
+                    <PerBetLockedContent betId={bet.id} />
                   ) : (
                     <>
                       <div className="flex items-center justify-between text-sm">
@@ -463,12 +460,7 @@ export default function UpcomingBetsPage() {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
                   {shouldLock ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                      <Lock className="h-6 w-6 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        {publicSettings?.paywallConfig?.lockedMessage || "Subscribe to view odds, units, and explanations."}
-                      </p>
-                    </div>
+                    <PerParlayLockedContent parlayId={parlay.id} />
                   ) : (
                     <>
                       <div className="flex items-center justify-between text-sm">
@@ -560,5 +552,176 @@ export default function UpcomingBetsPage() {
       </div>
     </div>
   );
+}
+
+function PerBetLockedContent({ betId }: { betId: string }) {
+  const iframeSdk = useIframeSdk()
+  const queryClient = useQueryClient()
+  const searchParams = useSearchParams()
+  const forceBuyer = searchParams?.get('as-buyer') === 'true'
+
+  const { data: accessData } = useQuery({
+    queryKey: ["bet-access", betId],
+    queryFn: async () => {
+      if (forceBuyer) return { hasAccess: false }
+      const res = await fetch(`/api/bets/${betId}/access`)
+      if (!res.ok) return { hasAccess: false }
+      return res.json()
+    },
+  })
+
+  const { data: listingData } = useQuery({
+    queryKey: ["bet-listing", betId],
+    queryFn: async () => {
+      const res = await fetch(`/api/bets/${betId}/listings`)
+      if (!res.ok) return { listing: null }
+      return res.json()
+    },
+  })
+
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/bets/${betId}/checkout`, { method: 'POST', headers: forceBuyer ? { 'x-force-buyer': 'true' } : {} })
+      if (!res.ok) throw new Error('Failed to create checkout')
+      return res.json()
+    },
+    onSuccess: async (data) => {
+      try {
+        if (iframeSdk) {
+          await iframeSdk.inAppPurchase({ planId: data.planId, id: data.checkoutId })
+          // Poll access endpoint for confirmation
+          const poll = async (retries = 20) => {
+            if (retries === 0) return
+            const res = await fetch(`/api/bets/${betId}/access`)
+            if (res.ok) {
+              const a = await res.json()
+              if (a?.hasAccess) {
+                queryClient.invalidateQueries({ queryKey: ["bet-access", betId] })
+                return
+              }
+            }
+            setTimeout(() => poll(retries - 1), 1000)
+          }
+          setTimeout(() => poll(), 3000)
+        }
+      } catch (e) {
+        console.error('Checkout failed', e)
+      }
+    }
+  })
+
+  if (accessData?.hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+        <Lock className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">You own access to this pick. Refresh to view details.</p>
+      </div>
+    )
+  }
+
+  const listing = listingData?.listing
+  if (listing?.active) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+        <Lock className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Unlock this pick for ${(listing.priceCents / 100).toFixed(2)} USD</p>
+        <Button size="sm" onClick={() => checkoutMutation.mutate()} disabled={checkoutMutation.isPending}>
+          {checkoutMutation.isPending ? 'Processing…' : 'Buy access'}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+      <Lock className="h-6 w-6 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">{`Subscribe to view odds, units, and explanations.`}</p>
+    </div>
+  )
+}
+
+function PerParlayLockedContent({ parlayId }: { parlayId: string }) {
+  const iframeSdk = useIframeSdk()
+  const queryClient = useQueryClient()
+  const searchParams = useSearchParams()
+  const forceBuyer = searchParams?.get('as-buyer') === 'true'
+
+  const { data: accessData } = useQuery({
+    queryKey: ["parlay-access", parlayId],
+    queryFn: async () => {
+      if (forceBuyer) return { hasAccess: false }
+      const res = await fetch(`/api/parlays/${parlayId}/access`)
+      if (!res.ok) return { hasAccess: false }
+      return res.json()
+    },
+  })
+
+  const { data: listingData } = useQuery({
+    queryKey: ["parlay-listing", parlayId],
+    queryFn: async () => {
+      const res = await fetch(`/api/parlays/${parlayId}/listings`)
+      if (!res.ok) return { listing: null }
+      return res.json()
+    },
+  })
+
+  const checkoutMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/parlays/${parlayId}/checkout`, { method: 'POST', headers: forceBuyer ? { 'x-force-buyer': 'true' } : {} })
+      if (!res.ok) throw new Error('Failed to create checkout')
+      return res.json()
+    },
+    onSuccess: async (data) => {
+      try {
+        if (iframeSdk) {
+          await iframeSdk.inAppPurchase({ planId: data.planId, id: data.checkoutId })
+          const poll = async (retries = 20) => {
+            if (retries === 0) return
+            const res = await fetch(`/api/parlays/${parlayId}/access`)
+            if (res.ok) {
+              const a = await res.json()
+              if (a?.hasAccess) {
+                queryClient.invalidateQueries({ queryKey: ["parlay-access", parlayId] })
+                return
+              }
+            }
+            setTimeout(() => poll(retries - 1), 1000)
+          }
+          setTimeout(() => poll(), 3000)
+        }
+      } catch (e) {
+        console.error('Checkout failed', e)
+      }
+    }
+  })
+
+  if (accessData?.hasAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+        <Lock className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">You own access to this parlay. Refresh to view details.</p>
+      </div>
+    )
+  }
+
+  const listing = listingData?.listing
+  if (listing?.active) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+        <Lock className="h-6 w-6 text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Unlock this parlay for ${(listing.priceCents / 100).toFixed(2)} USD</p>
+        <Button size="sm" onClick={() => checkoutMutation.mutate()} disabled={checkoutMutation.isPending}>
+          {checkoutMutation.isPending ? 'Processing…' : 'Buy access'}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+      <Lock className="h-6 w-6 text-muted-foreground" />
+      <p className="text-sm text-muted-foreground">{`Subscribe to view odds, units, and explanations.`}</p>
+    </div>
+  )
 }
 

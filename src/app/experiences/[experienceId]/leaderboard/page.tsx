@@ -6,7 +6,7 @@ import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Badge } from "~/components/ui/badge";
-import { Trophy, TrendingUp, Users } from "lucide-react";
+import { Trophy, TrendingUp, Users, Award } from "lucide-react";
 import { Spinner } from "~/components/ui/spinner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { toDecimal, fromDecimal, calculateBettingROI, type OddFormat } from "~/lib/bet-utils";
@@ -383,7 +383,10 @@ export default function LeaderboardPage() {
     <div className="flex flex-col min-h-screen bg-background">
       <div className="flex items-center gap-4 p-4 border-b">
         <SidebarTrigger />
-        <h1 className="text-xl font-semibold">Leaderboard</h1>
+        <div className="flex items-center gap-2">
+          <Award className="h-6 w-6" />
+          <h1 className="text-xl font-semibold">Leaderboard</h1>
+        </div>
       </div>
 
       <div className="flex-1 p-6">

@@ -12,7 +12,7 @@ import { Progress } from "~/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart";
-import { ArrowLeft, TrendingUp, TrendingDown, Target, BarChart3, Gem, DollarSign, Filter, Download, RotateCcw } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Target, BarChart3, Gem, DollarSign, Filter, Download, RotateCcw, LineChart as LineChartIcon } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ScatterChart, Scatter, ZAxis, ReferenceLine } from "recharts";
 import { Spinner } from "~/components/ui/spinner";
 import { toDecimal, type OddFormat } from "~/lib/bet-utils";
@@ -558,10 +558,13 @@ export default function PersonalAnalyticsPage() {
   if (isLoading || isLoadingParlays) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
-        <div className="flex items-center gap-4 p-4 border-b">
-          <SidebarTrigger />
+      <div className="flex items-center gap-4 p-4 border-b">
+        <SidebarTrigger />
+        <div className="flex items-center gap-2">
+          <LineChartIcon className="h-6 w-6" />
           <h1 className="text-xl font-semibold">My Analytics</h1>
         </div>
+      </div>
         <div className="flex-1 p-6 flex flex-col items-center justify-center gap-4">
           <Spinner className="size-8 text-primary animate-spin" />
           <p className="text-muted-foreground">Loading analytics...</p>
@@ -580,7 +583,10 @@ export default function PersonalAnalyticsPage() {
             Back to My Bets
           </Button>
         </Link>
-        <h1 className="text-xl font-semibold">My Analytics</h1>
+        <div className="flex items-center gap-2">
+          <LineChartIcon className="h-6 w-6" />
+          <h1 className="text-xl font-semibold">My Analytics</h1>
+        </div>
         <Button onClick={handleExport} variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           Export CSV

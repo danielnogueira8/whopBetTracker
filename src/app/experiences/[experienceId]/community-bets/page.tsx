@@ -13,7 +13,7 @@ import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditBetDialog } from "~/components/edit-bet-dialog";
 import { EditParlayDialog } from "~/components/edit-parlay-dialog";
 import { Pagination } from "~/components/pagination";
-import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp, Info, Percent } from "lucide-react";
+import { Plus, Edit, Search, Trash2, Settings, TrendingUp, ChevronDown, ChevronUp, Info, Percent, FileSpreadsheet } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { displayOdds, toDecimal, type OddFormat } from "~/lib/bet-utils";
 import { getBetCategoryLabel } from "~/lib/bet-category-utils";
@@ -341,6 +341,7 @@ export default function CommunityBetsPage() {
             <SidebarTrigger />
             <TooltipProvider>
               <div className="flex items-center gap-2">
+                <FileSpreadsheet className="h-6 w-6" />
                 <h1 className="text-xl font-semibold">{companyName} Tracker</h1>
                 <Tooltip>
                   <TooltipTrigger>

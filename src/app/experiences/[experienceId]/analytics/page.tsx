@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Progress } from "~/components/ui/progress";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "~/components/ui/chart";
-import { ArrowLeft, TrendingUp, TrendingDown, Target, DollarSign, BarChart3, Gem, Filter, Download, RotateCcw } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Target, DollarSign, BarChart3, Gem, Filter, Download, RotateCcw, LineChart as LineChartIcon } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 import { Spinner } from "~/components/ui/spinner";
 import { toDecimal, type OddFormat } from "~/lib/bet-utils";
@@ -502,7 +502,10 @@ export default function AnalyticsPage() {
       <div className="flex flex-col min-h-screen bg-background">
         <div className="flex items-center gap-4 p-4 border-b">
           <SidebarTrigger />
-          <h1 className="text-xl font-semibold">Analytics</h1>
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-6 w-6" />
+            <h1 className="text-xl font-semibold">Analytics</h1>
+          </div>
         </div>
         <div className="flex-1 p-6 flex flex-col items-center justify-center gap-4">
           <Spinner className="size-8 text-primary animate-spin" />
@@ -522,7 +525,10 @@ export default function AnalyticsPage() {
             Back to Bets
           </Button>
         </Link>
-        <h1 className="text-xl font-semibold">{companyName} - Analytics</h1>
+        <div className="flex items-center gap-2">
+          <BarChart3 className="h-6 w-6" />
+          <h1 className="text-xl font-semibold">{companyName} - Analytics</h1>
+        </div>
         <Button onClick={handleExport} variant="outline" size="sm">
           <Download className="h-4 w-4 mr-2" />
           Export CSV

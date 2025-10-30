@@ -64,6 +64,8 @@ export function EditUpcomingBetDialog({
   const [unitsToInvest, setUnitsToInvest] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [shouldUpdateForumPost, setShouldUpdateForumPost] = useState(false);
+  const [forSale, setForSale] = useState(false);
+  const [price, setPrice] = useState<string>("");
 
   useEffect(() => {
     if (bet) {
@@ -74,7 +76,7 @@ export function EditUpcomingBetDialog({
       setBetCategory(bet.betCategory);
       setOddFormat(bet.oddFormat);
       setOddValue(bet.oddValue);
-      setExplanation(bet.explanation);
+      setExplanation(bet.explanation || "");
       setConfidenceLevel(bet.confidenceLevel?.toString() || "5");
       setUnitsToInvest(bet.unitsToInvest || "");
       // Format date for datetime-local input
@@ -83,6 +85,19 @@ export function EditUpcomingBetDialog({
         .toISOString()
         .slice(0, 16);
       setEventDate(formattedDate);
+      // Load current listing
+      fetch(`/api/bets/${bet.id}/listings`).then(async (res) => {
+        if (!res.ok) return
+        const data = await res.json()
+        const listing = data?.listing
+        if (listing) {
+          setForSale(Boolean(listing.active))
+          setPrice((listing.priceCents / 100).toFixed(2))
+        } else {
+          setForSale(false)
+          setPrice("")
+        }
+      }).catch(() => {})
     }
   }, [bet]);
 
@@ -111,6 +126,21 @@ export function EditUpcomingBetDialog({
     },
   });
 
+  const saveListing = useMutation({
+    mutationFn: async ({ betId, priceCents, active }: { betId: string; priceCents: number; active: boolean }) => {
+      const response = await fetch(`/api/bets/${betId}/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceCents, currency: 'usd', active }),
+      })
+      if (!response.ok) throw new Error("Failed to save listing")
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -132,7 +162,21 @@ export function EditUpcomingBetDialog({
       shouldUpdateForumPost,
     };
 
-    updateBet.mutate(betData);
+    updateBet.mutate(betData, {
+      onSuccess: () => {
+        if (bet?.id) {
+          const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
+          if (forSale && priceCents > 0) {
+            saveListing.mutate({ betId: bet.id, priceCents, active: true })
+          } else {
+            // deactivate listing if toggled off
+            if (priceCents >= 0) {
+              saveListing.mutate({ betId: bet.id, priceCents: Math.max(priceCents, 0), active: false })
+            }
+          }
+        }
+      }
+    });
   };
 
   return (
@@ -239,7 +283,7 @@ export function EditUpcomingBetDialog({
               <Label htmlFor="explanation">Explanation (optional)</Label>
               <Textarea
                 id="explanation"
-                value={explanation}
+                value={explanation ?? ""}
                 onChange={(e) => setExplanation(e.target.value)}
                 placeholder="Explain your pick reasoning..."
                 className="min-h-[100px]"
@@ -286,6 +330,20 @@ export function EditUpcomingBetDialog({
                 onChange={(e) => setEventDate(e.target.value)}
                 required
               />
+            </div>
+            <div className="flex items-start justify-between space-x-4 rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="for-sale-edit">List for sale</Label>
+                <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="grid gap-1">
+                  <Label htmlFor="price-edit">Price (USD)
+                  </Label>
+                  <Input id="price-edit" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} disabled={!forSale} placeholder="9.99" />
+                </div>
+                <Switch id="for-sale-edit" checked={forSale} onCheckedChange={setForSale} />
+              </div>
             </div>
             {bet?.forumPostId && (
               <div className="flex items-center justify-between space-x-2 rounded-lg border p-3">

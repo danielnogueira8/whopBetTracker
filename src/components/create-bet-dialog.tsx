@@ -85,6 +85,14 @@ export function CreateBetDialog({
   const [explanation, setExplanation] = useState("");
   const [parlayConfidenceLevel, setParlayConfidenceLevel] = useState("");
   const [shouldPostToForum, setShouldPostToForum] = useState(false);
+  // Sale controls (upcoming bets only)
+  const [forSale, setForSale] = useState(false);
+  const [price, setPrice] = useState<string>("");
+  const PRICE_OPTIONS = ["1.00", "4.90", "9.90", "19.90"] as const;
+
+  useEffect(() => {
+    if (forSale && !price) setPrice(PRICE_OPTIONS[0]);
+  }, [forSale]);
 
   // Fetch settings for forum posting
   const { data: settings } = useQuery({
@@ -170,15 +178,37 @@ export function CreateBetDialog({
       if (!response.ok) throw new Error("Failed to create parlay");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["parlays"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] });
       queryClient.invalidateQueries({ queryKey: ["community-bets"] });
       queryClient.invalidateQueries({ queryKey: ["my-bets"] });
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
-      onOpenChange(false);
+      const parlayId = res?.parlay?.id as string | undefined
+      const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
+      if (isUpcomingBet && isParlay && parlayId && forSale && priceCents > 0) {
+        createParlayListing.mutate({ parlayId, priceCents })
+      } else {
+        onOpenChange(false)
+      }
     },
   });
+
+  const createParlayListing = useMutation({
+    mutationFn: async ({ parlayId, priceCents }: { parlayId: string; priceCents: number }) => {
+      const response = await fetch(`/api/parlays/${parlayId}/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceCents, currency: 'usd', active: true }),
+      })
+      if (!response.ok) throw new Error("Failed to create parlay listing")
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcoming-parlays"] })
+      onOpenChange(false)
+    },
+  })
 
   const createUpcomingBet = useMutation({
     mutationFn: async (betData: any) => {
@@ -190,11 +220,33 @@ export function CreateBetDialog({
       if (!response.ok) throw new Error("Failed to create upcoming bet");
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
-      onOpenChange(false);
+      const betId = res?.bet?.id as string | undefined
+      const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
+      if (betId && forSale && priceCents > 0) {
+        createListing.mutate({ betId, priceCents })
+      } else {
+        onOpenChange(false)
+      }
     },
   });
+
+  const createListing = useMutation({
+    mutationFn: async ({ betId, priceCents }: { betId: string; priceCents: number }) => {
+      const response = await fetch(`/api/bets/${betId}/listings`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priceCents, currency: 'usd', active: true }),
+      })
+      if (!response.ok) throw new Error("Failed to create listing")
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] })
+      onOpenChange(false)
+    },
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,7 +452,7 @@ export function CreateBetDialog({
                           <Label htmlFor={`sport-${index}`}>Sport</Label>
                           <Input
                             id={`sport-${index}`}
-                            placeholder="NFL, NBA, etc."
+                            placeholder="e.g., Basketball, Football"
                             value={leg.sport}
                             onChange={(e) => updateLeg(index, "sport", e.target.value)}
                             required
@@ -566,6 +618,33 @@ export function CreateBetDialog({
                           checked={shouldPostToForum}
                           onCheckedChange={setShouldPostToForum}
                         />
+                      </div>
+                    )}
+                    {settings?.paywallConfig?.enabled && (
+                      <div className="rounded-lg border p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="for-sale-parlay">List for sale</Label>
+                          <Switch id="for-sale-parlay" checked={forSale} onCheckedChange={setForSale} />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label>Price (USD)</Label>
+                          <div className="flex gap-2">
+                            {PRICE_OPTIONS.map((p) => (
+                              <Button
+                                key={p}
+                                type="button"
+                                variant={price === p ? 'default' : 'outline'}
+                                size="sm"
+                                disabled={!forSale}
+                                onClick={() => setPrice(p)}
+                              >
+                                ${p}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
+                        <p className="text-xs text-muted-foreground">Disclaimer: This feature is experimental and still in testing.</p>
                       </div>
                     )}
                   </>
@@ -735,6 +814,33 @@ export function CreateBetDialog({
                           checked={shouldPostToForum}
                           onCheckedChange={setShouldPostToForum}
                         />
+                      </div>
+                    )}
+                    {settings?.paywallConfig?.enabled && (
+                      <div className="rounded-lg border p-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="for-sale">List for sale</Label>
+                          <Switch id="for-sale" checked={forSale} onCheckedChange={setForSale} />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label>Price (USD)</Label>
+                          <div className="flex gap-2">
+                            {PRICE_OPTIONS.map((p) => (
+                              <Button
+                                key={p}
+                                type="button"
+                                variant={price === p ? 'default' : 'outline'}
+                                size="sm"
+                                disabled={!forSale}
+                                onClick={() => setPrice(p)}
+                              >
+                                ${p}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
+                        <p className="text-xs text-muted-foreground">Disclaimer: This feature is experimental and still in testing.</p>
                       </div>
                     )}
                   </>

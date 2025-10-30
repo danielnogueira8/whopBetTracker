@@ -138,3 +138,92 @@ export const parlayLegs = pgTable('parlay_legs', {
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// Per-bet sale listings (admins list locked upcoming bets for sale)
+export const betSaleListings = pgTable('bet_sale_listings', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	betId: uuid('bet_id').notNull().references(() => upcomingBets.id, { onDelete: 'cascade' }),
+	sellerUserId: text('seller_user_id').notNull(),
+	priceCents: integer('price_cents').notNull(),
+	currency: text('currency').notNull().default('usd'),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Purchases of individual bet access
+export const betPurchases = pgTable('bet_purchases', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	listingId: uuid('listing_id').notNull().references(() => betSaleListings.id, { onDelete: 'cascade' }),
+	buyerUserId: text('buyer_user_id').notNull(),
+	checkoutId: text('checkout_id').notNull(),
+	amountCents: integer('amount_cents').notNull(),
+	currency: text('currency').notNull().default('usd'),
+	status: text('status').notNull().default('pending'), // pending|succeeded|refunded|failed
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Granted access to a specific upcoming bet for a user
+export const userBetAccess = pgTable('user_bet_access', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	betId: uuid('bet_id').notNull().references(() => upcomingBets.id, { onDelete: 'cascade' }),
+	userId: text('user_id').notNull(),
+	source: text('source').notNull().default('purchase'), // purchase|grant
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+// Ledger of fees and payouts per bet purchase
+export const appFeesLedger = pgTable('app_fees_ledger', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	purchaseId: uuid('purchase_id').notNull().references(() => betPurchases.id, { onDelete: 'cascade' }),
+	grossCents: integer('gross_cents').notNull(),
+	feeCents: integer('fee_cents').notNull(), // 10%
+	netCents: integer('net_cents').notNull(), // to seller
+	payoutTransferId: text('payout_transfer_id'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+// Parlay sales
+export const parlaySaleListings = pgTable('parlay_sale_listings', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	parlayId: uuid('parlay_id').notNull().references(() => parlays.id, { onDelete: 'cascade' }),
+	sellerUserId: text('seller_user_id').notNull(),
+	priceCents: integer('price_cents').notNull(),
+	currency: text('currency').notNull().default('usd'),
+	active: boolean('active').notNull().default(true),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const parlayPurchases = pgTable('parlay_purchases', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	listingId: uuid('listing_id').notNull().references(() => parlaySaleListings.id, { onDelete: 'cascade' }),
+	buyerUserId: text('buyer_user_id').notNull(),
+	checkoutId: text('checkout_id').notNull(),
+	amountCents: integer('amount_cents').notNull(),
+	currency: text('currency').notNull().default('usd'),
+	status: text('status').notNull().default('pending'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+
+export const userParlayAccess = pgTable('user_parlay_access', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	parlayId: uuid('parlay_id').notNull().references(() => parlays.id, { onDelete: 'cascade' }),
+	userId: text('user_id').notNull(),
+	source: text('source').notNull().default('purchase'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const parlayFeesLedger = pgTable('parlay_fees_ledger', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	purchaseId: uuid('purchase_id').notNull().references(() => parlayPurchases.id, { onDelete: 'cascade' }),
+	grossCents: integer('gross_cents').notNull(),
+	feeCents: integer('fee_cents').notNull(),
+	netCents: integer('net_cents').notNull(),
+	payoutTransferId: text('payout_transfer_id'),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})

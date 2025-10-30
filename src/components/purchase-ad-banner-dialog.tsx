@@ -23,10 +23,10 @@ interface PurchaseAdBannerDialogProps {
 }
 
 const PRICING = {
-	'1_minute': { price: 0, label: '1 Minute (Free Test)', duration: '1 minute' },
-	'1_day': { price: 20, label: '1 Day', duration: '1 day' },
-	'1_week': { price: 100, label: '1 Week', duration: '7 days' },
-	'1_month': { price: 300, label: '1 Month', duration: '30 days' },
+    '1_minute': { price: 0, label: '1 Minute (Free Test)', duration: '1 minute' },
+    '1_day': { price: 50, label: '1 Day', duration: '1 day' },
+    '1_week': { price: 200, label: '1 Week', duration: '7 days' },
+    '1_month': { price: 500, label: '1 Month', duration: '30 days' },
 }
 
 export function PurchaseAdBannerDialog({ open, onOpenChange }: PurchaseAdBannerDialogProps) {
