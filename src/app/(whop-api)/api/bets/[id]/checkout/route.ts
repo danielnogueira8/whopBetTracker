@@ -72,11 +72,20 @@ export async function POST(
     const planId = planIdForPrice(listing.priceCents) || env.ONE_TIME_PURCHASE_ACCESS_PASS_PLAN_ID
 
     // Create checkout with metadata for webhook reconciliation
+    // Resolve seller company id for payouts
+    let sellerCompanyId: string | undefined
+    try {
+      const exp = await whop.experiences.getExperience({ experienceId: bet.experienceId })
+      sellerCompanyId = exp?.company?.id
+    } catch {}
+
     const metadata = {
       type: 'bet_purchase',
       betId: bet.id,
       listingId: listing.id,
       priceCents: String(listing.priceCents),
+      experienceId: bet.experienceId,
+      sellerCompanyId,
     } as any
 
     const checkoutSession = await whop.payments.createCheckoutSession({

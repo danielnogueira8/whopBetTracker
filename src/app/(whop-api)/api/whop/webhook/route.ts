@@ -3,6 +3,8 @@ import { db } from "~/db"
 import { appFeesLedger, betPurchases, betSaleListings, userBetAccess, parlayFeesLedger, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
 import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
+import { env } from "~/env"
+import crypto from 'crypto'
 
 type BetPurchaseMetadata = {
   type?: string
@@ -11,9 +13,25 @@ type BetPurchaseMetadata = {
   priceCents?: string
 }
 
+function isValidSignature(req: NextRequest, rawBody: string) {
+  try {
+    const secret = (process.env.WHOP_WEBHOOK_SECRET || env.WHOP_WEBHOOK_SECRET) as string | undefined
+    if (!secret) return true // if no secret configured, skip validation
+    const sig = req.headers.get('whop-signature') || req.headers.get('x-whop-signature') || ''
+    const hmac = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+    return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(sig))
+  } catch {
+    return false
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const payload = await req.json()
+    const raw = await req.text()
+    if (!isValidSignature(req, raw)) {
+      return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 400 })
+    }
+    const payload = JSON.parse(raw)
     // Flexible parsing for Whop webhook-like event
     const evtType: string | undefined = payload?.type || payload?.event
     const data = payload?.data || payload?.object || payload
@@ -68,32 +86,18 @@ export async function POST(req: NextRequest) {
         ? (await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.id, listingId)).limit(1))[0]
         : (await db.select().from(betSaleListings).where(eq(betSaleListings.id, listingId)).limit(1))[0]
 
-      let destinationCompanyId: string | undefined
-      try {
-        if (isParlay) {
-          const pl = await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.id, listingId)).limit(1)
-          const parlayId = pl[0]?.parlayId
-          if (parlayId) {
-            // Load parlay to get experience -> company
-            // @ts-ignore
-            const parlay = (await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.id, listingId)).limit(1))[0]
-            // Fallback: use metadata.betId path for bets, otherwise fetch via Whop by experience
+      // Prefer sellerCompanyId from metadata; fallback to experience.company.id
+      let destinationCompanyId: string | undefined = (metadata as any)?.sellerCompanyId
+      if (!destinationCompanyId) {
+        const experienceId = (metadata as any)?.experienceId || data?.experienceId || data?.experience?.id
+        if (experienceId) {
+          try {
+            const exp = await whop.experiences.getExperience({ experienceId })
+            destinationCompanyId = exp?.company?.id
+          } catch (e) {
+            console.warn('[whop] failed to fetch experience for payout', e)
           }
         }
-        // For bets we have betId in metadata
-        const experienceId = isParlay
-          ? undefined
-          : betId
-            ? (await db.select().from(betSaleListings).where(eq(betSaleListings.id, listingId)).limit(1))[0]?.betId
-            : undefined
-        // Prefer metadata.experience via Whop
-        const targetExperienceId = (metadata as any)?.experienceId || (data?.experienceId) || (data?.experience?.id)
-        const resolvedExperienceId = targetExperienceId || (metadata?.betId ? undefined : undefined)
-        const expIdToFetch = resolvedExperienceId || (metadata?.betId ? undefined : undefined)
-        const exp = resolvedExperienceId ? await whop.experiences.getExperience({ experienceId: resolvedExperienceId }) : undefined
-        destinationCompanyId = exp?.company?.id
-      } catch (e) {
-        console.warn('[whop] failed to resolve destination company id for payout', e)
       }
 
       let payoutTransferId: string | undefined

@@ -63,7 +63,13 @@ export async function POST(
     }
 
     const planId = planIdForPrice(listing.priceCents) || env.ONE_TIME_PURCHASE_ACCESS_PASS_PLAN_ID
-    const metadata = { type: 'parlay_purchase', parlayId: parlay.id, listingId: listing.id, priceCents: String(listing.priceCents) } as any
+    // Resolve seller company id
+    let sellerCompanyId: string | undefined
+    try {
+      const exp = await whop.experiences.getExperience({ experienceId: parlay.experienceId })
+      sellerCompanyId = exp?.company?.id
+    } catch {}
+    const metadata = { type: 'parlay_purchase', parlayId: parlay.id, listingId: listing.id, priceCents: String(listing.priceCents), experienceId: parlay.experienceId, sellerCompanyId } as any
 
     const checkoutSession = await whop.payments.createCheckoutSession({ planId, metadata })
     if (!checkoutSession) return NextResponse.json({ error: 'Failed to create checkout' }, { status: 500 })
