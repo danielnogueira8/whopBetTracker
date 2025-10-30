@@ -356,7 +356,68 @@ export default function UpcomingBetsPage() {
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
                   {shouldLock ? (
-                    <PerBetLockedContent betId={bet.id} />
+                    <PerBetLockGate betId={bet.id}>
+                      <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <Percent className="h-4 w-4" />
+                          Odds
+                        </span>
+                        <span className="font-medium">
+                          {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
+                        </span>
+                      </div>
+                      {bet.confidenceLevel && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Gauge className="h-4 w-4" />
+                            Confidence
+                          </span>
+                          <Badge 
+                            variant={bet.confidenceLevel >= 8 ? "default" : bet.confidenceLevel >= 6 ? "secondary" : "outline"}
+                            className={bet.confidenceLevel >= 8 ? "bg-green-500 text-white" : bet.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
+                          >
+                            {bet.confidenceLevel}/10
+                          </Badge>
+                        </div>
+                      )}
+                      {bet.unitsToInvest && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Diamond className="h-4 w-4" />
+                            Units
+                          </span>
+                          <span className="font-medium">{bet.unitsToInvest}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{formatEventDate(bet.eventDate)}</span>
+                        <span className="text-xs">
+                          ({new Date(bet.eventDate).toLocaleDateString()})
+                        </span>
+                      </div>
+                      <div className="pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Explanation</p>
+                        <div className="p-3 bg-muted/50 rounded-md text-sm leading-relaxed">
+                          {bet.explanation}
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          className="w-full mt-auto"
+                          onClick={() => {
+                            setSelectedBet(bet);
+                            setConvertDialogOpen(true);
+                          }}
+                        >
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Convert to Bet
+                        </Button>
+                      )}
+                      </>
+                    </PerBetLockGate>
                   ) : (
                     <>
                       <div className="flex items-center justify-between text-sm">
@@ -678,6 +739,26 @@ function PerBetLockedContent({ betId }: { betId: string }) {
       <p className="text-sm text-muted-foreground">{`Subscribe to view odds, units, and explanations.`}</p>
     </div>
   )
+}
+
+function PerBetLockGate({ betId, children }: { betId: string, children: React.ReactNode }) {
+  const searchParams = useSearchParams()
+  const forceBuyer = searchParams?.get('as-buyer') === 'true'
+
+  const { data: accessData } = useQuery({
+    queryKey: ["bet-access", betId, "gate"],
+    queryFn: async () => {
+      if (forceBuyer) return { hasAccess: false }
+      const res = await fetch(`/api/bets/${betId}/access`)
+      if (!res.ok) return { hasAccess: false }
+      return res.json()
+    },
+  })
+
+  if (accessData?.hasAccess) {
+    return <>{children}</>
+  }
+  return <PerBetLockedContent betId={betId} />
 }
 
 function PerParlayLockedContent({ parlayId }: { parlayId: string }) {
