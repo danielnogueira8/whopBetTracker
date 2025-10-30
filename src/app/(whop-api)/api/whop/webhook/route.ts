@@ -158,4 +158,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function GET() {
+  try {
+    console.log('[whop-webhook] GET ping')
+    return NextResponse.json({ ok: true })
+  } catch {
+    return NextResponse.json({ ok: false }, { status: 500 })
+  }
+}
+
 
