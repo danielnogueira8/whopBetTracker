@@ -42,10 +42,26 @@ export async function GET(req: NextRequest) {
       try {
         const exp = await whop.experiences.getExperience({ experienceId })
         const expAny = exp as any
-        const expProducts = (expAny?.products ?? []).map((p: any) => p?.id).filter(Boolean)
+        let expProducts: string[] = (expAny?.products ?? []).map((p: any) => p?.id).filter(Boolean)
+
+        // If not present on the experience, list company products as a stronger fallback
+        if (expProducts.length === 0 && expAny?.company?.id) {
+          try {
+            const companyIdForProducts = expAny.company.id as string
+            // @ts-ignore - products API surface; fallback to any to avoid type coupling
+            const listed = await (whop as any).products?.listProducts?.({ companyId: companyIdForProducts })
+            const nodes: any[] = listed?.products?.nodes ?? []
+            expProducts = nodes.map((p: any) => p?.id).filter(Boolean)
+            if (expProducts.length > 0) {
+              console.log('[paywall] derived productIds from company products', { expProducts })
+            }
+          } catch (err) {
+            console.warn('[paywall] failed to list company products', err)
+          }
+        }
+
         if (expProducts.length > 0) {
           productIds = expProducts as string[]
-          console.log('[paywall] derived productIds from experience', { productIds })
         }
       } catch (err) {
         console.warn('[paywall] could not derive productIds from experience', err)
