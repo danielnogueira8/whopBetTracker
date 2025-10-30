@@ -625,6 +625,10 @@ function PerBetLockedContent({ betId }: { betId: string }) {
       try {
         if (iframeSdk) {
           await iframeSdk.inAppPurchase({ planId: data.planId, id: data.checkoutId })
+          // Best-effort confirmation in case webhook is delayed
+          try {
+            await fetch(`/api/bets/${betId}/confirm`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ checkoutId: data.checkoutId }) })
+          } catch {}
           // Poll access endpoint for confirmation
           const poll = async (retries = 20) => {
             if (retries === 0) return

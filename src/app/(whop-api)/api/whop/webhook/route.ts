@@ -28,9 +28,20 @@ export async function POST(req: NextRequest) {
     const betId = metadata.betId
     const listingId = metadata.listingId!
 
-    // Determine success or refund
-    const isSucceeded = (evtType || '').includes('paid') || (evtType || '').includes('succeeded')
-    const isRefunded = (evtType || '').includes('refund')
+    // Determine success or refund (broadened)
+    const status = (data?.status || data?.payment_status || data?.state || '').toString().toLowerCase()
+    const typeStr = (evtType || '').toString().toLowerCase()
+    const isSucceeded = typeStr.includes('paid') || typeStr.includes('succeeded') || typeStr.includes('completed') || ['paid','succeeded','completed','success'].includes(status)
+    const isRefunded = typeStr.includes('refund') || status.includes('refund')
+
+    console.log('[whop-webhook]', {
+      type: evtType,
+      status,
+      isSucceeded,
+      isRefunded,
+      metadata,
+      checkoutId,
+    })
 
     // Lookup purchase by checkoutId
     const isParlay = metadata.type === 'parlay_purchase'
