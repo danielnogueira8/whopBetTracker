@@ -18,7 +18,29 @@ export async function POST(req: NextRequest) {
     if (!secret) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
-    const validator = makeWebhookValidator({ webhookSecret: secret })
+    const validator = makeWebhookValidator({
+      webhookSecret: secret,
+      getSignatureHeader: (r: Request) =>
+        r.headers.get('whop-signature') ||
+        r.headers.get('Whop-Signature') ||
+        r.headers.get('x-whop-signature') ||
+        r.headers.get('X-Whop-Signature') ||
+        r.headers.get('x-whop-webhook-signature') ||
+        r.headers.get('X-Whop-Webhook-Signature') ||
+        '',
+    })
+    // Debug missing signature once
+    if (!(
+      req.headers.get('whop-signature') ||
+      req.headers.get('Whop-Signature') ||
+      req.headers.get('x-whop-signature') ||
+      req.headers.get('X-Whop-Signature') ||
+      req.headers.get('x-whop-webhook-signature') ||
+      req.headers.get('X-Whop-Webhook-Signature')
+    )) {
+      console.error('[webhook] no signature header; header keys:', Array.from(req.headers.keys()))
+    }
+
     const webhook = await validator(req as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
