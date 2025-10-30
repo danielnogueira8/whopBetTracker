@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server"
 import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
-import { parlays, userParlayAccess } from "~/db/schema"
+import { experienceSettings, parlays, userParlayAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { whop } from "~/lib/whop"
+import { userHasAccessToAnyProducts, whop } from "~/lib/whop"
 
 export async function GET(
   req: NextRequest,
@@ -18,12 +18,34 @@ export async function GET(
     const parlay = rows[0]
     if (!parlay) return Response.json({ hasAccess: false })
 
-    const access = await whop.access.checkIfUserHasAccessToExperience({
-      experienceId: parlay.experienceId,
-      userId,
-    })
-    if (access?.accessLevel === 'admin' || access?.accessLevel === 'customer') {
+    const access = await whop.access.checkIfUserHasAccessToExperience({ experienceId: parlay.experienceId, userId })
+    if (access?.accessLevel === 'admin') {
       return Response.json({ hasAccess: true })
+    }
+
+    // Evaluate paywall-configured products for membership eligibility
+    try {
+      const s = await db
+        .select({ paywallConfig: experienceSettings.paywallConfig })
+        .from(experienceSettings)
+        .where(eq(experienceSettings.experienceId, parlay.experienceId))
+        .limit(1)
+
+      const cfg = (s[0]?.paywallConfig as any) || { enabled: false, productIds: [], rule: 'any' }
+      if (cfg?.enabled) {
+        const productIds: string[] = Array.isArray(cfg.productIds) ? cfg.productIds : []
+        let eligible = false
+        if (productIds.length > 0) {
+          eligible = await userHasAccessToAnyProducts({ userId, productIds })
+        } else {
+          eligible = false
+        }
+        if (eligible) {
+          return Response.json({ hasAccess: true })
+        }
+      }
+    } catch (e) {
+      console.warn('[parlay-access] failed to evaluate paywall membership', e)
     }
 
     const existing = await db

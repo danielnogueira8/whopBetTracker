@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server"
 import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
-import { upcomingBets, userBetAccess } from "~/db/schema"
+import { experienceSettings, upcomingBets, userBetAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { whop } from "~/lib/whop"
+import { userHasAccessToAnyProducts, whop } from "~/lib/whop"
 
 export async function GET(
   req: NextRequest,
@@ -20,14 +20,36 @@ export async function GET(
     const bet = rows[0]
     if (!bet) return Response.json({ hasAccess: false })
 
-    // Admins of the experience always have access
-    const access = await whop.access.checkIfUserHasAccessToExperience({
-      experienceId: bet.experienceId,
-      userId,
-    })
-    if (access?.accessLevel === "admin" || access?.accessLevel === "customer") {
-      // Members eligible via paywall see for free
+    // Admins of the experience always have access; non-admin "customer" must pass paywall config
+    const access = await whop.access.checkIfUserHasAccessToExperience({ experienceId: bet.experienceId, userId })
+    if (access?.accessLevel === "admin") {
       return Response.json({ hasAccess: true })
+    }
+
+    // Check paywall-configured products for membership eligibility
+    try {
+      const s = await db
+        .select({ paywallConfig: experienceSettings.paywallConfig })
+        .from(experienceSettings)
+        .where(eq(experienceSettings.experienceId, bet.experienceId))
+        .limit(1)
+
+      const cfg = (s[0]?.paywallConfig as any) || { enabled: false, productIds: [], rule: 'any' }
+      if (cfg?.enabled) {
+        const productIds: string[] = Array.isArray(cfg.productIds) ? cfg.productIds : []
+        let eligible = false
+        if (productIds.length > 0) {
+          eligible = await userHasAccessToAnyProducts({ userId, productIds })
+        } else {
+          // No products configured; treat as not eligible by membership
+          eligible = false
+        }
+        if (eligible) {
+          return Response.json({ hasAccess: true })
+        }
+      }
+    } catch (e) {
+      console.warn('[bet-access] failed to evaluate paywall membership', e)
     }
 
     // Check per-bet purchased access
