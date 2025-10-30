@@ -91,13 +91,13 @@ export async function POST(req: NextRequest) {
       try {
         // Attempt to create transfer of net to seller
         // Prefer paying out to the experience company (creator/owner of the install)
+        // Use payouts API; provide both camelCase and snake_case for destination
         // @ts-ignore - SDK surface
-        const transfer = await (whop as any).transfers?.createTransfer?.({
+        const transfer = await (whop as any).payouts?.createTransfer?.({
           amountCents: net,
           currency: (data as any)?.currency || purchase.currency,
           destinationCompanyId: destinationCompanyId,
-          // Fallbacks used by backend if destinationCompanyId is absent
-          destinationUserId: destinationCompanyId ? undefined : listing?.sellerUserId,
+          destination_company_id: destinationCompanyId,
           description: isParlay ? `Parlay sale payout (${listingId})` : `Bet access sale payout (${betId})`,
         })
         payoutTransferId = transfer?.id
