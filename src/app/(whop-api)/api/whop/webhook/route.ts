@@ -14,7 +14,11 @@ type BetPurchaseMetadata = {
 
 export async function POST(req: NextRequest) {
   try {
-    const validator = makeWebhookValidator({ webhookSecret: process.env.WHOP_WEBHOOK_SECRET })
+    const secret = process.env.WHOP_WEBHOOK_SECRET
+    if (!secret) {
+      return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
+    }
+    const validator = makeWebhookValidator({ webhookSecret: secret })
     const webhook = await validator(req as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
