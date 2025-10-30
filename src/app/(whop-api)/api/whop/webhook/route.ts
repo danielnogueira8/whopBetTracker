@@ -3,8 +3,7 @@ import { db } from "~/db"
 import { appFeesLedger, betPurchases, betSaleListings, userBetAccess, parlayFeesLedger, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
 import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
-import { env } from "~/env"
-import crypto from 'crypto'
+import { makeWebhookValidator, type PaymentWebhookData } from "@whop/api"
 
 type BetPurchaseMetadata = {
   type?: string
@@ -13,28 +12,12 @@ type BetPurchaseMetadata = {
   priceCents?: string
 }
 
-function isValidSignature(req: NextRequest, rawBody: string) {
-  try {
-    const secret = (process.env.WHOP_WEBHOOK_SECRET || env.WHOP_WEBHOOK_SECRET) as string | undefined
-    if (!secret) return true // if no secret configured, skip validation
-    const sig = req.headers.get('whop-signature') || req.headers.get('x-whop-signature') || ''
-    const hmac = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
-    return crypto.timingSafeEqual(Buffer.from(hmac), Buffer.from(sig))
-  } catch {
-    return false
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
-    const raw = await req.text()
-    if (!isValidSignature(req, raw)) {
-      return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 400 })
-    }
-    const payload = JSON.parse(raw)
-    // Flexible parsing for Whop webhook-like event
-    const evtType: string | undefined = payload?.type || payload?.event
-    const data = payload?.data || payload?.object || payload
+    const validator = makeWebhookValidator({ webhookSecret: process.env.WHOP_WEBHOOK_SECRET })
+    const webhook = await validator(req as any)
+    const evtType = webhook?.action
+    const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
 
     // Only handle our purchase events
@@ -47,9 +30,9 @@ export async function POST(req: NextRequest) {
     const listingId = metadata.listingId!
 
     // Determine success or refund (broadened)
-    const status = (data?.status || data?.payment_status || data?.state || '').toString().toLowerCase()
+    const status = (data as any)?.status?.toString()?.toLowerCase?.() || ''
     const typeStr = (evtType || '').toString().toLowerCase()
-    const isSucceeded = typeStr.includes('paid') || typeStr.includes('succeeded') || typeStr.includes('completed') || ['paid','succeeded','completed','success'].includes(status)
+    const isSucceeded = evtType === 'payment.succeeded' || typeStr.includes('succeeded') || typeStr.includes('completed')
     const isRefunded = typeStr.includes('refund') || status.includes('refund')
 
     console.log('[whop-webhook]', {
@@ -89,7 +72,7 @@ export async function POST(req: NextRequest) {
       // Prefer sellerCompanyId from metadata; fallback to experience.company.id
       let destinationCompanyId: string | undefined = (metadata as any)?.sellerCompanyId
       if (!destinationCompanyId) {
-        const experienceId = (metadata as any)?.experienceId || data?.experienceId || data?.experience?.id
+        const experienceId = (metadata as any)?.experienceId || (data as any)?.experienceId || (data as any)?.experience?.id
         if (experienceId) {
           try {
             const exp = await whop.experiences.getExperience({ experienceId })
@@ -107,15 +90,20 @@ export async function POST(req: NextRequest) {
         // @ts-ignore - SDK surface
         const transfer = await (whop as any).transfers?.createTransfer?.({
           amountCents: net,
-          currency: purchase.currency,
+          currency: (data as any)?.currency || purchase.currency,
           destinationCompanyId: destinationCompanyId,
           // Fallbacks used by backend if destinationCompanyId is absent
           destinationUserId: destinationCompanyId ? undefined : listing?.sellerUserId,
           description: isParlay ? `Parlay sale payout (${listingId})` : `Bet access sale payout (${betId})`,
         })
         payoutTransferId = transfer?.id
+        console.log('[payout] transfer created', { payoutTransferId, net, destinationCompanyId })
       } catch (e) {
-        console.error('[whop] transfer failed, will remain unset', e)
+        console.error('[whop] transfer failed, will remain unset', {
+          err: String(e),
+          destinationCompanyId,
+          net,
+        })
       }
 
       if (isParlay) {
