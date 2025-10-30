@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       nodes = listResp?.products?.nodes ?? []
     }
     if (!nodes?.length) {
-      const expProducts = exp?.products ?? []
+      const expProducts = (exp as any)?.products ?? []
       nodes = expProducts
     }
 
