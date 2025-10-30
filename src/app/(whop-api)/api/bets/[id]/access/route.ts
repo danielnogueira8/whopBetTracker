@@ -25,7 +25,7 @@ export async function GET(
       experienceId: bet.experienceId,
       userId,
     })
-    if (access?.accessLevel === "admin" || access?.accessLevel === "member") {
+    if (access?.accessLevel === "admin" || access?.accessLevel === "customer") {
       // Members eligible via paywall see for free
       return Response.json({ hasAccess: true })
     }

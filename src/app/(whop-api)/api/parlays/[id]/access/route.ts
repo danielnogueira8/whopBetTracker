@@ -22,7 +22,7 @@ export async function GET(
       experienceId: parlay.experienceId,
       userId,
     })
-    if (access?.accessLevel === 'admin' || access?.accessLevel === 'member') {
+    if (access?.accessLevel === 'admin' || access?.accessLevel === 'customer') {
       return Response.json({ hasAccess: true })
     }
 

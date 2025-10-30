@@ -38,7 +38,7 @@ export async function POST(
         experienceId: bet.experienceId,
         userId,
       })
-      if (access?.accessLevel === 'admin' || access?.accessLevel === 'member') {
+      if (access?.accessLevel === 'admin' || access?.accessLevel === 'customer') {
         return NextResponse.json({ error: 'Already eligible' }, { status: 409 })
       }
     }
