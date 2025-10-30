@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Users, Trophy, BarChart, TrendingUp, Gem, User, DollarSign, Settings, MessagesSquare, FileSpreadsheet } from "lucide-react"
+import { Users, Trophy, BarChart, TrendingUp, Gem, User, DollarSign, Settings, MessagesSquare, FileSpreadsheet, BrickWallShield } from "lucide-react"
 import { useWhop } from "~/lib/whop-context"
 import { ThemeToggle } from "~/components/theme-toggle"
 
@@ -123,6 +123,16 @@ export function AppSidebar({ experienceId }: AppSidebarProps) {
                     <Link href={`/experiences/${effectiveExperienceId}/settings` as any}>
                       <MessagesSquare />
                       <span>Forum Integration</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+              {showForumIntegration && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={pathname === `/experiences/${effectiveExperienceId}/paywall`}>
+                    <Link href={`/experiences/${effectiveExperienceId}/paywall` as any}>
+                      <BrickWallShield />
+                      <span>Paywall</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

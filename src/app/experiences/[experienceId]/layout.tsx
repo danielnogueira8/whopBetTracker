@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarInset } from '~/components/ui/sidebar'
 import { AppSidebar } from '~/components/app-sidebar'
 import { ThemeProvider } from '~/components/theme-provider'
 import { WhopClientWrapper } from '~/components/whop-client-wrapper'
+import { Toaster } from '~/components/ui/toaster'
 
 export const experimental_ppr = true
 
@@ -25,6 +26,7 @@ export default async function ExperienceLayout({
 						<AppSidebar experienceId={experienceId} />
 						<SidebarInset>{children}</SidebarInset>
 					</SidebarProvider>
+					<Toaster />
 				</WhopClientWrapper>
 			</WhopIframeSdkProvider>
 		</ThemeProvider>

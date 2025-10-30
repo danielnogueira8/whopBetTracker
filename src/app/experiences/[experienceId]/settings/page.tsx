@@ -11,6 +11,7 @@ import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Switch } from "~/components/ui/switch"
 import { Alert, AlertDescription } from "~/components/ui/alert"
+ 
 
 interface Forum {
   id: string
@@ -21,7 +22,10 @@ interface Settings {
   experienceId: string
   forumId: string | null
   autoPostEnabled: boolean
+ 
 }
+
+ 
 
 export default function SettingsPage() {
   const { experience, access } = useWhop()
@@ -40,6 +44,8 @@ export default function SettingsPage() {
     enabled: !!experience?.id,
   })
 
+ 
+
   // Fetch forums
   const { data: forumsData, isLoading: isLoadingForums } = useQuery({
     queryKey: ["forums", experience?.id],
@@ -56,12 +62,14 @@ export default function SettingsPage() {
   const [autoPostEnabled, setAutoPostEnabled] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+ 
 
   // Initialize state from fetched settings
   useEffect(() => {
     if (settings) {
       setSelectedForumId(settings.forumId || "")
       setAutoPostEnabled(settings.autoPostEnabled)
+      
     }
   }, [settings])
 
@@ -74,6 +82,7 @@ export default function SettingsPage() {
           experienceId: experience?.id,
           forumId: settingsData.forumId || null,
           autoPostEnabled: settingsData.autoPostEnabled,
+          
         }),
       })
       if (!response.ok) throw new Error("Failed to update settings")
@@ -212,6 +221,8 @@ export default function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      
     </div>
   )
 }

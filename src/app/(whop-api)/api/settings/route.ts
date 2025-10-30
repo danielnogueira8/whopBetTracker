@@ -42,11 +42,26 @@ export async function GET(req: NextRequest) {
           experienceId,
           forumId: null,
           autoPostEnabled: false,
+          paywallConfig: { 
+            enabled: false, 
+            productIds: [], 
+            rule: 'any',
+            lockedMessage: "Subscribe to view odds, units, and explanations."
+          },
         }
       })
     }
 
-    return Response.json({ settings: settings[0] })
+    // Ensure paywallConfig always present in response
+    const s = settings[0] as any
+    if (!s.paywallConfig) {
+      s.paywallConfig = { enabled: false, productIds: [], rule: 'any' }
+    }
+    // Ensure lockedMessage exists
+    if (!s.paywallConfig.lockedMessage) {
+      s.paywallConfig.lockedMessage = "Subscribe to view odds, units, and explanations."
+    }
+    return Response.json({ settings: s })
   } catch (error) {
     console.error("Error fetching settings:", error)
     return Response.json({ error: "Failed to fetch settings" }, { status: 500 })
@@ -57,7 +72,7 @@ export async function PUT(req: NextRequest) {
   try {
     const { userId } = await verifyUserToken(req.headers)
     const body = await req.json()
-    const { experienceId, forumId, autoPostEnabled } = body
+    const { experienceId, forumId, autoPostEnabled, paywallConfig } = body
 
     if (!experienceId) {
       return Response.json({ error: "experienceId is required" }, { status: 400 })
@@ -90,6 +105,7 @@ export async function PUT(req: NextRequest) {
         .set({
           forumId: forumId ?? null,
           autoPostEnabled: autoPostEnabled ?? false,
+          paywallConfig: paywallConfig ?? null,
           updatedAt: new Date(),
         })
         .where(eq(experienceSettings.experienceId, experienceId))
@@ -104,6 +120,7 @@ export async function PUT(req: NextRequest) {
           experienceId,
           forumId: forumId ?? null,
           autoPostEnabled: autoPostEnabled ?? false,
+          paywallConfig: paywallConfig ?? null,
         })
         .returning()
 

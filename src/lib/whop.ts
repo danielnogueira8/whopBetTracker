@@ -31,3 +31,36 @@ export const whop = WhopServerSdk({
 // 	appID: env.WHOP_API_KEY,
 // 	apiKey: env.WHOP_API_KEY,
 // })
+
+// Helper: check if a user has access to ANY of the provided product (access pass) IDs
+export async function userHasAccessToAnyProducts(params: {
+  userId: string
+  productIds: string[]
+  companyId?: string
+}): Promise<boolean> {
+  const { userId, productIds, companyId } = params
+  if (!userId) return true // fail-open
+  if (!productIds || productIds.length === 0) return true
+
+  try {
+    const effectiveCompanyId = companyId || env.NEXT_PUBLIC_WHOP_COMPANY_ID
+    
+    // Check memberships directly - this is the most reliable way to check current access
+    const members = await whop.companies.listMembers({
+      companyId: effectiveCompanyId,
+      filters: {
+        accessPassIds: productIds,
+      },
+    }) as any
+
+    const nodes = members?.members?.nodes ?? []
+    console.log('[access-check] total members with products', nodes.length, 'products', productIds)
+    const userIsMember = nodes.some((m: any) => m?.user?.id === userId)
+    console.log('[access-check] user membership', { userIsMember, userId, productIds })
+    
+    return userIsMember
+  } catch (err) {
+    console.error('userHasAccessToAnyProducts error', err)
+    return true // fail-open to avoid false blocks
+  }
+}

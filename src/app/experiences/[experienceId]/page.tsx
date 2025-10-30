@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useWhop } from "~/lib/whop-context";
 
 export default function Page() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { experience } = useWhop();
 
   useEffect(() => {
     if (!experience) return;
-    // Redirect to upcoming-bets by default
-    router.replace(`/experiences/${experience.id}/upcoming-bets`);
-  }, [router, experience?.id]);
+    // Redirect to upcoming-bets by default, preserving query params
+    const query = searchParams?.toString()
+    const url = `/experiences/${experience.id}/upcoming-bets${query ? `?${query}` : ''}`
+    router.replace(url);
+  }, [router, experience?.id, searchParams]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">

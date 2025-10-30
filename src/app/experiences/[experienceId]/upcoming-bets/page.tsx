@@ -2,12 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent, Info } from "lucide-react";
+import { Edit, Trash2, TrendingUp, Plus, Calendar, Megaphone, DollarSign, Target, BarChart3, Diamond, Gauge, Percent, Info, Lock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip";
 import { CreateBetDialog } from "~/components/create-bet-dialog";
 import { EditUpcomingBetDialog } from "~/components/edit-upcoming-bet-dialog";
@@ -74,6 +75,7 @@ interface UpcomingParlay {
 export default function UpcomingBetsPage() {
   const { experience, access } = useWhop();
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
   
   const experienceId = experience?.id || "";
   
@@ -106,6 +108,27 @@ export default function UpcomingBetsPage() {
     },
     enabled: !!experienceId, // Don't run query if experienceId is empty
   });
+
+  // Fetch paywall config (public) and user access
+  const { data: publicSettings } = useQuery({
+    queryKey: ["paywall-config", experienceId],
+    queryFn: async () => {
+      const res = await fetch(`/api/settings/public?experienceId=${experienceId}`)
+      if (!res.ok) throw new Error("Failed to fetch paywall config")
+      return res.json()
+    },
+    enabled: !!experienceId,
+  })
+
+  const { data: accessData } = useQuery({
+    queryKey: ["upcoming-bets-access", experienceId],
+    queryFn: async () => {
+      const res = await fetch(`/api/access/upcoming-bets?experienceId=${experienceId}`)
+      if (!res.ok) throw new Error("Failed to check access")
+      return res.json()
+    },
+    enabled: !!experienceId,
+  })
 
   // Fetch upcoming parlays
   const { data: parlaysData, isLoading: isLoadingParlays } = useQuery({
@@ -159,6 +182,13 @@ export default function UpcomingBetsPage() {
   if (!experience || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
   
   const isAdmin = access.accessLevel === "admin";
+  const paywallEnabled = Boolean(publicSettings?.paywallConfig?.enabled)
+  const userHasAccess = Boolean(accessData?.hasAccess)
+  // TEMP: Dev override to test locked state - REMOVE before production
+  const forceLock = searchParams?.get('force-lock') === 'true'
+  const shouldLock = forceLock || (paywallEnabled && !isAdmin && !userHasAccess)
+  
+  console.log('[client] paywall check', { isAdmin, paywallEnabled, userHasAccess, shouldLock, forceLock })
   const companyName = experience.company.title;
   const bets: UpcomingBet[] = data?.bets || [];
   const parlays: UpcomingParlay[] = parlaysData?.parlays || [];
@@ -194,7 +224,7 @@ export default function UpcomingBetsPage() {
               </TooltipTrigger>
               <TooltipContent>
                 <p className="max-w-xs">
-                  These are upcoming bets/picks. Once they are resolved and converted, they will appear in the Community Bet Tracker.
+                  These are your Bet Picks. Once they are resolved and converted, they will appear in the Community Bet Tracker.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -315,66 +345,77 @@ export default function UpcomingBetsPage() {
                     )}
                   </div>
                   <CardTitle className="mt-2 line-clamp-2">{bet.game}</CardTitle>
-                  <CardDescription className="mt-1">{bet.outcome}</CardDescription>
+                  <CardDescription className="mt-1">{shouldLock ? "Locked" : bet.outcome}</CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Percent className="h-4 w-4" />
-                      Odds
-                    </span>
-                    <span className="font-medium">
-                      {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
-                    </span>
-                  </div>
-                  {bet.confidenceLevel && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Gauge className="h-4 w-4" />
-                        Confidence
-                      </span>
-                      <Badge 
-                        variant={bet.confidenceLevel >= 8 ? "default" : bet.confidenceLevel >= 6 ? "secondary" : "outline"}
-                        className={bet.confidenceLevel >= 8 ? "bg-green-500 text-white" : bet.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
-                      >
-                        {bet.confidenceLevel}/10
-                      </Badge>
+                  {shouldLock ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                      <Lock className="h-6 w-6 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {publicSettings?.paywallConfig?.lockedMessage || "Subscribe to view odds, units, and explanations."}
+                      </p>
                     </div>
-                  )}
-                  {bet.unitsToInvest && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Diamond className="h-4 w-4" />
-                        Units
-                      </span>
-                      <span className="font-medium">{bet.unitsToInvest}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>{formatEventDate(bet.eventDate)}</span>
-                    <span className="text-xs">
-                      ({new Date(bet.eventDate).toLocaleDateString()})
-                    </span>
-                  </div>
-                  <div className="pt-4 border-t">
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Explanation</p>
-                    <div className="p-3 bg-muted/50 rounded-md text-sm leading-relaxed">
-                      {bet.explanation}
-                    </div>
-                  </div>
-                  {isAdmin && (
-                    <Button
-                      variant="outline"
-                      className="w-full mt-auto"
-                      onClick={() => {
-                        setSelectedBet(bet);
-                        setConvertDialogOpen(true);
-                      }}
-                    >
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      Convert to Bet
-                    </Button>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <Percent className="h-4 w-4" />
+                          Odds
+                        </span>
+                        <span className="font-medium">
+                          {displayOdds(parseFloat(bet.oddValue), bet.oddFormat, preferredOddsFormat)}
+                        </span>
+                      </div>
+                      {bet.confidenceLevel && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Gauge className="h-4 w-4" />
+                            Confidence
+                          </span>
+                          <Badge 
+                            variant={bet.confidenceLevel >= 8 ? "default" : bet.confidenceLevel >= 6 ? "secondary" : "outline"}
+                            className={bet.confidenceLevel >= 8 ? "bg-green-500 text-white" : bet.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
+                          >
+                            {bet.confidenceLevel}/10
+                          </Badge>
+                        </div>
+                      )}
+                      {bet.unitsToInvest && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Diamond className="h-4 w-4" />
+                            Units
+                          </span>
+                          <span className="font-medium">{bet.unitsToInvest}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>{formatEventDate(bet.eventDate)}</span>
+                        <span className="text-xs">
+                          ({new Date(bet.eventDate).toLocaleDateString()})
+                        </span>
+                      </div>
+                      <div className="pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Explanation</p>
+                        <div className="p-3 bg-muted/50 rounded-md text-sm leading-relaxed">
+                          {bet.explanation}
+                        </div>
+                      </div>
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          className="w-full mt-auto"
+                          onClick={() => {
+                            setSelectedBet(bet);
+                            setConvertDialogOpen(true);
+                          }}
+                        >
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Convert to Bet
+                        </Button>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -421,83 +462,94 @@ export default function UpcomingBetsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1 space-y-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground flex items-center gap-2">
-                      <Percent className="h-4 w-4" />
-                      Combined Odds
-                    </span>
-                    <span className="font-medium">
-                      {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
-                    </span>
-                  </div>
-                  {parlay.unitsInvested && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Diamond className="h-4 w-4" />
-                        Units
-                      </span>
-                      <span className="font-medium">{parlay.unitsInvested}</span>
+                  {shouldLock ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                      <Lock className="h-6 w-6 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {publicSettings?.paywallConfig?.lockedMessage || "Subscribe to view odds, units, and explanations."}
+                      </p>
                     </div>
-                  )}
-                  {parlay.confidenceLevel && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground flex items-center gap-2">
-                        <Gauge className="h-4 w-4" />
-                        Confidence
-                      </span>
-                      <Badge 
-                        variant={parlay.confidenceLevel >= 8 ? "default" : parlay.confidenceLevel >= 6 ? "secondary" : "outline"}
-                        className={parlay.confidenceLevel >= 8 ? "bg-green-500 text-white" : parlay.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
-                      >
-                        {parlay.confidenceLevel}/10
-                      </Badge>
-                    </div>
-                  )}
-                  {parlay.eventDate && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>{formatEventDate(parlay.eventDate)}</span>
-                    </div>
-                  )}
-                  
-                  <div className="pt-4 border-t space-y-3">
-                    <p className="text-sm font-medium text-muted-foreground">Legs</p>
-                    {parlay.legs.map((leg, index) => (
-                      <div key={leg.id} className="p-3 bg-muted/30 rounded-md">
-                        <div className="flex items-start justify-between mb-1">
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Leg {index + 1}: {leg.sport}
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <Percent className="h-4 w-4" />
+                          Combined Odds
+                        </span>
+                        <span className="font-medium">
+                          {displayOdds(parseFloat(parlay.combinedOddValue), parlay.combinedOddFormat, preferredOddsFormat)}
+                        </span>
+                      </div>
+                      {parlay.unitsInvested && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Diamond className="h-4 w-4" />
+                            Units
                           </span>
-                          <span className="text-xs font-medium">
-                            {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
-                          </span>
+                          <span className="font-medium">{parlay.unitsInvested}</span>
                         </div>
-                        <p className="text-sm font-medium">{leg.game}</p>
-                        <p className="text-xs text-muted-foreground">{leg.outcome}</p>
+                      )}
+                      {parlay.confidenceLevel && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground flex items-center gap-2">
+                            <Gauge className="h-4 w-4" />
+                            Confidence
+                          </span>
+                          <Badge 
+                            variant={parlay.confidenceLevel >= 8 ? "default" : parlay.confidenceLevel >= 6 ? "secondary" : "outline"}
+                            className={parlay.confidenceLevel >= 8 ? "bg-green-500 text-white" : parlay.confidenceLevel >= 6 ? "bg-yellow-500 text-white" : ""}
+                          >
+                            {parlay.confidenceLevel}/10
+                          </Badge>
+                        </div>
+                      )}
+                      {parlay.eventDate && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="h-4 w-4" />
+                          <span>{formatEventDate(parlay.eventDate)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="pt-4 border-t space-y-3">
+                        <p className="text-sm font-medium text-muted-foreground">Legs</p>
+                        {parlay.legs.map((leg, index) => (
+                          <div key={leg.id} className="p-3 bg-muted/30 rounded-md">
+                            <div className="flex items-start justify-between mb-1">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Leg {index + 1}: {leg.sport}
+                              </span>
+                              <span className="text-xs font-medium">
+                                {displayOdds(parseFloat(leg.oddValue), leg.oddFormat, preferredOddsFormat)}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium">{leg.game}</p>
+                            <p className="text-xs text-muted-foreground">{leg.outcome}</p>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                  
-                  {parlay.explanation && (
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-medium text-muted-foreground mb-2">Explanation</p>
-                      <div className="p-3 bg-muted/50 rounded-md text-sm leading-relaxed">
-                        {parlay.explanation}
-                      </div>
-                    </div>
-                  )}
-                  {isAdmin && (
-                    <Button
-                      variant="outline"
-                      className="w-full mt-auto"
-                      onClick={() => {
-                        setSelectedParlay(parlay);
-                        setConvertParlayDialogOpen(true);
-                      }}
-                    >
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      Convert to Bet
-                    </Button>
+                      
+                      {parlay.explanation && (
+                        <div className="pt-4 border-t">
+                          <p className="text-sm font-medium text-muted-foreground mb-2">Explanation</p>
+                          <div className="p-3 bg-muted/50 rounded-md text-sm leading-relaxed">
+                            {parlay.explanation}
+                          </div>
+                        </div>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          className="w-full mt-auto"
+                          onClick={() => {
+                            setSelectedParlay(parlay);
+                            setConvertParlayDialogOpen(true);
+                          }}
+                        >
+                          <TrendingUp className="mr-2 h-4 w-4" />
+                          Convert to Bet
+                        </Button>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>

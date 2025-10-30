@@ -1,4 +1,4 @@
-import { boolean, decimal, integer, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { boolean, decimal, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 // Enums
 export const oddFormatEnum = pgEnum('odd_format', ['american', 'decimal', 'fractional'])
@@ -94,6 +94,7 @@ export const experienceSettings = pgTable('experience_settings', {
 	experienceId: text('experience_id').notNull().unique(),
 	forumId: text('forum_id'),
 	autoPostEnabled: boolean('auto_post_enabled').notNull().default(false),
+	paywallConfig: jsonb('paywall_config'),
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
