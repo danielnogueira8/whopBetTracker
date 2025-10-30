@@ -41,7 +41,8 @@ export async function GET(req: NextRequest) {
     if (productIds.length === 0) {
       try {
         const exp = await whop.experiences.getExperience({ experienceId })
-        const expProducts = (exp?.products ?? []).map((p: any) => p?.id).filter(Boolean)
+        const expAny = exp as any
+        const expProducts = (expAny?.products ?? []).map((p: any) => p?.id).filter(Boolean)
         if (expProducts.length > 0) {
           productIds = expProducts as string[]
           console.log('[paywall] derived productIds from experience', { productIds })
