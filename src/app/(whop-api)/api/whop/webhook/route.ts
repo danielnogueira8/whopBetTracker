@@ -155,20 +155,33 @@ export async function POST(req: NextRequest) {
       }
       webhook = await validator(reqForValidation as any)
     } catch (firstErr) {
-      // If signature headers were not recognized by the validator, retry with a minimal Request containing only svix headers
       const missingSig = String(firstErr || '').toLowerCase().includes('missing header')
       if (!chosenSig || !chosenId || !normalizedTs || missingSig) {
-        const svixOnly = new Headers()
-        if (chosenSig) svixOnly.set('svix-signature', chosenSig)
-        if (chosenId) svixOnly.set('svix-id', chosenId)
-        if (normalizedTs) svixOnly.set('svix-timestamp', normalizedTs)
-        const retryReq = new Request(req.url, { method: 'POST', headers: svixOnly, body: bodyBuffer })
+        // Retry 1: whop-only headers
         try {
-          webhook = await validator(retryReq as any)
-          console.log('[webhook] validator succeeded on retry with svix-only headers')
-        } catch (retryErr) {
-          console.error('[webhook] validator failed after retry', { err: String(retryErr) })
-          throw retryErr
+          const whopOnly = new Headers()
+          if (chosenSig) whopOnly.set('whop-signature', chosenSig)
+          if (chosenId) whopOnly.set('whop-id', chosenId)
+          if (normalizedTs) whopOnly.set('whop-timestamp', normalizedTs)
+          const whopReq = new Request(req.url, { method: 'POST', headers: whopOnly, body: bodyBuffer })
+          webhook = await validator(whopReq as any)
+          console.log('[webhook] validator succeeded on retry with whop-only headers')
+        } catch (retryWhopErr) {
+          // Retry 2: svix-only headers
+          try {
+            const svixOnly = new Headers()
+            if (chosenSig) svixOnly.set('svix-signature', chosenSig)
+            if (chosenId) svixOnly.set('svix-id', chosenId)
+            if (normalizedTs) svixOnly.set('svix-timestamp', normalizedTs)
+            const svixReq = new Request(req.url, { method: 'POST', headers: svixOnly, body: bodyBuffer })
+            webhook = await validator(svixReq as any)
+            console.log('[webhook] validator succeeded on retry with svix-only headers')
+          } catch (retrySvixErr) {
+            console.error('[webhook] validator failed after whop-only and svix-only retries', {
+              first: String(firstErr), whop: String(retryWhopErr), svix: String(retrySvixErr),
+            })
+            throw retrySvixErr
+          }
         }
       } else {
         throw firstErr
