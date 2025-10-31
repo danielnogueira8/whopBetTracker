@@ -45,6 +45,24 @@ export async function POST(req: NextRequest) {
       console.error('[webhook] no signature header; header keys:', Array.from(req.headers.keys()))
     }
 
+    // Normalize timestamp to seconds if needed
+    const tsRaw = bridgedHeaders.get('whop-timestamp')
+    if (tsRaw) {
+      let normalized = tsRaw.trim()
+      if (/^\d{13}$/.test(normalized)) {
+        // milliseconds → seconds
+        normalized = String(Math.floor(Number(normalized) / 1000))
+      } else if (!/^\d{10}$/.test(normalized)) {
+        const ms = Date.parse(normalized)
+        if (!Number.isNaN(ms)) {
+          normalized = String(Math.floor(ms / 1000))
+        }
+      }
+      bridgedHeaders.set('whop-timestamp', normalized)
+    } else {
+      console.error('[webhook] missing timestamp header; keys:', Array.from(req.headers.keys()))
+    }
+
     const bridgedReq = new Request(req.url, { method: req.method, headers: bridgedHeaders, body: rawBody })
 
     const validator = makeWebhookValidator({
