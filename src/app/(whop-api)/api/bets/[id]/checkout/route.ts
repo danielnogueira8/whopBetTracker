@@ -79,6 +79,11 @@ export async function POST(
       sellerCompanyId = exp?.company?.id
     } catch {}
 
+    // Validate sellerCompanyId exists
+    if (!sellerCompanyId) {
+      return NextResponse.json({ error: 'Seller company not found' }, { status: 400 })
+    }
+
     const metadata = {
       type: 'bet_purchase',
       betId: bet.id,

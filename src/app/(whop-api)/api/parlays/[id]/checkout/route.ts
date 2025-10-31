@@ -69,9 +69,18 @@ export async function POST(
       const exp = await whop.experiences.getExperience({ experienceId: parlay.experienceId })
       sellerCompanyId = exp?.company?.id
     } catch {}
+
+    // Validate sellerCompanyId exists
+    if (!sellerCompanyId) {
+      return NextResponse.json({ error: 'Seller company not found' }, { status: 400 })
+    }
+
     const metadata = { type: 'parlay_purchase', parlayId: parlay.id, listingId: listing.id, priceCents: String(listing.priceCents), experienceId: parlay.experienceId, sellerCompanyId } as any
 
-    const checkoutSession = await whop.payments.createCheckoutSession({ planId, metadata })
+    const checkoutSession = await whop.payments.createCheckoutSession({ 
+      planId, 
+      metadata 
+    })
     if (!checkoutSession) return NextResponse.json({ error: 'Failed to create checkout' }, { status: 500 })
 
     await db.insert(parlayPurchases).values({

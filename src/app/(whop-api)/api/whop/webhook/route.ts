@@ -323,41 +323,67 @@ export async function POST(req: NextRequest) {
             const exp = await whop.experiences.getExperience({ experienceId })
             destinationCompanyId = exp?.company?.id
           } catch (e) {
-            console.warn('[whop] failed to fetch experience for payout', e)
+            console.warn('[whop] failed to fetch experience for transfer', e)
           }
         }
       }
 
+      // Transfer 90% net to seller's company (app keeps 10% as application fee)
+      // Payment goes to app company first, then we transfer seller's portion
+      // Note: SDK doesn't have transfers API, so we use REST API directly
       let payoutTransferId: string | undefined
       try {
-        // Retrieve our app company's ledger account
-        const appCompanyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID as string | undefined
-        const ledgerResp = appCompanyId
-          ? await (whop as any).companies?.getCompanyLedgerAccount?.({ companyId: appCompanyId })
-          : undefined
-        const ledgerAccountId = ledgerResp?.company?.ledgerAccount?.id
+        if (destinationCompanyId && net > 0) {
+          const appCompanyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID as string | undefined
+          const whopApiKey = process.env.WHOP_API_KEY as string | undefined
+          
+          if (!appCompanyId || !whopApiKey) {
+            console.warn('[transfer] missing NEXT_PUBLIC_WHOP_COMPANY_ID or WHOP_API_KEY')
+          } else {
+            // Use REST API directly since SDK doesn't support transfers
+            // Note: API requires exactly one of: originId OR ledgerAccountId
+            // Documentation: https://docs.whop.com/api-reference/transfers/create-transfer
+            const transferResponse = await fetch('https://api.whop.com/api/v1/transfers', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${whopApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                amount: net, // Amount in cents
+                currency: purchase.currency || 'usd',
+                destinationId: destinationCompanyId, // Destination company ID
+                originId: appCompanyId, // Source company ID (not sourceId)
+                notes: isParlay 
+                  ? `Parlay sale transfer (90% of ${gross} cents, listing ${listingId})` 
+                  : `Bet sale transfer (90% of ${gross} cents, bet ${betId})`,
+              }),
+            })
 
-        const destinationId = listing?.sellerUserId
-        const currency = (data as any)?.currency || purchase.currency || 'usd'
+            if (!transferResponse.ok) {
+              const errorText = await transferResponse.text()
+              throw new Error(`Transfer API failed: ${transferResponse.status} ${errorText}`)
+            }
 
-        if (ledgerAccountId && destinationId && net > 0) {
-          // Pay the seller user from our ledger (90% net)
-          // @ts-ignore - SDK surface
-          const payout = await (whop as any).payments?.payUser?.({
-            amount: net,
-            currency,
-            destinationId,
-            ledgerAccountId,
-            idempotenceKey: purchase.id,
-            notes: isParlay ? `Parlay sale payout (${listingId})` : `Bet sale payout (${betId})`,
-          })
-          payoutTransferId = payout?.id
-          console.log('[payout] payUser created', { payoutTransferId, net, destinationId, ledgerAccountId })
+            const transfer = await transferResponse.json()
+            payoutTransferId = transfer?.id || transfer?.data?.id
+            console.log('[transfer] created via REST API', { 
+              payoutTransferId, 
+              net, 
+              destinationCompanyId, 
+              appCompanyId,
+              gross,
+              fee,
+              response: transfer
+            })
+          }
         } else {
-          console.warn('[payout] missing ledgerAccountId or destinationId; skipping', { ledgerAccountId, destinationId, net })
+          console.warn('[transfer] missing destinationCompanyId or net <= 0', { destinationCompanyId, net })
         }
       } catch (e) {
-        console.error('[payout] payUser failed', { err: String(e) })
+        console.error('[transfer] createTransfer failed', { err: String(e), destinationCompanyId, net })
+        // Continue even if transfer fails - access is already granted
+        // Transfer can be retried manually if needed
       }
 
       if (isParlay) {

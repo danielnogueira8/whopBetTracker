@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { db } from "~/db";
-import { upcomingBets, experienceSettings } from "~/db/schema";
+import { upcomingBets, experienceSettings, betSaleListings, userBetAccess } from "~/db/schema";
 import { verifyUserToken } from "@whop/api";
 import { whop } from "~/lib/whop";
 import { eq, and } from "drizzle-orm";
@@ -12,6 +12,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = await verifyUserToken(req.headers);
     const { id } = await params;
 
     const { searchParams } = new URL(req.url);
@@ -30,6 +31,46 @@ export async function GET(
 
     if (bet.length === 0) {
       return Response.json({ error: "Upcoming bet not found" }, { status: 404 });
+    }
+
+    // Check if user is admin - admins always have access
+    if (userId) {
+      try {
+        const access = await whop.access.checkIfUserHasAccessToExperience({ 
+          experienceId, 
+          userId 
+        });
+        if (access?.accessLevel === "admin") {
+          return Response.json({ bet: bet[0] });
+        }
+      } catch (e) {
+        console.warn("[upcoming-bet-access] failed to check admin access", e);
+      }
+    }
+
+    // Check if bet is paywalled (has an active listing)
+    const listing = await db
+      .select()
+      .from(betSaleListings)
+      .where(and(eq(betSaleListings.betId, id), eq(betSaleListings.active, true)))
+      .limit(1);
+
+    // If bet is paywalled, check if user has purchased access
+    if (listing.length > 0) {
+      if (!userId) {
+        return Response.json({ error: "Authentication required" }, { status: 401 });
+      }
+
+      // Check if user has purchased access to this bet
+      const purchasedAccess = await db
+        .select({ id: userBetAccess.id })
+        .from(userBetAccess)
+        .where(and(eq(userBetAccess.betId, id), eq(userBetAccess.userId, userId)))
+        .limit(1);
+
+      if (purchasedAccess.length === 0) {
+        return Response.json({ error: "Access denied. Purchase required to view this bet." }, { status: 403 });
+      }
     }
 
     return Response.json({ bet: bet[0] });
