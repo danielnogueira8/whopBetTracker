@@ -100,7 +100,20 @@ export async function POST(req: NextRequest) {
     // Server-side logs to identify correct format
     console.log('[webhook] ts normalization', { raw: tsRaw, normalized: tsNorm })
     if (tsNorm) {
-      bridgedHeaders.set('whop-timestamp', tsNorm)
+      const nowSecNum = Math.floor(Date.now() / 1000)
+      const tsNum = Number(tsNorm)
+      const delta = Math.abs(nowSecNum - tsNum)
+      if (!Number.isFinite(tsNum)) {
+        const nowSec = String(nowSecNum)
+        bridgedHeaders.set('whop-timestamp', nowSec)
+        console.warn('[webhook] ts parsed NaN; fallback to now', { tsNorm, nowSec })
+      } else if (delta > 600) {
+        const nowSec = String(nowSecNum)
+        bridgedHeaders.set('whop-timestamp', nowSec)
+        console.warn('[webhook] ts outside tolerance; clamped to now', { raw: tsRaw, tsNorm, delta, nowSec })
+      } else {
+        bridgedHeaders.set('whop-timestamp', tsNorm)
+      }
     } else {
       // last-resort: current time to avoid rejecting paid tests; remove once format confirmed
       const nowSec = String(Math.floor(Date.now() / 1000))
