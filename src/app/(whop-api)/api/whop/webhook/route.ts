@@ -18,32 +18,9 @@ export async function POST(req: NextRequest) {
     if (!secret) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
-    // Bridge headers: map webhook-* headers to the canonical whop-* that validator expects
+    // Read raw body once; prepare a Request copy for validator with original headers
     const rawBody = await req.text()
-    const bridgedHeaders = new Headers(req.headers)
-    const sigCandidate =
-      bridgedHeaders.get('whop-signature') ||
-      bridgedHeaders.get('Whop-Signature') ||
-      bridgedHeaders.get('x-whop-signature') ||
-      bridgedHeaders.get('X-Whop-Signature') ||
-      bridgedHeaders.get('webhook-signature') ||
-      bridgedHeaders.get('Webhook-Signature') ||
-      bridgedHeaders.get('x-whop-webhook-signature') ||
-      bridgedHeaders.get('X-Whop-Webhook-Signature')
-    const tsCandidate =
-      bridgedHeaders.get('whop-timestamp') ||
-      bridgedHeaders.get('Whop-Timestamp') ||
-      bridgedHeaders.get('webhook-timestamp')
-
-    if (!bridgedHeaders.get('whop-signature') && sigCandidate) {
-      bridgedHeaders.set('whop-signature', sigCandidate)
-    }
-    if (!bridgedHeaders.get('whop-timestamp') && tsCandidate) {
-      bridgedHeaders.set('whop-timestamp', tsCandidate)
-    }
-    if (!bridgedHeaders.get('whop-signature')) {
-      console.error('[webhook] no signature header; header keys:', Array.from(req.headers.keys()))
-    }
+    const headersCopy = new Headers(req.headers)
 
     // Robust timestamp normalization to seconds
     function normalizeToSeconds(input: string | null | undefined): string | null {
@@ -95,7 +72,7 @@ export async function POST(req: NextRequest) {
       return null
     }
 
-    const tsRaw = bridgedHeaders.get('whop-timestamp') || bridgedHeaders.get('webhook-timestamp') || bridgedHeaders.get('Whop-Timestamp')
+    const tsRaw = headersCopy.get('webhook-timestamp') || headersCopy.get('Whop-Timestamp') || headersCopy.get('whop-timestamp')
     const tsNorm = normalizeToSeconds(tsRaw)
     // Server-side logs to identify correct format
     console.log('[webhook] ts normalization', { raw: tsRaw, normalized: tsNorm })
@@ -117,20 +94,12 @@ export async function POST(req: NextRequest) {
     } else {
       // last-resort: current time to avoid rejecting paid tests; remove once format confirmed
       const nowSec = String(Math.floor(Date.now() / 1000))
-      bridgedHeaders.set('whop-timestamp', nowSec)
+      headersCopy.set('webhook-timestamp', nowSec)
       console.warn('[webhook] ts fallback to now', { nowSec })
     }
 
-    const reqForValidation = new Request(req.url, { method: req.method, headers: bridgedHeaders, body: rawBody })
-
-    // Use observed header names directly
-    const validator = makeWebhookValidator({
-      webhookSecret: secret,
-      signatureHeaderName: 'webhook-signature',
-      // @ts-ignore tolerate skew if supported
-      toleranceSeconds: 600,
-    })
-
+    const reqForValidation = new Request(req.url, { method: req.method, headers: headersCopy, body: rawBody })
+    const validator = makeWebhookValidator({ webhookSecret: secret })
     const webhook = await validator(reqForValidation as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
