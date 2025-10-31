@@ -111,20 +111,26 @@ export async function POST(req: NextRequest) {
 
     // Always construct a cloned request with augmented headers so the validator sees all expected variants
     const hdrs = new Headers(headersView)
+    const setAllCased = (name: string, value: string) => {
+      hdrs.set(name.toLowerCase(), value)
+      const title = name.replace(/(^|[-_])(\w)/g, (_, p, c) => (p ? p : '') + c.toUpperCase())
+      hdrs.set(title, value)
+      hdrs.set(name.toUpperCase(), value)
+    }
     if (chosenSig) {
-      hdrs.set('svix-signature', chosenSig)
-      hdrs.set('whop-signature', chosenSig)
-      hdrs.set('webhook-signature', chosenSig)
+      setAllCased('svix-signature', chosenSig)
+      setAllCased('whop-signature', chosenSig)
+      setAllCased('webhook-signature', chosenSig)
     }
     if (chosenId) {
-      hdrs.set('svix-id', chosenId)
-      hdrs.set('whop-id', chosenId)
-      hdrs.set('webhook-id', chosenId)
+      setAllCased('svix-id', chosenId)
+      setAllCased('whop-id', chosenId)
+      setAllCased('webhook-id', chosenId)
     }
     if (normalizedTs) {
-      hdrs.set('svix-timestamp', normalizedTs)
-      hdrs.set('whop-timestamp', normalizedTs)
-      hdrs.set('webhook-timestamp', normalizedTs)
+      setAllCased('svix-timestamp', normalizedTs)
+      setAllCased('whop-timestamp', normalizedTs)
+      setAllCased('webhook-timestamp', normalizedTs)
     }
     // Read raw body once to avoid disturbing the original Request body stream
     const bodyBuffer = await req.arrayBuffer()
