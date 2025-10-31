@@ -5,6 +5,9 @@ import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 import { makeWebhookValidator, type PaymentWebhookData } from "@whop/api"
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 type BetPurchaseMetadata = {
   type?: string
   betId?: string
