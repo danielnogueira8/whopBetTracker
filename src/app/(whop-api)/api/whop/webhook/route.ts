@@ -106,30 +106,27 @@ export async function POST(req: NextRequest) {
 
     const normalizedTs = normalizeToSeconds(existingTsRaw || tsRaw || undefined) || undefined
 
-    let reqForValidation: Request | undefined
-    if (existingSig || existingId || normalizedTs) {
-      const hdrs = new Headers(headersView)
-      if (existingSig) {
-        hdrs.set('svix-signature', existingSig)
-        hdrs.set('whop-signature', existingSig)
-        hdrs.set('webhook-signature', existingSig)
-      }
-      if (existingId) {
-        hdrs.set('svix-id', existingId)
-        hdrs.set('whop-id', existingId)
-        hdrs.set('webhook-id', existingId)
-      }
-      if (normalizedTs) {
-        hdrs.set('svix-timestamp', normalizedTs)
-        hdrs.set('whop-timestamp', normalizedTs)
-        hdrs.set('webhook-timestamp', normalizedTs)
-      }
-      // Clone request with augmented headers without consuming body
-      reqForValidation = new Request(req as any, { headers: hdrs })
+    // Always construct a cloned request with augmented headers so the validator sees all expected variants
+    const hdrs = new Headers(headersView)
+    if (existingSig) {
+      hdrs.set('svix-signature', existingSig)
+      hdrs.set('whop-signature', existingSig)
+      hdrs.set('webhook-signature', existingSig)
     }
+    if (existingId) {
+      hdrs.set('svix-id', existingId)
+      hdrs.set('whop-id', existingId)
+      hdrs.set('webhook-id', existingId)
+    }
+    if (normalizedTs) {
+      hdrs.set('svix-timestamp', normalizedTs)
+      hdrs.set('whop-timestamp', normalizedTs)
+      hdrs.set('webhook-timestamp', normalizedTs)
+    }
+    const reqForValidation: Request = new Request(req as any, { headers: hdrs })
 
     const validator = makeWebhookValidator({ webhookSecret: secret })
-    const webhook = await validator((reqForValidation ?? (req as any)) as any)
+    const webhook = await validator(reqForValidation as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
