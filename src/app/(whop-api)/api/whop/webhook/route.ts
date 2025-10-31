@@ -19,6 +19,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
     const signatureHeaderName =
+      (req.headers.get('webhook-signature') && 'webhook-signature') ||
+      (req.headers.get('Webhook-Signature') && 'Webhook-Signature') ||
       (req.headers.get('whop-signature') && 'whop-signature') ||
       (req.headers.get('Whop-Signature') && 'Whop-Signature') ||
       (req.headers.get('x-whop-signature') && 'x-whop-signature') ||
