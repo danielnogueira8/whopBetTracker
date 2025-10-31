@@ -72,34 +72,17 @@ export async function POST(req: NextRequest) {
       return null
     }
 
-    const tsRaw = headersCopy.get('webhook-timestamp') || headersCopy.get('Whop-Timestamp') || headersCopy.get('whop-timestamp')
+    const tsHeaderOriginal = headersCopy.get('whop-timestamp') || headersCopy.get('Whop-Timestamp') || headersCopy.get('webhook-timestamp')
+    const tsRaw = tsHeaderOriginal
     const tsNorm = normalizeToSeconds(tsRaw)
     // Server-side logs to identify correct format
     console.log('[webhook] ts normalization', { raw: tsRaw, normalized: tsNorm })
-    if (tsNorm) {
-      const nowSecNum = Math.floor(Date.now() / 1000)
-      const tsNum = Number(tsNorm)
-      const delta = Math.abs(nowSecNum - tsNum)
-      if (!Number.isFinite(tsNum)) {
-        const nowSec = String(nowSecNum)
-        headersCopy.set('webhook-timestamp', nowSec)
-        headersCopy.set('whop-timestamp', nowSec)
-        console.warn('[webhook] ts parsed NaN; fallback to now', { tsNorm, nowSec })
-      } else if (delta > 600) {
-        const nowSec = String(nowSecNum)
-        headersCopy.set('webhook-timestamp', nowSec)
-        headersCopy.set('whop-timestamp', nowSec)
-        console.warn('[webhook] ts outside tolerance; clamped to now', { raw: tsRaw, tsNorm, delta, nowSec })
-      } else {
-        headersCopy.set('webhook-timestamp', tsNorm)
+    // Only set timestamp headers if none provided; do not mutate if present to avoid signature mismatch
+    if (!tsHeaderOriginal) {
+      if (tsNorm) {
         headersCopy.set('whop-timestamp', tsNorm)
+        headersCopy.set('webhook-timestamp', tsNorm)
       }
-    } else {
-      // last-resort: current time to avoid rejecting paid tests; remove once format confirmed
-      const nowSec = String(Math.floor(Date.now() / 1000))
-      headersCopy.set('webhook-timestamp', nowSec)
-      headersCopy.set('whop-timestamp', nowSec)
-      console.warn('[webhook] ts fallback to now', { nowSec })
     }
 
     // Ensure signature header is available under the expected key for validator
@@ -110,6 +93,8 @@ export async function POST(req: NextRequest) {
       'Webhook-Signature',
       'x-whop-signature',
       'x-webhook-signature',
+      'signature',
+      'x-signature',
     ] as const
     let signatureValue: string | null = null
     for (const h of candidateSigHeaders) {
@@ -122,6 +107,17 @@ export async function POST(req: NextRequest) {
     if (signatureValue) {
       headersCopy.set('whop-signature', signatureValue)
     }
+
+    // Debug which relevant headers are present (names only)
+    try {
+      const presentHeaderNames: string[] = []
+      for (const [k] of headersCopy.entries()) {
+        if (k.includes('signature') || k.includes('whop') || k.includes('webhook')) {
+          presentHeaderNames.push(k)
+        }
+      }
+      console.log('[webhook] present headers (subset):', presentHeaderNames)
+    } catch {}
 
     const reqForValidation = new Request(req.url, { method: req.method, headers: headersCopy, body: rawBody })
     const validator = makeWebhookValidator({ webhookSecret: secret })
