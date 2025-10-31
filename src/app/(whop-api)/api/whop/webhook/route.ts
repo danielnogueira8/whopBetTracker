@@ -79,19 +79,38 @@ export async function POST(req: NextRequest) {
     const tsNorm = normalizeToSeconds(tsRaw)
     // Server-side logs to identify correct format
     console.log('[webhook] ts normalization', { raw: tsRaw, normalized: tsNorm })
-    // Debug which relevant headers are present (names only) without mutation
+    // Debug which relevant headers are present (names only) and basic value lengths without mutation
     try {
-      const presentHeaderNames: string[] = []
-      for (const [k] of headersView.entries()) {
-        if (k.includes('signature') || k.includes('whop') || k.includes('webhook')) {
-          presentHeaderNames.push(k)
+      const summary: Record<string, number> = {}
+      for (const [k, v] of headersView.entries()) {
+        if (k.includes('signature') || k.includes('whop') || k.includes('webhook') || k.includes('svix') || k.startsWith('x-vercel-proxy')) {
+          summary[k] = (v || '').length
         }
       }
-      console.log('[webhook] present headers (subset):', presentHeaderNames)
+      console.log('[webhook] present headers (subset):', Object.keys(summary))
+      console.log('[webhook] header value lengths:', summary)
     } catch {}
 
+    // If provider/host renames headers (e.g., Vercel proxy), mirror into expected names for validator
+    const needSig = !headersView.get('webhook-signature')
+    const needId = !headersView.get('webhook-id')
+    const needTs = !headersView.get('webhook-timestamp')
+    const maybeSig = headersView.get('svix-signature') || headersView.get('x-vercel-proxy-signature') || headersView.get('whop-signature')
+    const maybeId = headersView.get('svix-id') || headersView.get('webhook-id')
+    const maybeTs = headersView.get('svix-timestamp') || headersView.get('x-vercel-proxy-signature-ts') || headersView.get('webhook-timestamp')
+
+    let reqForValidation: Request | undefined
+    if ((needSig && maybeSig) || (needId && maybeId) || (needTs && maybeTs)) {
+      const hdrs = new Headers(headersView)
+      if (needSig && maybeSig) hdrs.set('webhook-signature', maybeSig)
+      if (needId && maybeId) hdrs.set('webhook-id', maybeId)
+      if (needTs && maybeTs) hdrs.set('webhook-timestamp', maybeTs)
+      // Clone request with augmented headers without consuming body
+      reqForValidation = new Request(req as any, { headers: hdrs })
+    }
+
     const validator = makeWebhookValidator({ webhookSecret: secret })
-    const webhook = await validator(req as any)
+    const webhook = await validator((reqForValidation ?? (req as any)) as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
