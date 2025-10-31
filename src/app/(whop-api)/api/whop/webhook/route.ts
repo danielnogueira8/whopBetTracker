@@ -29,9 +29,17 @@ export async function POST(req: NextRequest) {
       (req.headers.get('X-Whop-Webhook-Signature') && 'X-Whop-Webhook-Signature') ||
       null
 
+    const timestampHeaderName =
+      (req.headers.get('webhook-timestamp') && 'webhook-timestamp') ||
+      (req.headers.get('Whop-Timestamp') && 'Whop-Timestamp') ||
+      (req.headers.get('whop-timestamp') && 'whop-timestamp') ||
+      null
+
     const validator = makeWebhookValidator({
       webhookSecret: secret,
       signatureHeaderName,
+      timestampHeaderName,
+      toleranceSeconds: 300,
     })
     // Debug missing signature once
     if (!(
