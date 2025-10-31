@@ -92,31 +92,34 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     // If provider/host renames headers (e.g., Vercel proxy), mirror into all expected names (svix/whop/webhook)
-    const existingSig = headersView.get('svix-signature')
-      || headersView.get('whop-signature')
-      || headersView.get('webhook-signature')
-      || headersView.get('x-vercel-proxy-signature')
-    const existingId = headersView.get('svix-id')
-      || headersView.get('whop-id')
-      || headersView.get('webhook-id')
-    const existingTsRaw = headersView.get('svix-timestamp')
-      || headersView.get('whop-timestamp')
-      || headersView.get('webhook-timestamp')
-      || headersView.get('x-vercel-proxy-signature-ts')
+    // Choose the most authoritative set: whop-* > svix-* > webhook-* > x-vercel-proxy-*
+    const pick = (keys: string[]): string | null => {
+      for (const k of keys) {
+        const v = headersView.get(k)
+        if (v) return v
+      }
+      return null
+    }
 
-    const normalizedTs = normalizeToSeconds(existingTsRaw || tsRaw || undefined) || undefined
+    const chosenSig = pick(['whop-signature', 'svix-signature', 'webhook-signature', 'x-vercel-proxy-signature'])
+    const chosenId = pick(['whop-id', 'svix-id', 'webhook-id'])
+    const chosenTsRaw = pick(['whop-timestamp', 'svix-timestamp', 'webhook-timestamp', 'x-vercel-proxy-signature-ts'])
+
+    const normalizedTs = normalizeToSeconds(chosenTsRaw || tsRaw || undefined) || undefined
+
+    const usedSet = chosenSig ? (headersView.get('whop-signature') ? 'whop' : headersView.get('svix-signature') ? 'svix' : headersView.get('webhook-signature') ? 'webhook' : headersView.get('x-vercel-proxy-signature') ? 'vercel-proxy' : 'unknown') : 'none'
 
     // Always construct a cloned request with augmented headers so the validator sees all expected variants
     const hdrs = new Headers(headersView)
-    if (existingSig) {
-      hdrs.set('svix-signature', existingSig)
-      hdrs.set('whop-signature', existingSig)
-      hdrs.set('webhook-signature', existingSig)
+    if (chosenSig) {
+      hdrs.set('svix-signature', chosenSig)
+      hdrs.set('whop-signature', chosenSig)
+      hdrs.set('webhook-signature', chosenSig)
     }
-    if (existingId) {
-      hdrs.set('svix-id', existingId)
-      hdrs.set('whop-id', existingId)
-      hdrs.set('webhook-id', existingId)
+    if (chosenId) {
+      hdrs.set('svix-id', chosenId)
+      hdrs.set('whop-id', chosenId)
+      hdrs.set('webhook-id', chosenId)
     }
     if (normalizedTs) {
       hdrs.set('svix-timestamp', normalizedTs)
@@ -125,8 +128,46 @@ export async function POST(req: NextRequest) {
     }
     const reqForValidation: Request = new Request(req as any, { headers: hdrs })
 
+    // Extra diagnostics about selected header set (redacted preview)
+    try {
+      const redact = (s?: string | null) => (s ? `${s.slice(0, 8)}…${s.slice(-4)}` : undefined)
+      console.log('[webhook] header selection', {
+        usedSet,
+        hasId: !!chosenId,
+        hasSig: !!chosenSig,
+        hasTs: !!normalizedTs,
+        idPreview: redact(chosenId),
+        sigPreview: redact(chosenSig),
+        ts: normalizedTs,
+      })
+    } catch {}
+
     const validator = makeWebhookValidator({ webhookSecret: secret })
-    const webhook = await validator(reqForValidation as any)
+    let webhook
+    try {
+      webhook = await validator(reqForValidation as any)
+    } catch (firstErr) {
+      // If signature headers were not recognized by the validator, retry with a minimal Request containing only svix headers
+      const missingSig = String(firstErr || '').toLowerCase().includes('missing header')
+      if (!chosenSig || !chosenId || !normalizedTs || missingSig) {
+        const svixOnly = new Headers()
+        if (chosenSig) svixOnly.set('svix-signature', chosenSig)
+        if (chosenId) svixOnly.set('svix-id', chosenId)
+        if (normalizedTs) svixOnly.set('svix-timestamp', normalizedTs)
+        // Ensure body is available by cloning and reading, then re-create a Request with the same body
+        const bodyText = await (req.clone() as any).text()
+        const retryReq = new Request(req.url, { method: 'POST', headers: svixOnly, body: bodyText })
+        try {
+          webhook = await validator(retryReq as any)
+          console.log('[webhook] validator succeeded on retry with svix-only headers')
+        } catch (retryErr) {
+          console.error('[webhook] validator failed after retry', { err: String(retryErr) })
+          throw retryErr
+        }
+      } else {
+        throw firstErr
+      }
+    }
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
