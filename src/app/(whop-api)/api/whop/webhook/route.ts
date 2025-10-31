@@ -3,8 +3,8 @@ import { db } from "~/db"
 import { appFeesLedger, betPurchases, betSaleListings, userBetAccess, parlayFeesLedger, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
 import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
-import { makeWebhookValidator, type PaymentWebhookData } from "@whop/api"
-import { Webhook as SvixWebhook } from "svix"
+import { type PaymentWebhookData } from "@whop/api"
+import crypto from "node:crypto"
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     const usedSet = chosenSig ? (headersView.get('whop-signature') ? 'whop' : headersView.get('svix-signature') ? 'svix' : headersView.get('webhook-signature') ? 'webhook' : headersView.get('x-vercel-proxy-signature') ? 'vercel-proxy' : 'unknown') : 'none'
 
-    // Always construct a cloned request with augmented headers so the validator sees all expected variants
+    // Always construct a cloned request with augmented headers so any downstream consumer sees expected variants
     const hdrs = new Headers(headersView)
     const setAllCased = (name: string, value: string) => {
       hdrs.set(name.toLowerCase(), value)
@@ -151,73 +151,62 @@ export async function POST(req: NextRequest) {
       })
     } catch {}
 
-    const validator = makeWebhookValidator({ webhookSecret: secret })
-    let webhook
+    // Custom HMAC verification (auto-detect format)
+    let webhook: any
+    if (!chosenSig || !normalizedTs) {
+      const keys = Array.from(headersView.keys())
+      return NextResponse.json({ ok: false, error: 'missing signature headers' }, { status: 400 })
+    }
+    const nowSec = Math.floor(Date.now() / 1000)
+    if (Math.abs(nowSec - Number(normalizedTs)) > 5 * 60) {
+      return NextResponse.json({ ok: false, error: 'timestamp out of range' }, { status: 400 })
+    }
+    const payload = new TextDecoder().decode(bodyBuffer)
+
+    function timingSafeEq(a: Buffer, b: Buffer): boolean {
+      if (a.length !== b.length) return false
+      return crypto.timingSafeEqual(a, b)
+    }
+
+    function computeHmac(input: string, encoding: 'hex' | 'base64'): string {
+      return crypto.createHmac('sha256', secret!).update(input).digest(encoding)
+    }
+
+    const sigRaw = chosenSig.trim()
+    let verified = false
+
+    // Case A: Stripe-style: signature header like "t=TIMESTAMP,v1=SIGNATURE"
+    if (/t=\d+/.test(sigRaw) && /v1=/.test(sigRaw)) {
+      const parts = Object.fromEntries(sigRaw.split(',').map((p) => p.split('='))) as Record<string, string>
+      const t = parts['t']
+      const v1 = parts['v1']
+      const signedPayload = `${t}.${payload}`
+      const hHex = computeHmac(signedPayload, 'hex')
+      const hB64 = computeHmac(signedPayload, 'base64')
+      verified = timingSafeEq(Buffer.from(v1, 'hex').subarray(0, hHex.length / 2), Buffer.from(hHex, 'hex'))
+        || timingSafeEq(Buffer.from(v1), Buffer.from(hB64))
+    } else {
+      // Case B: Raw HMAC with optional v1 prefix
+      const v = sigRaw.startsWith('v1,') ? sigRaw.slice(3) : sigRaw
+      const hHex = computeHmac(payload, 'hex')
+      const hB64 = computeHmac(payload, 'base64')
+      verified = timingSafeEq(Buffer.from(v, 'hex').subarray(0, hHex.length / 2), Buffer.from(hHex, 'hex'))
+        || timingSafeEq(Buffer.from(v), Buffer.from(hB64))
+        || (() => { // Try timestamp-bound variant just in case
+          const hHexTs = computeHmac(`${normalizedTs}.${payload}`, 'hex')
+          const hB64Ts = computeHmac(`${normalizedTs}.${payload}`, 'base64')
+          return timingSafeEq(Buffer.from(v, 'hex').subarray(0, hHexTs.length / 2), Buffer.from(hHexTs, 'hex'))
+            || timingSafeEq(Buffer.from(v), Buffer.from(hB64Ts))
+        })()
+    }
+
+    if (!verified) {
+      return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 401 })
+    }
     try {
-      if (!chosenSig || !chosenId || !normalizedTs) {
-        const keys = Array.from(headersView.keys())
-        console.warn('[webhook] missing required signature headers', { hasId: !!chosenId, hasSig: !!chosenSig, hasTs: !!normalizedTs, keys })
-        return NextResponse.json({ ok: false, error: 'missing signature headers' }, { status: 400 })
-      }
-      // First attempt: explicit Svix verification with mapped headers to avoid Request/header quirks
-      const payload = new TextDecoder().decode(bodyBuffer)
-      const svixHeaders = {
-        'svix-id': chosenId,
-        'svix-timestamp': normalizedTs,
-        'svix-signature': chosenSig || headersView.get('x-vercel-proxy-signature') || '',
-      }
-      try {
-        const svix = new SvixWebhook(secret)
-        const svixVerified = svix.verify(payload, svixHeaders as any)
-        webhook = typeof svixVerified === 'string' ? JSON.parse(svixVerified) : svixVerified
-        console.log('[webhook] svix explicit verification succeeded')
-      } catch (svixErr) {
-        // Fallback: use Whop validator with augmented Request
-        webhook = await validator(reqForValidation as any)
-      }
-    } catch (firstErr) {
-      const missingSig = String(firstErr || '').toLowerCase().includes('missing header')
-      if (!chosenSig || !chosenId || !normalizedTs || missingSig) {
-        // Retry 1: whop-only headers
-        try {
-          const whopOnly = new Headers()
-          if (chosenSig) whopOnly.set('whop-signature', chosenSig)
-          if (chosenId) whopOnly.set('whop-id', chosenId)
-          if (normalizedTs) whopOnly.set('whop-timestamp', normalizedTs)
-          const whopReq = new Request(req.url, { method: 'POST', headers: whopOnly, body: bodyBuffer })
-          webhook = await validator(whopReq as any)
-          console.log('[webhook] validator succeeded on retry with whop-only headers')
-        } catch (retryWhopErr) {
-          // Retry 2: svix-only headers
-          try {
-            const svixOnly = new Headers()
-            if (chosenSig) svixOnly.set('svix-signature', chosenSig)
-            if (chosenId) svixOnly.set('svix-id', chosenId)
-            if (normalizedTs) svixOnly.set('svix-timestamp', normalizedTs)
-            const svixReq = new Request(req.url, { method: 'POST', headers: svixOnly, body: bodyBuffer })
-            webhook = await validator(svixReq as any)
-            console.log('[webhook] validator succeeded on retry with svix-only headers')
-          } catch (retrySvixErr) {
-            console.error('[webhook] validator failed after whop-only and svix-only retries', {
-              first: String(firstErr), whop: String(retryWhopErr), svix: String(retrySvixErr),
-            })
-            // As a last-resort mitigation: if all expected headers are present and timestamp is sane, proceed without validator
-            const nowSec = Math.floor(Date.now() / 1000)
-            const tsOk = !!normalizedTs && Math.abs(nowSec - Number(normalizedTs)) < 5 * 60
-            if (chosenSig && chosenId && tsOk) {
-              console.warn('[webhook] proceeding with trusted headers fallback (temporary)', { tsOk, idPreview: (chosenId || '').slice(0, 8) })
-              // Best-effort parse body for downstream handling
-              try {
-                webhook = JSON.parse(new TextDecoder().decode(bodyBuffer))
-              } catch {}
-            } else {
-              throw retrySvixErr
-            }
-          }
-        }
-      } else {
-        throw firstErr
-      }
+      webhook = JSON.parse(payload)
+    } catch {
+      webhook = undefined
     }
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
