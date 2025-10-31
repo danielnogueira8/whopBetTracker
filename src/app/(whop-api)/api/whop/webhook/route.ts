@@ -82,14 +82,14 @@ export async function POST(req: NextRequest) {
       const delta = Math.abs(nowSecNum - tsNum)
       if (!Number.isFinite(tsNum)) {
         const nowSec = String(nowSecNum)
-        bridgedHeaders.set('whop-timestamp', nowSec)
+        headersCopy.set('webhook-timestamp', nowSec)
         console.warn('[webhook] ts parsed NaN; fallback to now', { tsNorm, nowSec })
       } else if (delta > 600) {
         const nowSec = String(nowSecNum)
-        bridgedHeaders.set('whop-timestamp', nowSec)
+        headersCopy.set('webhook-timestamp', nowSec)
         console.warn('[webhook] ts outside tolerance; clamped to now', { raw: tsRaw, tsNorm, delta, nowSec })
       } else {
-        bridgedHeaders.set('whop-timestamp', tsNorm)
+        headersCopy.set('webhook-timestamp', tsNorm)
       }
     } else {
       // last-resort: current time to avoid rejecting paid tests; remove once format confirmed
