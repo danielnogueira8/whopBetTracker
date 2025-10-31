@@ -126,7 +126,9 @@ export async function POST(req: NextRequest) {
       hdrs.set('whop-timestamp', normalizedTs)
       hdrs.set('webhook-timestamp', normalizedTs)
     }
-    const reqForValidation: Request = new Request(req as any, { headers: hdrs })
+    // Read raw body once to avoid disturbing the original Request body stream
+    const bodyBuffer = await req.arrayBuffer()
+    const reqForValidation: Request = new Request(req.url, { method: 'POST', headers: hdrs, body: bodyBuffer })
 
     // Extra diagnostics about selected header set (redacted preview)
     try {
@@ -145,6 +147,12 @@ export async function POST(req: NextRequest) {
     const validator = makeWebhookValidator({ webhookSecret: secret })
     let webhook
     try {
+      if (!chosenSig || !chosenId || !normalizedTs) {
+        // Missing required headers: fail fast with actionable info
+        const keys = Array.from(headersView.keys())
+        console.warn('[webhook] missing required signature headers', { hasId: !!chosenId, hasSig: !!chosenSig, hasTs: !!normalizedTs, keys })
+        return NextResponse.json({ ok: false, error: 'missing signature headers' }, { status: 400 })
+      }
       webhook = await validator(reqForValidation as any)
     } catch (firstErr) {
       // If signature headers were not recognized by the validator, retry with a minimal Request containing only svix headers
@@ -154,9 +162,7 @@ export async function POST(req: NextRequest) {
         if (chosenSig) svixOnly.set('svix-signature', chosenSig)
         if (chosenId) svixOnly.set('svix-id', chosenId)
         if (normalizedTs) svixOnly.set('svix-timestamp', normalizedTs)
-        // Ensure body is available by cloning and reading, then re-create a Request with the same body
-        const bodyText = await (req.clone() as any).text()
-        const retryReq = new Request(req.url, { method: 'POST', headers: svixOnly, body: bodyText })
+        const retryReq = new Request(req.url, { method: 'POST', headers: svixOnly, body: bodyBuffer })
         try {
           webhook = await validator(retryReq as any)
           console.log('[webhook] validator succeeded on retry with svix-only headers')
