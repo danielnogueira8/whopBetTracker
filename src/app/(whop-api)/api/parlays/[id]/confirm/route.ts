@@ -34,9 +34,12 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // Only allow when payment has completed via webhook
+    if ((purchase as any)?.status !== 'succeeded') {
+      return NextResponse.json({ error: 'Payment not completed' }, { status: 409 })
+    }
+
     await db.insert(userParlayAccess).values({ parlayId: parlay.id, userId }).onConflictDoNothing?.()
-    // @ts-ignore drizzle update helper inferred elsewhere
-    await db.update(parlayPurchases).set({ status: 'succeeded' }).where(eq(parlayPurchases.id, purchase.id))
 
     return NextResponse.json({ ok: true })
   } catch (e) {

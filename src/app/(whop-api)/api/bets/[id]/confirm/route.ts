@@ -37,11 +37,13 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Grant access idempotently
+    // Only allow when payment has completed via webhook
+    if ((purchase as any)?.status !== 'succeeded') {
+      return NextResponse.json({ error: 'Payment not completed' }, { status: 409 })
+    }
+
+    // Grant access idempotently (now that status is succeeded)
     await db.insert(userBetAccess).values({ betId: bet.id, userId }).onConflictDoNothing?.()
-    // Best-effort mark succeeded
-    // @ts-ignore drizzle update helper inferred elsewhere
-    await db.update(betPurchases).set({ status: 'succeeded' }).where(eq(betPurchases.id, purchase.id))
 
     return NextResponse.json({ ok: true })
   } catch (e) {
