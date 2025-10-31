@@ -18,9 +18,8 @@ export async function POST(req: NextRequest) {
     if (!secret) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
-    // Read raw body once; prepare a Request copy for validator with original headers
-    const rawBody = await req.text()
-    const headersCopy = new Headers(req.headers)
+    // Do not read or mutate the body/headers before validation
+    const headersView = req.headers
 
     // Robust timestamp normalization to seconds
     function normalizeToSeconds(input: string | null | undefined): string | null {
@@ -72,46 +71,15 @@ export async function POST(req: NextRequest) {
       return null
     }
 
-    const tsHeaderOriginal = headersCopy.get('whop-timestamp') || headersCopy.get('Whop-Timestamp') || headersCopy.get('webhook-timestamp')
+    const tsHeaderOriginal = headersView.get('whop-timestamp') || headersView.get('Whop-Timestamp') || headersView.get('webhook-timestamp')
     const tsRaw = tsHeaderOriginal
     const tsNorm = normalizeToSeconds(tsRaw)
     // Server-side logs to identify correct format
     console.log('[webhook] ts normalization', { raw: tsRaw, normalized: tsNorm })
-    // Only set timestamp headers if none provided; do not mutate if present to avoid signature mismatch
-    if (!tsHeaderOriginal) {
-      if (tsNorm) {
-        headersCopy.set('whop-timestamp', tsNorm)
-        headersCopy.set('webhook-timestamp', tsNorm)
-      }
-    }
-
-    // Ensure signature header is available under the expected key for validator
-    const candidateSigHeaders = [
-      'whop-signature',
-      'Whop-Signature',
-      'webhook-signature',
-      'Webhook-Signature',
-      'x-whop-signature',
-      'x-webhook-signature',
-      'signature',
-      'x-signature',
-    ] as const
-    let signatureValue: string | null = null
-    for (const h of candidateSigHeaders) {
-      const v = headersCopy.get(h)
-      if (v) {
-        signatureValue = v
-        break
-      }
-    }
-    if (signatureValue) {
-      headersCopy.set('whop-signature', signatureValue)
-    }
-
-    // Debug which relevant headers are present (names only)
+    // Debug which relevant headers are present (names only) without mutation
     try {
       const presentHeaderNames: string[] = []
-      for (const [k] of headersCopy.entries()) {
+      for (const [k] of headersView.entries()) {
         if (k.includes('signature') || k.includes('whop') || k.includes('webhook')) {
           presentHeaderNames.push(k)
         }
@@ -119,9 +87,8 @@ export async function POST(req: NextRequest) {
       console.log('[webhook] present headers (subset):', presentHeaderNames)
     } catch {}
 
-    const reqForValidation = new Request(req.url, { method: req.method, headers: headersCopy, body: rawBody })
     const validator = makeWebhookValidator({ webhookSecret: secret })
-    const webhook = await validator(reqForValidation as any)
+    const webhook = await validator(req as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
