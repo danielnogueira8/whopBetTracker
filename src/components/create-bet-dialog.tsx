@@ -26,6 +26,7 @@ import { Badge } from "~/components/ui/badge";
 import { useWhop } from "~/lib/whop-context";
 import { Plus, Trash2 } from "lucide-react";
 import { calculateParlayOdds } from "~/lib/parlay-utils";
+import { isSellingDisabled } from "~/lib/feature-flags";
 
 interface CreateBetDialogProps {
   open: boolean;
@@ -186,7 +187,7 @@ export function CreateBetDialog({
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
       const parlayId = res?.parlay?.id as string | undefined
       const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
-      if (isUpcomingBet && isParlay && parlayId && forSale && priceCents > 0) {
+      if (isUpcomingBet && isParlay && parlayId && !isSellingDisabled() && forSale && priceCents > 0) {
         createParlayListing.mutate({ parlayId, priceCents })
       } else {
         onOpenChange(false)
@@ -224,7 +225,7 @@ export function CreateBetDialog({
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
       const betId = res?.bet?.id as string | undefined
       const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
-      if (betId && forSale && priceCents > 0) {
+      if (betId && !isSellingDisabled() && forSale && priceCents > 0) {
         createListing.mutate({ betId, priceCents })
       } else {
         onOpenChange(false)
@@ -820,7 +821,7 @@ export function CreateBetDialog({
                       <div className="rounded-lg border p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <Label htmlFor="for-sale">List for sale</Label>
-                          <Switch id="for-sale" checked={forSale} onCheckedChange={setForSale} />
+                          <Switch id="for-sale" checked={forSale && !isSellingDisabled()} onCheckedChange={setForSale} disabled={isSellingDisabled()} />
                         </div>
                         <div className="grid gap-1">
                           <Label>Price (USD)</Label>
@@ -831,7 +832,7 @@ export function CreateBetDialog({
                                 type="button"
                                 variant={price === p ? 'default' : 'outline'}
                                 size="sm"
-                                disabled={!forSale}
+                                disabled={!forSale || isSellingDisabled()}
                                 onClick={() => setPrice(p)}
                               >
                                 ${p}
@@ -839,7 +840,11 @@ export function CreateBetDialog({
                             ))}
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
+                        {isSellingDisabled() ? (
+                          <p className="text-sm text-muted-foreground">Selling is temporarily disabled.</p>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
+                        )}
                         <p className="text-xs text-muted-foreground">Disclaimer: This feature is experimental and still in testing.</p>
                       </div>
                     )}

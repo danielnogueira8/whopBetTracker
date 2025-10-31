@@ -26,6 +26,7 @@ import { Switch } from "~/components/ui/switch";
 import { useWhop } from "~/lib/whop-context";
 import { Plus, Trash2 } from "lucide-react";
 import { calculateParlayOdds } from "~/lib/parlay-utils";
+import { isSellingDisabled } from "~/lib/feature-flags";
 import { toDecimal } from "~/lib/bet-utils";
 
 interface Leg {
@@ -400,7 +401,7 @@ export function CreateParlayDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createParlay.isPending}>
+            <Button type="submit" disabled={createParlay.isPending || isSellingDisabled()}>
               {createParlay.isPending ? "Creating..." : "Create Parlay"}
             </Button>
           </DialogFooter>
