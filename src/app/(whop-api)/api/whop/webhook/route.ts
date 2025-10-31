@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       if (!Number.isNaN(msIso)) return String(Math.floor(msIso / 1000))
 
       // 4) key=value
-      const mKv = raw.match(/(?:^|[?&#;,\s])(ts|timestamp|time|t)\s*=\s*([0-9T:\\-+.Z/]+)/i)
+      const mKv = raw.match(/(?:^|[?&#;,\s])(ts|timestamp|time|t)\s*=\s*([0-9T:.Z/+-]+)/i)
       if (mKv?.[2]) {
         const n = normalizeToSeconds(mKv[2])
         if (n) return n
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       } catch {}
 
       // 7) delimited string "ts:..."
-      const mTs = raw.match(/(?:^|[ ,;|])(ts|timestamp|time|t)\s*[:=]\s*([0-9T:\\-+.Z/]+)/i)
+      const mTs = raw.match(/(?:^|[ ,;|])(ts|timestamp|time|t)\s*[:=]\s*([0-9T:.Z/+-]+)/i)
       if (mTs?.[2]) {
         const n = normalizeToSeconds(mTs[2])
         if (n) return n
