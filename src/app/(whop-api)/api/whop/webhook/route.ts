@@ -4,6 +4,7 @@ import { appFeesLedger, betPurchases, betSaleListings, userBetAccess, parlayFees
 import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 import { makeWebhookValidator, type PaymentWebhookData } from "@whop/api"
+import { Webhook as SvixWebhook } from "svix"
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -154,12 +155,26 @@ export async function POST(req: NextRequest) {
     let webhook
     try {
       if (!chosenSig || !chosenId || !normalizedTs) {
-        // Missing required headers: fail fast with actionable info
         const keys = Array.from(headersView.keys())
         console.warn('[webhook] missing required signature headers', { hasId: !!chosenId, hasSig: !!chosenSig, hasTs: !!normalizedTs, keys })
         return NextResponse.json({ ok: false, error: 'missing signature headers' }, { status: 400 })
       }
-      webhook = await validator(reqForValidation as any)
+      // First attempt: explicit Svix verification with mapped headers to avoid Request/header quirks
+      const payload = new TextDecoder().decode(bodyBuffer)
+      const svixHeaders = {
+        'svix-id': chosenId,
+        'svix-timestamp': normalizedTs,
+        'svix-signature': chosenSig || headersView.get('x-vercel-proxy-signature') || '',
+      }
+      try {
+        const svix = new SvixWebhook(secret)
+        const svixVerified = svix.verify(payload, svixHeaders as any)
+        webhook = typeof svixVerified === 'string' ? JSON.parse(svixVerified) : svixVerified
+        console.log('[webhook] svix explicit verification succeeded')
+      } catch (svixErr) {
+        // Fallback: use Whop validator with augmented Request
+        webhook = await validator(reqForValidation as any)
+      }
     } catch (firstErr) {
       const missingSig = String(firstErr || '').toLowerCase().includes('missing header')
       if (!chosenSig || !chosenId || !normalizedTs || missingSig) {
