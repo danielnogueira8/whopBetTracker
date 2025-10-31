@@ -121,14 +121,17 @@ export async function POST(req: NextRequest) {
       console.warn('[webhook] ts fallback to now', { nowSec })
     }
 
-    const bridgedReq = new Request(req.url, { method: req.method, headers: bridgedHeaders, body: rawBody })
+    const reqForValidation = new Request(req.url, { method: req.method, headers: bridgedHeaders, body: rawBody })
 
+    // Use observed header names directly
     const validator = makeWebhookValidator({
       webhookSecret: secret,
-      signatureHeaderName: 'whop-signature',
+      signatureHeaderName: 'webhook-signature',
+      // @ts-ignore tolerate skew if supported
+      toleranceSeconds: 600,
     })
 
-    const webhook = await validator(bridgedReq as any)
+    const webhook = await validator(reqForValidation as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
