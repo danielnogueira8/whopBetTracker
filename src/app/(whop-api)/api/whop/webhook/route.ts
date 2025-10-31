@@ -18,42 +18,41 @@ export async function POST(req: NextRequest) {
     if (!secret) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
-    const signatureHeaderName =
-      (req.headers.get('webhook-signature') && 'webhook-signature') ||
-      (req.headers.get('Webhook-Signature') && 'Webhook-Signature') ||
-      (req.headers.get('whop-signature') && 'whop-signature') ||
-      (req.headers.get('Whop-Signature') && 'Whop-Signature') ||
-      (req.headers.get('x-whop-signature') && 'x-whop-signature') ||
-      (req.headers.get('X-Whop-Signature') && 'X-Whop-Signature') ||
-      (req.headers.get('x-whop-webhook-signature') && 'x-whop-webhook-signature') ||
-      (req.headers.get('X-Whop-Webhook-Signature') && 'X-Whop-Webhook-Signature') ||
-      null
+    // Bridge headers: map webhook-* headers to the canonical whop-* that validator expects
+    const rawBody = await req.text()
+    const bridgedHeaders = new Headers(req.headers)
+    const sigCandidate =
+      bridgedHeaders.get('whop-signature') ||
+      bridgedHeaders.get('Whop-Signature') ||
+      bridgedHeaders.get('x-whop-signature') ||
+      bridgedHeaders.get('X-Whop-Signature') ||
+      bridgedHeaders.get('webhook-signature') ||
+      bridgedHeaders.get('Webhook-Signature') ||
+      bridgedHeaders.get('x-whop-webhook-signature') ||
+      bridgedHeaders.get('X-Whop-Webhook-Signature')
+    const tsCandidate =
+      bridgedHeaders.get('whop-timestamp') ||
+      bridgedHeaders.get('Whop-Timestamp') ||
+      bridgedHeaders.get('webhook-timestamp')
 
-    const timestampHeaderName =
-      (req.headers.get('webhook-timestamp') && 'webhook-timestamp') ||
-      (req.headers.get('Whop-Timestamp') && 'Whop-Timestamp') ||
-      (req.headers.get('whop-timestamp') && 'whop-timestamp') ||
-      null
-
-    const validator = makeWebhookValidator({
-      webhookSecret: secret,
-      signatureHeaderName,
-      timestampHeaderName,
-      toleranceSeconds: 300,
-    })
-    // Debug missing signature once
-    if (!(
-      req.headers.get('whop-signature') ||
-      req.headers.get('Whop-Signature') ||
-      req.headers.get('x-whop-signature') ||
-      req.headers.get('X-Whop-Signature') ||
-      req.headers.get('x-whop-webhook-signature') ||
-      req.headers.get('X-Whop-Webhook-Signature')
-    )) {
+    if (!bridgedHeaders.get('whop-signature') && sigCandidate) {
+      bridgedHeaders.set('whop-signature', sigCandidate)
+    }
+    if (!bridgedHeaders.get('whop-timestamp') && tsCandidate) {
+      bridgedHeaders.set('whop-timestamp', tsCandidate)
+    }
+    if (!bridgedHeaders.get('whop-signature')) {
       console.error('[webhook] no signature header; header keys:', Array.from(req.headers.keys()))
     }
 
-    const webhook = await validator(req as any)
+    const bridgedReq = new Request(req.url, { method: req.method, headers: bridgedHeaders, body: rawBody })
+
+    const validator = makeWebhookValidator({
+      webhookSecret: secret,
+      signatureHeaderName: 'whop-signature',
+    })
+
+    const webhook = await validator(bridgedReq as any)
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
