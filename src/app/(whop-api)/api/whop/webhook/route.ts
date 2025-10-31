@@ -168,55 +168,88 @@ export async function POST(req: NextRequest) {
       return crypto.timingSafeEqual(a, b)
     }
 
-    function getSecretCandidates(): (string | Buffer)[] {
+    function getSecretCandidates(): Buffer[] {
       const s = (secret || '').trim()
-      const candidates: (string | Buffer)[] = []
-      if (s) {
-        candidates.push(s)
-        candidates.push(Buffer.from(s, 'utf8'))
-        try {
-          const b64 = Buffer.from(s, 'base64')
-          if (b64.length > 0) candidates.push(b64)
-        } catch {}
-      }
-      return candidates
+      const out: Buffer[] = []
+      if (!s) return out
+      // utf8
+      out.push(Buffer.from(s, 'utf8'))
+      // base64
+      try {
+        const b64 = Buffer.from(s, 'base64')
+        if (b64.length > 0) out.push(b64)
+      } catch {}
+      // hex
+      try {
+        if (/^[0-9a-fA-F]+$/.test(s) && s.length % 2 === 0) {
+          const hx = Buffer.from(s, 'hex')
+          if (hx.length > 0) out.push(hx)
+        }
+      } catch {}
+      // dedupe by hex
+      const seen = new Set<string>()
+      return out.filter((b) => (seen.has(b.toString('hex')) ? false : (seen.add(b.toString('hex')), true)))
     }
 
-    function computeHmacWithAnyKey(input: string, encoding: 'hex' | 'base64'): { value: string; keyType: string }[] {
-      const out: { value: string; keyType: string }[] = []
-      for (const key of getSecretCandidates()) {
-        const h = crypto.createHmac('sha256', key).update(input).digest(encoding)
-        out.push({ value: h, keyType: Buffer.isBuffer(key) ? `buf:${key.length}` : 'utf8' })
+    function parseSignatureToBuffers(sig: string): Buffer[] {
+      const variants: string[] = [sig]
+      // If v1,<sig>
+      if (sig.startsWith('v1,')) variants.push(sig.slice(3))
+      const out: Buffer[] = []
+      for (const v of variants) {
+        const s = v.trim()
+        // hex
+        if (/^[0-9a-fA-F]+$/.test(s) && s.length % 2 === 0) {
+          try { out.push(Buffer.from(s, 'hex')) } catch {}
+        }
+        // base64
+        try {
+          const b = Buffer.from(s, 'base64')
+          if (b.length > 0) out.push(b)
+        } catch {}
+        // base64url
+        try {
+          const b64 = s.replace(/-/g, '+').replace(/_/g, '/')
+          const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4))
+          const b = Buffer.from(b64 + pad, 'base64')
+          if (b.length > 0) out.push(b)
+        } catch {}
       }
-      return out
+      const seen = new Set<string>()
+      return out.filter((b) => (seen.has(b.toString('hex')) ? false : (seen.add(b.toString('hex')), true)))
+    }
+
+    function computeHmacDigests(input: string, keys: Buffer[]): Buffer[] {
+      const out: Buffer[] = []
+      for (const k of keys) {
+        try {
+          const d = crypto.createHmac('sha256', k).update(input).digest()
+          out.push(d)
+        } catch {}
+      }
+      const seen = new Set<string>()
+      return out.filter((b) => (seen.has(b.toString('hex')) ? false : (seen.add(b.toString('hex')), true)))
     }
 
     const sigRaw = chosenSig.trim()
     let verified = false
+    const sigBuffers = parseSignatureToBuffers(sigRaw)
+    const keyCandidates = getSecretCandidates()
 
     // Case A: Stripe-style: signature header like "t=TIMESTAMP,v1=SIGNATURE"
     if (/t=\d+/.test(sigRaw) && /v1=/.test(sigRaw)) {
       const parts = Object.fromEntries(sigRaw.split(',').map((p) => p.split('='))) as Record<string, string>
       const t = parts['t']
       const v1 = parts['v1']
+      if (v1) sigBuffers.push(...parseSignatureToBuffers(v1))
       const signedPayload = `${t}.${payload}`
-      const hexCandidates = computeHmacWithAnyKey(signedPayload, 'hex')
-      const b64Candidates = computeHmacWithAnyKey(signedPayload, 'base64')
-      verified = hexCandidates.some((c) => timingSafeEq(Buffer.from(v1, 'hex').subarray(0, c.value.length / 2), Buffer.from(c.value, 'hex')))
-        || b64Candidates.some((c) => timingSafeEq(Buffer.from(v1), Buffer.from(c.value)))
+      const digests = computeHmacDigests(signedPayload, keyCandidates)
+      verified = sigBuffers.some((sb) => digests.some((dg) => sb.length === dg.length && timingSafeEq(sb, dg)))
     } else {
       // Case B: Raw HMAC with optional v1 prefix
-      const v = sigRaw.startsWith('v1,') ? sigRaw.slice(3) : sigRaw
-      const hexCandidates = computeHmacWithAnyKey(payload, 'hex')
-      const b64Candidates = computeHmacWithAnyKey(payload, 'base64')
-      verified = hexCandidates.some((c) => timingSafeEq(Buffer.from(v, 'hex').subarray(0, c.value.length / 2), Buffer.from(c.value, 'hex')))
-        || b64Candidates.some((c) => timingSafeEq(Buffer.from(v), Buffer.from(c.value)))
-        || (() => { // Try timestamp-bound variant just in case
-          const hexTs = computeHmacWithAnyKey(`${normalizedTs}.${payload}`, 'hex')
-          const b64Ts = computeHmacWithAnyKey(`${normalizedTs}.${payload}`, 'base64')
-          return hexTs.some((c) => timingSafeEq(Buffer.from(v, 'hex').subarray(0, c.value.length / 2), Buffer.from(c.value, 'hex')))
-            || b64Ts.some((c) => timingSafeEq(Buffer.from(v), Buffer.from(c.value)))
-        })()
+      const digestsA = computeHmacDigests(payload, keyCandidates)
+      const digestsB = computeHmacDigests(`${normalizedTs}.${payload}`, keyCandidates)
+      verified = sigBuffers.some((sb) => digestsA.concat(digestsB).some((dg) => sb.length === dg.length && timingSafeEq(sb, dg)))
     }
 
     if (!verified) {
