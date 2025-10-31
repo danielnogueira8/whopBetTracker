@@ -83,19 +83,44 @@ export async function POST(req: NextRequest) {
       if (!Number.isFinite(tsNum)) {
         const nowSec = String(nowSecNum)
         headersCopy.set('webhook-timestamp', nowSec)
+        headersCopy.set('whop-timestamp', nowSec)
         console.warn('[webhook] ts parsed NaN; fallback to now', { tsNorm, nowSec })
       } else if (delta > 600) {
         const nowSec = String(nowSecNum)
         headersCopy.set('webhook-timestamp', nowSec)
+        headersCopy.set('whop-timestamp', nowSec)
         console.warn('[webhook] ts outside tolerance; clamped to now', { raw: tsRaw, tsNorm, delta, nowSec })
       } else {
         headersCopy.set('webhook-timestamp', tsNorm)
+        headersCopy.set('whop-timestamp', tsNorm)
       }
     } else {
       // last-resort: current time to avoid rejecting paid tests; remove once format confirmed
       const nowSec = String(Math.floor(Date.now() / 1000))
       headersCopy.set('webhook-timestamp', nowSec)
+      headersCopy.set('whop-timestamp', nowSec)
       console.warn('[webhook] ts fallback to now', { nowSec })
+    }
+
+    // Ensure signature header is available under the expected key for validator
+    const candidateSigHeaders = [
+      'whop-signature',
+      'Whop-Signature',
+      'webhook-signature',
+      'Webhook-Signature',
+      'x-whop-signature',
+      'x-webhook-signature',
+    ] as const
+    let signatureValue: string | null = null
+    for (const h of candidateSigHeaders) {
+      const v = headersCopy.get(h)
+      if (v) {
+        signatureValue = v
+        break
+      }
+    }
+    if (signatureValue) {
+      headersCopy.set('whop-signature', signatureValue)
     }
 
     const reqForValidation = new Request(req.url, { method: req.method, headers: headersCopy, body: rawBody })
