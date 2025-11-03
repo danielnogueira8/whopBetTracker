@@ -166,12 +166,6 @@ export async function POST(req: NextRequest) {
     }
     const validator = makeWebhookValidator({
       webhookSecret: secret,
-      signatureHeaderName:
-        usedSet === 'webhook'
-          ? 'webhook-signature'
-          : usedSet === 'whop'
-            ? 'whop-signature'
-            : undefined,
     })
 
     let webhook: any
