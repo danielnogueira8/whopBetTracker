@@ -12,8 +12,13 @@ export const dynamic = 'force-dynamic'
 type BetPurchaseMetadata = {
   type?: string
   betId?: string
+  parlayId?: string
   listingId?: string
   priceCents?: string
+  experienceId?: string
+  sellerCompanyId?: string
+  sellerAccessPassId?: string
+  sellerPlanId?: string
 }
 
 export async function POST(req: NextRequest) {
@@ -304,14 +309,28 @@ export async function POST(req: NextRequest) {
         await db.insert(userBetAccess).values({ betId: betId!, userId: purchase.buyerUserId, source: 'purchase' })
       }
 
+      const sellerCompanyId = metadata.sellerCompanyId ?? (purchase as any)?.sellerCompanyId ?? undefined
+      const sellerAccessPassId = metadata.sellerAccessPassId ?? (purchase as any)?.sellerAccessPassId ?? undefined
+      const sellerPlanId = metadata.sellerPlanId ?? (purchase as any)?.sellerPlanId ?? undefined
+
       // Payment goes directly to seller's company - no transfer needed
-      // Update purchase status to succeeded
+      // Update purchase status to succeeded and persist seller metadata
       if (isParlay) {
         // @ts-ignore
-        await db.update(parlayPurchases).set({ status: 'succeeded' }).where(eq(parlayPurchases.id, purchase.id))
+        await db.update(parlayPurchases).set({
+          status: 'succeeded',
+          sellerCompanyId,
+          sellerAccessPassId,
+          sellerPlanId,
+        }).where(eq(parlayPurchases.id, purchase.id))
       } else {
         // @ts-ignore drizzle update helper inferred elsewhere
-        await db.update(betPurchases).set({ status: 'succeeded' }).where(eq(betPurchases.id, purchase.id))
+        await db.update(betPurchases).set({
+          status: 'succeeded',
+          sellerCompanyId,
+          sellerAccessPassId,
+          sellerPlanId,
+        }).where(eq(betPurchases.id, purchase.id))
       }
 
       return NextResponse.json({ ok: true })

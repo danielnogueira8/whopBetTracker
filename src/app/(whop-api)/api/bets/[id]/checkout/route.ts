@@ -177,6 +177,9 @@ export async function POST(
         checkoutId: checkoutSession.id,
         amountCents: listing.priceCents,
         currency: listing.currency,
+        sellerCompanyId,
+        sellerAccessPassId: accessPass.id,
+        sellerPlanId: plan.id,
         status: 'pending',
       })
 

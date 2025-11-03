@@ -3,6 +3,7 @@ import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
 import { betPurchases, betSaleListings, upcomingBets, userBetAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
+import { createSellerWhopSdk, getOrStoreSellerCompanyId } from "~/lib/whop"
 
 export async function POST(
   req: NextRequest,
@@ -38,7 +39,50 @@ export async function POST(
     }
 
     // Only allow when payment has completed via webhook
+    let sellerCompanyId: string | undefined = (purchase as any)?.sellerCompanyId ?? undefined
+    const sellerPlanId: string | undefined = (purchase as any)?.sellerPlanId ?? undefined
+    const sellerAccessPassId: string | undefined = (purchase as any)?.sellerAccessPassId ?? undefined
+
     if ((purchase as any)?.status !== 'succeeded') {
+      if (!sellerCompanyId) {
+        sellerCompanyId = await getOrStoreSellerCompanyId(listing.sellerUserId, bet.experienceId) ?? undefined
+        if (sellerCompanyId) {
+          // @ts-ignore drizzle update helper inferred elsewhere
+          await db.update(betPurchases).set({ sellerCompanyId }).where(eq(betPurchases.id, purchase.id))
+        }
+      }
+
+      if (sellerCompanyId && sellerPlanId) {
+        try {
+          const sellerWhop = createSellerWhopSdk(sellerCompanyId)
+          const receiptsRes = await sellerWhop.payments.listReceiptsForCompany({
+            companyId: sellerCompanyId,
+            first: 25,
+            filter: {
+              planIds: [sellerPlanId],
+              statuses: ['succeeded'],
+            },
+          }) as any
+
+          const receipts = receiptsRes?.company?.receipts?.nodes ?? receiptsRes?.receipts?.nodes ?? []
+          const matchingReceipt = receipts.find((r: any) => r?.member?.user?.id === purchase.buyerUserId)
+
+          if (matchingReceipt) {
+            await db.update(betPurchases).set({
+              status: 'succeeded',
+              sellerCompanyId,
+              sellerAccessPassId,
+              sellerPlanId,
+            }).where(eq(betPurchases.id, purchase.id))
+
+            await db.insert(userBetAccess).values({ betId: bet.id, userId }).onConflictDoNothing?.()
+            return NextResponse.json({ ok: true, reconciled: true })
+          }
+        } catch (err) {
+          console.error('[confirm] reconciliation failed', err)
+        }
+      }
+
       return NextResponse.json({ error: 'Payment not completed' }, { status: 409 })
     }
 

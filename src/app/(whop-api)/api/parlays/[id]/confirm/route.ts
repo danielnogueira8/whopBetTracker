@@ -3,6 +3,7 @@ import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
 import { parlayPurchases, parlaySaleListings, parlays, userParlayAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
+import { createSellerWhopSdk, getOrStoreSellerCompanyId } from "~/lib/whop"
 
 export async function POST(
   req: NextRequest,
@@ -34,8 +35,50 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Only allow when payment has completed via webhook
+    let sellerCompanyId: string | undefined = (purchase as any)?.sellerCompanyId ?? undefined
+    const sellerPlanId: string | undefined = (purchase as any)?.sellerPlanId ?? undefined
+    const sellerAccessPassId: string | undefined = (purchase as any)?.sellerAccessPassId ?? undefined
+
     if ((purchase as any)?.status !== 'succeeded') {
+      if (!sellerCompanyId) {
+        sellerCompanyId = await getOrStoreSellerCompanyId(listing.sellerUserId, parlay.experienceId) ?? undefined
+        if (sellerCompanyId) {
+          // @ts-ignore
+          await db.update(parlayPurchases).set({ sellerCompanyId }).where(eq(parlayPurchases.id, purchase.id))
+        }
+      }
+
+      if (sellerCompanyId && sellerPlanId) {
+        try {
+          const sellerWhop = createSellerWhopSdk(sellerCompanyId)
+          const receiptsRes = await sellerWhop.payments.listReceiptsForCompany({
+            companyId: sellerCompanyId,
+            first: 25,
+            filter: {
+              planIds: [sellerPlanId],
+              statuses: ['succeeded'],
+            },
+          }) as any
+
+          const receipts = receiptsRes?.company?.receipts?.nodes ?? receiptsRes?.receipts?.nodes ?? []
+          const matchingReceipt = receipts.find((r: any) => r?.member?.user?.id === purchase.buyerUserId)
+
+          if (matchingReceipt) {
+            await db.update(parlayPurchases).set({
+              status: 'succeeded',
+              sellerCompanyId,
+              sellerAccessPassId,
+              sellerPlanId,
+            }).where(eq(parlayPurchases.id, purchase.id))
+
+            await db.insert(userParlayAccess).values({ parlayId: parlay.id, userId }).onConflictDoNothing?.()
+            return NextResponse.json({ ok: true, reconciled: true })
+          }
+        } catch (err) {
+          console.error('[parlay-confirm] reconciliation failed', err)
+        }
+      }
+
       return NextResponse.json({ error: 'Payment not completed' }, { status: 409 })
     }
 
