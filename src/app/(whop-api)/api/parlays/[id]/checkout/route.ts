@@ -86,7 +86,7 @@ export async function POST(
     }
 
     // Create seller SDK instance
-    const sellerWhop = createSellerWhopSdk(sellerCompanyId, listing.sellerUserId)
+    const sellerWhop = createSellerWhopSdk(sellerCompanyId)
 
     const priceInDollars = Number((listing.priceCents / 100).toFixed(2))
     const baseCurrency = listing.currency?.toLowerCase() as Currencies | undefined
@@ -109,6 +109,10 @@ export async function POST(
         releaseMethod: 'buy_now',
         visibility: 'hidden',
       },
+    }, {
+      headers: {
+        'x-on-behalf-of': listing.sellerUserId,
+      },
     }) as any
 
     if (accessPass?._error) {
@@ -127,6 +131,10 @@ export async function POST(
         accessPassId: accessPass.id,
       },
       first: 1,
+    }, {
+      headers: {
+        'x-on-behalf-of': listing.sellerUserId,
+      },
     })) as any
 
     if (plansData?._error) {
@@ -157,6 +165,10 @@ export async function POST(
     const checkoutSession = await sellerWhop.payments.createCheckoutSession({
       planId: plan.id,
       metadata,
+    }, {
+      headers: {
+        'x-on-behalf-of': listing.sellerUserId,
+      },
     })
 
     if (!checkoutSession) return NextResponse.json({ error: 'Failed to create checkout' }, { status: 500 })

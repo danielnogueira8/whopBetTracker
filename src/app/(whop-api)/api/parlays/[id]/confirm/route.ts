@@ -50,13 +50,17 @@ export async function POST(
 
       if (sellerCompanyId && sellerPlanId) {
         try {
-          const sellerWhop = createSellerWhopSdk(sellerCompanyId, listing.sellerUserId)
+          const sellerWhop = createSellerWhopSdk(sellerCompanyId)
           const receiptsRes = await sellerWhop.payments.listReceiptsForCompany({
             companyId: sellerCompanyId,
             first: 25,
             filter: {
               planIds: [sellerPlanId],
               statuses: ['succeeded'],
+            },
+          }, {
+            headers: {
+              'x-on-behalf-of': listing.sellerUserId,
             },
           }) as any
 
