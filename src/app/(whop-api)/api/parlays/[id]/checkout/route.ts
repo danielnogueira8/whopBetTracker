@@ -175,7 +175,8 @@ export async function POST(
     return NextResponse.json({ checkoutId: checkoutSession.id, planId: plan.id })
   } catch (e) {
     console.error('Parlay checkout failed', e)
-    return NextResponse.json({ error: 'Failed to start checkout' }, { status: 500 })
+    const errorMessage = e instanceof Error ? e.message : 'Failed to start checkout'
+    return NextResponse.json({ error: errorMessage }, { status: 500 })
   }
 }
 
