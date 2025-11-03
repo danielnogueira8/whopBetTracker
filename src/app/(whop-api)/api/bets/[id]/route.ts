@@ -3,6 +3,7 @@ import { verifyUserToken } from "@whop/api";
 import { db } from "~/db";
 import { bets, userStats } from "~/db/schema";
 import { eq, and } from "drizzle-orm";
+import { updateUserStatsForResultChange } from "~/lib/user-stats-utils";
 
 /**
  * GET /api/bets/[id] - Get a single bet
@@ -105,39 +106,12 @@ export async function PATCH(
     const newResult = body.result;
     
     if (oldResult !== newResult && (bet.unitsInvested || bet.dollarsInvested)) {
-      try {
-        const existingStats = await db
-          .select()
-          .from(userStats)
-          .where(eq(userStats.userId, bet.userId))
-          .limit(1);
-
-        if (existingStats.length > 0) {
-          let updates: any = {};
-          
-          // Handle win/loss changes
-          if (oldResult === "win" && (newResult === "lose" || newResult === "returned")) {
-            // Reverting a win
-            updates.wonBets = existingStats[0].wonBets - 1;
-            updates.totalUnitsWon = (parseFloat(existingStats[0].totalUnitsWon) - parseFloat(bet.unitsInvested || "0")).toString();
-            updates.totalDollarsWon = (parseFloat(existingStats[0].totalDollarsWon || "0") - parseFloat(bet.dollarsInvested || "0")).toString();
-          } else if ((oldResult === "lose" || oldResult === "returned" || oldResult === "pending") && newResult === "win") {
-            // New win
-            updates.wonBets = existingStats[0].wonBets + 1;
-            updates.totalUnitsWon = (parseFloat(existingStats[0].totalUnitsWon) + parseFloat(bet.unitsInvested || "0")).toString();
-            updates.totalDollarsWon = (parseFloat(existingStats[0].totalDollarsWon || "0") + parseFloat(bet.dollarsInvested || "0")).toString();
-          }
-
-          if (Object.keys(updates).length > 0) {
-            await db
-              .update(userStats)
-              .set(updates)
-              .where(eq(userStats.userId, bet.userId));
-          }
-        }
-      } catch (statsError) {
-        console.error("Error updating user stats:", statsError);
-      }
+      await updateUserStatsForResultChange(
+        bet.userId,
+        oldResult,
+        newResult,
+        true
+      );
     }
 
     return Response.json({ bet: updated[0] });

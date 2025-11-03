@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server"
 import { db } from "~/db"
-import { parlays, parlayLegs, experienceSettings } from "~/db/schema"
+import { parlays, parlayLegs, experienceSettings, userStats } from "~/db/schema"
 import { verifyUserToken } from "@whop/api"
 import { whop } from "~/lib/whop"
 import { eq, and } from "drizzle-orm"
@@ -158,6 +158,34 @@ export async function PATCH(
           })
         )
       )
+
+      // Update user stats for leg result changes
+      if (parlay.userId && (parlay.unitsInvested || parlay.dollarsInvested)) {
+        // Get old legs before deletion (if they existed)
+        const oldLegs = existingLegs;
+
+        // Track old wins
+        const oldWins = oldLegs.filter((leg) => leg.result === "win").length;
+        const newWins = updateData.legs.filter((leg: any) => leg.result === "win").length;
+        const winDiff = newWins - oldWins;
+
+        if (winDiff !== 0) {
+          const existingStats = await db
+            .select()
+            .from(userStats)
+            .where(eq(userStats.userId, parlay.userId))
+            .limit(1);
+
+          if (existingStats.length > 0) {
+            await db
+              .update(userStats)
+              .set({
+                wonBets: existingStats[0].wonBets + winDiff,
+              })
+              .where(eq(userStats.userId, parlay.userId));
+          }
+        }
+      }
     }
 
     // Update parlay
@@ -179,9 +207,40 @@ export async function PATCH(
     } else {
       // If an explicit result was set (win/lose), cascade it to all legs
       if (updateData.result === "win" || updateData.result === "lose") {
+        // Get legs before updating to count wins
+        const legsBeforeUpdate = await db
+          .select()
+          .from(parlayLegs)
+          .where(eq(parlayLegs.parlayId, id));
+
         await db.update(parlayLegs)
           .set({ result: updateData.result })
           .where(eq(parlayLegs.parlayId, id))
+
+        // Update user stats when cascading result to legs
+        if (parlay.userId && (parlay.unitsInvested || parlay.dollarsInvested)) {
+          // Count wins before and after
+          const oldWins = legsBeforeUpdate.filter((leg) => leg.result === "win").length;
+          const newWins = updateData.result === "win" ? legsBeforeUpdate.length : 0;
+          const winDiff = newWins - oldWins;
+
+          if (winDiff !== 0) {
+            const existingStats = await db
+              .select()
+              .from(userStats)
+              .where(eq(userStats.userId, parlay.userId))
+              .limit(1);
+
+            if (existingStats.length > 0) {
+              await db
+                .update(userStats)
+                .set({
+                  wonBets: existingStats[0].wonBets + winDiff,
+                })
+                .where(eq(userStats.userId, parlay.userId));
+            }
+          }
+        }
       }
     }
 
