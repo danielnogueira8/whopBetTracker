@@ -88,94 +88,58 @@ export async function POST(
     // Create seller SDK instance
     const sellerWhop = createSellerWhopSdk(sellerCompanyId)
 
-    // Create product dynamically on seller's company using REST API
-    // Use x-on-behalf-of and x-company-id headers to act on behalf of seller's company
-    console.log('[parlay-checkout] Creating product', {
-      sellerUserId: listing.sellerUserId,
-      sellerCompanyId,
-      headers: {
-        'x-on-behalf-of': listing.sellerUserId,
-        'x-company-id': sellerCompanyId,
-      },
-    })
+    const priceInDollars = Number((listing.priceCents / 100).toFixed(2))
+    const baseCurrency = listing.currency?.toLowerCase()
 
-    // Try without company_id in body since it's in headers
-    const productResponse = await fetch('https://api.whop.com/api/v2/products', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json',
-        'X-On-Behalf-Of': listing.sellerUserId, // Seller's user ID - try capitalized headers
-        'X-Company-Id': sellerCompanyId,        // Seller's company ID
-      },
-      body: JSON.stringify({
-        title: `Parlay Access: ${parlay.name}`,
-        description: `Access to parlay: ${parlay.name}`,
-        type: 'api_only',
-      }),
-    })
+    const routeSlugBase = `parlay-${parlay.id}`.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()
+    const uniqueSuffix = Math.random().toString(36).slice(2, 8)
+    const accessPassRoute = `${routeSlugBase}-${uniqueSuffix}`.slice(0, 60).replace(/^-+|-+$/g, '')
 
-    if (!productResponse.ok) {
-      const errorText = await productResponse.text()
-      console.error('[parlay-checkout] Product creation failed', {
-        status: productResponse.status,
-        error: errorText,
-        sellerCompanyId,
-        sellerUserId: listing.sellerUserId,
-        parlayId: parlay.id,
-        requestHeaders: {
-          'x-on-behalf-of': listing.sellerUserId,
-          'x-company-id': sellerCompanyId,
-        },
-      })
-      throw new Error(`Product creation failed: ${productResponse.status} ${errorText}`)
+    const accessPass = await sellerWhop.accessPasses.createAccessPass({
+      title: `Parlay Access: ${parlay.name}`,
+      description: `Access to parlay: ${parlay.name}`,
+      shortenedDescription: `Parlay: ${parlay.name}`.slice(0, 150),
+      companyId: sellerCompanyId,
+      experienceIds: [parlay.experienceId],
+      route: accessPassRoute,
+      visibility: 'hidden',
+      planOptions: {
+        planType: 'one_time',
+        initialPrice: priceInDollars,
+        baseCurrency,
+        releaseMethod: 'buy_now',
+        visibility: 'hidden',
+      },
+    }) as any
+
+    if (accessPass?._error) {
+      console.error('[parlay-checkout] accessPass creation failed', accessPass._error)
+      throw new Error('Failed to create access pass for seller')
     }
 
-    const productData = await productResponse.json()
-    const product = productData.data || productData || productData.product
-
-    if (!product?.id) {
-      console.error('[parlay-checkout] Invalid product response', productData)
-      return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
+    if (!accessPass?.id) {
+      console.error('[parlay-checkout] Missing accessPass id', accessPass)
+      return NextResponse.json({ error: 'Failed to create access pass' }, { status: 500 })
     }
 
-    // Create plan dynamically using REST API on seller's company
-    // Use x-on-behalf-of and x-company-id headers to act on behalf of seller's company
-    const priceInDollars = listing.priceCents / 100
-    const planResponse = await fetch('https://api.whop.com/api/v2/plans', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${env.WHOP_API_KEY}`,
-        'Content-Type': 'application/json',
-        'X-On-Behalf-Of': listing.sellerUserId, // Seller's user ID - try capitalized headers
-        'X-Company-Id': sellerCompanyId,        // Seller's company ID
+    const plansData = (await sellerWhop.companies.listPlans({
+      companyId: sellerCompanyId,
+      filter: {
+        accessPassId: accessPass.id,
       },
-      body: JSON.stringify({
-        product_id: product.id,
-        initial_price: priceInDollars,
-        currency: listing.currency,
-        plan_type: 'one_time',
-      }),
-    })
+      first: 1,
+    })) as any
 
-    if (!planResponse.ok) {
-      const errorText = await planResponse.text()
-      console.error('[parlay-checkout] Plan creation failed', {
-        status: planResponse.status,
-        error: errorText,
-        sellerCompanyId,
-        productId: product.id,
-        priceInDollars,
-      })
-      throw new Error(`Plan creation failed: ${planResponse.status} ${errorText}`)
+    if (plansData?._error) {
+      console.error('[parlay-checkout] listPlans failed', plansData._error)
+      throw new Error('Failed to load seller plan')
     }
 
-    const planData = await planResponse.json()
-    const plan = planData.data || planData || planData.plan
+    const plan = plansData?.plans?.nodes?.[0]
 
     if (!plan?.id) {
-      console.error('[parlay-checkout] Invalid plan response', planData)
-      return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 })
+      console.error('[parlay-checkout] Plan not found after creation', plansData)
+      return NextResponse.json({ error: 'Failed to retrieve plan' }, { status: 500 })
     }
 
     const metadata = {
@@ -185,7 +149,7 @@ export async function POST(
       priceCents: String(listing.priceCents),
       experienceId: parlay.experienceId,
       sellerCompanyId,
-      sellerProductId: product.id,
+      sellerAccessPassId: accessPass.id,
       sellerPlanId: plan.id,
     } as any
 
