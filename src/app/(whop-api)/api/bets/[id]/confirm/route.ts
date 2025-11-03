@@ -54,7 +54,7 @@ export async function POST(
 
       if (sellerCompanyId && sellerPlanId) {
         try {
-          const sellerWhop = createSellerWhopSdk(sellerCompanyId)
+          const sellerWhop = createSellerWhopSdk(sellerCompanyId, listing.sellerUserId)
           const receiptsRes = await sellerWhop.payments.listReceiptsForCompany({
             companyId: sellerCompanyId,
             first: 25,

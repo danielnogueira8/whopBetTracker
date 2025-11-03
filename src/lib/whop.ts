@@ -23,11 +23,11 @@ export const whop = WhopServerSdk({
 })
 
 // Helper: create SDK instance for seller's company
-export function createSellerWhopSdk(companyId: string) {
+export function createSellerWhopSdk(companyId: string, onBehalfOfUserId?: string) {
 	return WhopServerSdk({
 		appId: env.NEXT_PUBLIC_WHOP_APP_ID,
 		appApiKey: env.WHOP_API_KEY,
-		onBehalfOfUserId: env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
+		onBehalfOfUserId: onBehalfOfUserId ?? env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
 		companyId: companyId, // Seller's company ID
 	})
 }
