@@ -72,12 +72,14 @@ export async function POST(
     const sellerWhop = createSellerWhopSdk(sellerCompanyId)
 
     // Create product dynamically on seller's company using REST API
-    // SDK doesn't support products.create() method, so we use REST API directly
+    // Use x-on-behalf-of and x-company-id headers to act on behalf of seller's company
     const productResponse = await fetch('https://api.whop.com/api/v2/products', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${env.WHOP_API_KEY}`,
         'Content-Type': 'application/json',
+        'x-on-behalf-of': listing.sellerUserId, // Seller's user ID - acting on their behalf
+        'x-company-id': sellerCompanyId,        // Seller's company ID
       },
       body: JSON.stringify({
         company_id: sellerCompanyId,
@@ -106,13 +108,16 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
     }
 
-    // Create plan dynamically using REST API
+    // Create plan dynamically using REST API on seller's company
+    // Use x-on-behalf-of and x-company-id headers to act on behalf of seller's company
     const priceInDollars = listing.priceCents / 100
     const planResponse = await fetch('https://api.whop.com/api/v2/plans', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${env.WHOP_API_KEY}`,
         'Content-Type': 'application/json',
+        'x-on-behalf-of': listing.sellerUserId, // Seller's user ID - acting on their behalf
+        'x-company-id': sellerCompanyId,        // Seller's company ID
       },
       body: JSON.stringify({
         company_id: sellerCompanyId,
