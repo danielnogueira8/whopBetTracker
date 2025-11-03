@@ -3,7 +3,7 @@ import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
 import { betPurchases, betSaleListings, experienceSettings, upcomingBets, userBetAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { whop } from "~/lib/whop"
+import { whop, getOrStoreSellerCompanyId, createSellerWhopSdk } from "~/lib/whop"
 import { env } from "~/env"
 import { userHasAccessToAnyProducts } from "~/lib/whop"
 
@@ -69,19 +69,88 @@ export async function POST(
       }
     }
 
-    const planId = planIdForPrice(listing.priceCents) || env.ONE_TIME_PURCHASE_ACCESS_PASS_PLAN_ID
-
-    // Create checkout with metadata for webhook reconciliation
-    // Resolve seller company id for payouts
-    let sellerCompanyId: string | undefined
-    try {
-      const exp = await whop.experiences.getExperience({ experienceId: bet.experienceId })
-      sellerCompanyId = exp?.company?.id
-    } catch {}
-
-    // Validate sellerCompanyId exists
+    // Get seller's company ID from experience (store if not cached)
+    const sellerCompanyId = await getOrStoreSellerCompanyId(listing.sellerUserId, bet.experienceId)
     if (!sellerCompanyId) {
       return NextResponse.json({ error: 'Seller company not found' }, { status: 400 })
+    }
+
+    // Create seller SDK instance
+    const sellerWhop = createSellerWhopSdk(sellerCompanyId)
+
+    // Create product dynamically on seller's company
+    let product
+    try {
+      product = await sellerWhop.products.create({
+        title: `Bet Access: ${bet.game}`,
+        description: `Access to bet: ${bet.outcome}`,
+        type: 'api_only',
+      } as any)
+    } catch (error) {
+      console.error('[checkout] Failed to create product', error)
+      // Fallback: use REST API directly if SDK doesn't support
+      const productResponse = await fetch('https://api.whop.com/api/v2/products', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_id: sellerCompanyId,
+          title: `Bet Access: ${bet.game}`,
+          description: `Access to bet: ${bet.outcome}`,
+          type: 'api_only',
+        }),
+      })
+      if (!productResponse.ok) {
+        const errorText = await productResponse.text()
+        throw new Error(`Product creation failed: ${productResponse.status} ${errorText}`)
+      }
+      const productData = await productResponse.json()
+      product = productData.data || productData
+    }
+
+    if (!product?.id) {
+      return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
+    }
+
+    // Create plan dynamically
+    const priceInDollars = listing.priceCents / 100
+    let plan
+    try {
+      plan = await sellerWhop.plans.create({
+        productId: product.id,
+        price: priceInDollars,
+        currency: listing.currency,
+        planType: 'one_time',
+      })
+    } catch (error) {
+      console.error('[checkout] Failed to create plan', error)
+      // Fallback: use REST API directly if SDK doesn't support
+      const planResponse = await fetch('https://api.whop.com/api/v2/plans', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_id: sellerCompanyId,
+          product_id: product.id,
+          initial_price: priceInDollars,
+          currency: listing.currency,
+          plan_type: 'one_time',
+        }),
+      })
+      if (!planResponse.ok) {
+        const errorText = await planResponse.text()
+        throw new Error(`Plan creation failed: ${planResponse.status} ${errorText}`)
+      }
+      const planData = await planResponse.json()
+      plan = planData.data || planData
+    }
+
+    if (!plan?.id) {
+      return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 })
     }
 
     const metadata = {
@@ -91,10 +160,14 @@ export async function POST(
       priceCents: String(listing.priceCents),
       experienceId: bet.experienceId,
       sellerCompanyId,
+      sellerProductId: product.id,
+      sellerPlanId: plan.id,
     } as any
 
-    const checkoutSession = await whop.payments.createCheckoutSession({
-      planId,
+    // Create checkout session using seller's company
+    const checkoutSession = await sellerWhop.payments.createCheckoutSession({
+      companyId: sellerCompanyId,
+      planId: plan.id,
       metadata,
     })
 
@@ -112,7 +185,7 @@ export async function POST(
         status: 'pending',
       })
 
-    return NextResponse.json({ checkoutId: checkoutSession.id, planId })
+    return NextResponse.json({ checkoutId: checkoutSession.id, planId: plan.id })
   } catch (error) {
     console.error('Failed to start checkout:', error)
     return NextResponse.json({ error: 'Failed to start checkout' }, { status: 500 })

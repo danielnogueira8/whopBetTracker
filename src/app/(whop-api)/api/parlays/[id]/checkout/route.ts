@@ -3,7 +3,7 @@ import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
 import { experienceSettings, parlayPurchases, parlaySaleListings, parlays, userParlayAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { whop } from "~/lib/whop"
+import { whop, getOrStoreSellerCompanyId, createSellerWhopSdk } from "~/lib/whop"
 import { env } from "~/env"
 import { userHasAccessToAnyProducts } from "~/lib/whop"
 
@@ -62,25 +62,108 @@ export async function POST(
       if (existingAccess[0]) return NextResponse.json({ error: 'Already purchased' }, { status: 409 })
     }
 
-    const planId = planIdForPrice(listing.priceCents) || env.ONE_TIME_PURCHASE_ACCESS_PASS_PLAN_ID
-    // Resolve seller company id
-    let sellerCompanyId: string | undefined
-    try {
-      const exp = await whop.experiences.getExperience({ experienceId: parlay.experienceId })
-      sellerCompanyId = exp?.company?.id
-    } catch {}
-
-    // Validate sellerCompanyId exists
+    // Get seller's company ID from experience (store if not cached)
+    const sellerCompanyId = await getOrStoreSellerCompanyId(listing.sellerUserId, parlay.experienceId)
     if (!sellerCompanyId) {
       return NextResponse.json({ error: 'Seller company not found' }, { status: 400 })
     }
 
-    const metadata = { type: 'parlay_purchase', parlayId: parlay.id, listingId: listing.id, priceCents: String(listing.priceCents), experienceId: parlay.experienceId, sellerCompanyId } as any
+    // Create seller SDK instance
+    const sellerWhop = createSellerWhopSdk(sellerCompanyId)
 
-    const checkoutSession = await whop.payments.createCheckoutSession({ 
-      planId, 
-      metadata 
+    // Create product dynamically on seller's company
+    let product
+    try {
+      product = await sellerWhop.products.create({
+        title: `Parlay Access: ${parlay.name}`,
+        description: `Access to parlay: ${parlay.name}`,
+        type: 'api_only',
+      } as any)
+    } catch (error) {
+      console.error('[parlay-checkout] Failed to create product', error)
+      // Fallback: use REST API directly if SDK doesn't support
+      const productResponse = await fetch('https://api.whop.com/api/v2/products', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_id: sellerCompanyId,
+          title: `Parlay Access: ${parlay.name}`,
+          description: `Access to parlay: ${parlay.name}`,
+          type: 'api_only',
+        }),
+      })
+      if (!productResponse.ok) {
+        const errorText = await productResponse.text()
+        throw new Error(`Product creation failed: ${productResponse.status} ${errorText}`)
+      }
+      const productData = await productResponse.json()
+      product = productData.data || productData
+    }
+
+    if (!product?.id) {
+      return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
+    }
+
+    // Create plan dynamically
+    const priceInDollars = listing.priceCents / 100
+    let plan
+    try {
+      plan = await sellerWhop.plans.create({
+        productId: product.id,
+        price: priceInDollars,
+        currency: listing.currency,
+        planType: 'one_time',
+      })
+    } catch (error) {
+      console.error('[parlay-checkout] Failed to create plan', error)
+      // Fallback: use REST API directly if SDK doesn't support
+      const planResponse = await fetch('https://api.whop.com/api/v2/plans', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.WHOP_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          company_id: sellerCompanyId,
+          product_id: product.id,
+          initial_price: priceInDollars,
+          currency: listing.currency,
+          plan_type: 'one_time',
+        }),
+      })
+      if (!planResponse.ok) {
+        const errorText = await planResponse.text()
+        throw new Error(`Plan creation failed: ${planResponse.status} ${errorText}`)
+      }
+      const planData = await planResponse.json()
+      plan = planData.data || planData
+    }
+
+    if (!plan?.id) {
+      return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 })
+    }
+
+    const metadata = {
+      type: 'parlay_purchase',
+      parlayId: parlay.id,
+      listingId: listing.id,
+      priceCents: String(listing.priceCents),
+      experienceId: parlay.experienceId,
+      sellerCompanyId,
+      sellerProductId: product.id,
+      sellerPlanId: plan.id,
+    } as any
+
+    // Create checkout session using seller's company
+    const checkoutSession = await sellerWhop.payments.createCheckoutSession({
+      companyId: sellerCompanyId,
+      planId: plan.id,
+      metadata,
     })
+
     if (!checkoutSession) return NextResponse.json({ error: 'Failed to create checkout' }, { status: 500 })
 
     await db.insert(parlayPurchases).values({
@@ -92,7 +175,7 @@ export async function POST(
       status: 'pending',
     })
 
-    return NextResponse.json({ checkoutId: checkoutSession.id, planId })
+    return NextResponse.json({ checkoutId: checkoutSession.id, planId: plan.id })
   } catch (e) {
     console.error('Parlay checkout failed', e)
     return NextResponse.json({ error: 'Failed to start checkout' }, { status: 500 })

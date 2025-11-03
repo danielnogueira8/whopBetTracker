@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "~/db"
-import { appFeesLedger, betPurchases, betSaleListings, userBetAccess, parlayFeesLedger, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
+import { betPurchases, betSaleListings, userBetAccess, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
 import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
 import { type PaymentWebhookData } from "@whop/api"
@@ -304,94 +304,12 @@ export async function POST(req: NextRequest) {
         await db.insert(userBetAccess).values({ betId: betId!, userId: purchase.buyerUserId, source: 'purchase' })
       }
 
-      // Compute and record fees
-      const gross = purchase.amountCents
-      const fee = Math.round(gross * 0.10)
-      const net = gross - fee
-
-      // Fetch listing and resolve destination company for payout
-      const listing = isParlay
-        ? (await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.id, listingId)).limit(1))[0]
-        : (await db.select().from(betSaleListings).where(eq(betSaleListings.id, listingId)).limit(1))[0]
-
-      // Prefer sellerCompanyId from metadata; fallback to experience.company.id
-      let destinationCompanyId: string | undefined = (metadata as any)?.sellerCompanyId
-      if (!destinationCompanyId) {
-        const experienceId = (metadata as any)?.experienceId || (data as any)?.experienceId || (data as any)?.experience?.id
-        if (experienceId) {
-          try {
-            const exp = await whop.experiences.getExperience({ experienceId })
-            destinationCompanyId = exp?.company?.id
-          } catch (e) {
-            console.warn('[whop] failed to fetch experience for transfer', e)
-          }
-        }
-      }
-
-      // Transfer 90% net to seller's company (app keeps 10% as application fee)
-      // Payment goes to app company first, then we transfer seller's portion
-      // Note: SDK doesn't have transfers API, so we use REST API directly
-      let payoutTransferId: string | undefined
-      try {
-        if (destinationCompanyId && net > 0) {
-          const appCompanyId = process.env.NEXT_PUBLIC_WHOP_COMPANY_ID as string | undefined
-          const whopApiKey = process.env.WHOP_API_KEY as string | undefined
-          
-          if (!appCompanyId || !whopApiKey) {
-            console.warn('[transfer] missing NEXT_PUBLIC_WHOP_COMPANY_ID or WHOP_API_KEY')
-          } else {
-            // Use REST API directly since SDK doesn't support transfers
-            // Note: API requires exactly one of: originId OR ledgerAccountId
-            // Documentation: https://docs.whop.com/api-reference/transfers/create-transfer
-            const transferResponse = await fetch('https://api.whop.com/api/v1/transfers', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${whopApiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                amount: net, // Amount in cents
-                currency: purchase.currency || 'usd',
-                destinationId: destinationCompanyId, // Destination company ID
-                originId: appCompanyId, // Source company ID (not sourceId)
-                notes: isParlay 
-                  ? `Parlay sale transfer (90% of ${gross} cents, listing ${listingId})` 
-                  : `Bet sale transfer (90% of ${gross} cents, bet ${betId})`,
-              }),
-            })
-
-            if (!transferResponse.ok) {
-              const errorText = await transferResponse.text()
-              throw new Error(`Transfer API failed: ${transferResponse.status} ${errorText}`)
-            }
-
-            const transfer = await transferResponse.json()
-            payoutTransferId = transfer?.id || transfer?.data?.id
-            console.log('[transfer] created via REST API', { 
-              payoutTransferId, 
-              net, 
-              destinationCompanyId, 
-              appCompanyId,
-              gross,
-              fee,
-              response: transfer
-            })
-          }
-        } else {
-          console.warn('[transfer] missing destinationCompanyId or net <= 0', { destinationCompanyId, net })
-        }
-      } catch (e) {
-        console.error('[transfer] createTransfer failed', { err: String(e), destinationCompanyId, net })
-        // Continue even if transfer fails - access is already granted
-        // Transfer can be retried manually if needed
-      }
-
+      // Payment goes directly to seller's company - no transfer needed
+      // Update purchase status to succeeded
       if (isParlay) {
-        await db.insert(parlayFeesLedger).values({ purchaseId: purchase.id, grossCents: gross, feeCents: fee, netCents: net, payoutTransferId })
         // @ts-ignore
         await db.update(parlayPurchases).set({ status: 'succeeded' }).where(eq(parlayPurchases.id, purchase.id))
       } else {
-        await db.insert(appFeesLedger).values({ purchaseId: purchase.id, grossCents: gross, feeCents: fee, netCents: net, payoutTransferId })
         // @ts-ignore drizzle update helper inferred elsewhere
         await db.update(betPurchases).set({ status: 'succeeded' }).where(eq(betPurchases.id, purchase.id))
       }

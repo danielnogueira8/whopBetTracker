@@ -227,3 +227,12 @@ export const parlayFeesLedger = pgTable('parlay_fees_ledger', {
 	createdAt: timestamp('created_at').defaultNow().notNull(),
 	updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+
+// Seller permissions table - stores seller's Whop company ID for direct payments
+export const sellerPermissions = pgTable('seller_permissions', {
+	id: uuid('id').defaultRandom().primaryKey(),
+	userId: text('user_id').notNull().unique(),
+	whopCompanyId: text('whop_company_id').notNull(),
+	createdAt: timestamp('created_at').defaultNow().notNull(),
+	updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})

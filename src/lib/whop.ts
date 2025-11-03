@@ -5,6 +5,9 @@ import {
 	WhopServerSdk,
 } from '@whop/api'
 import { env } from '~/env'
+import { db } from '~/db'
+import { sellerPermissions } from '~/db/schema'
+import { eq } from 'drizzle-orm'
 
 // Type exports from Whop API queries
 export type WhopExperience = GetExperienceQuery['experience']
@@ -18,6 +21,60 @@ export const whop = WhopServerSdk({
 	onBehalfOfUserId: env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
 	companyId: env.NEXT_PUBLIC_WHOP_COMPANY_ID,
 })
+
+// Helper: create SDK instance for seller's company
+export function createSellerWhopSdk(companyId: string) {
+	return WhopServerSdk({
+		appId: env.NEXT_PUBLIC_WHOP_APP_ID,
+		appApiKey: env.WHOP_API_KEY,
+		onBehalfOfUserId: env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
+		companyId: companyId, // Seller's company ID
+	})
+}
+
+// Helper: get or store seller's company ID from experience
+export async function getOrStoreSellerCompanyId(userId: string, experienceId: string): Promise<string | null> {
+	try {
+		// Check if we already have it stored
+		const existing = await db
+			.select()
+			.from(sellerPermissions)
+			.where(eq(sellerPermissions.userId, userId))
+			.limit(1)
+
+		if (existing[0]) {
+			return existing[0].whopCompanyId
+		}
+
+		// Fetch from experience
+		const exp = await whop.experiences.getExperience({ experienceId })
+		const companyId = exp?.company?.id
+
+		if (!companyId) {
+			return null
+		}
+
+		// Store it
+		await db
+			.insert(sellerPermissions)
+			.values({
+				userId,
+				whopCompanyId: companyId,
+			})
+			.onConflictDoUpdate({
+				target: sellerPermissions.userId,
+				set: {
+					whopCompanyId: companyId,
+					updatedAt: new Date(),
+				},
+			})
+
+		return companyId
+	} catch (error) {
+		console.error('[getOrStoreSellerCompanyId] error', error)
+		return null
+	}
+}
 
 // Note: For authentication in API routes, import verifyUserToken separately:
 // import { verifyUserToken } from '@whop/api'
