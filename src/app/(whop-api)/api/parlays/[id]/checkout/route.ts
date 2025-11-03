@@ -155,8 +155,8 @@ export async function POST(
     } as any
 
     // Create checkout session using seller's company
+    // SDK instance already has sellerCompanyId, so we don't need to pass it
     const checkoutSession = await sellerWhop.payments.createCheckoutSession({
-      companyId: sellerCompanyId,
       planId: plan.id,
       metadata,
     })
