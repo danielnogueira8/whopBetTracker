@@ -45,10 +45,25 @@ export async function POST(
 
     const { id } = await params
     const body = await req.json()
-    const { priceCents, currency = 'usd', active = true } = body || {}
+    const {
+      priceCents,
+      currency = 'usd',
+      active = true,
+      allowZero = false,
+    } = body || {}
 
-    if (!priceCents || priceCents <= 0) {
-      return Response.json({ error: "priceCents must be > 0" }, { status: 400 })
+    const normalizedPriceCents = typeof priceCents === 'string' ? Number.parseInt(priceCents, 10) : Number(priceCents)
+
+    if (Number.isNaN(normalizedPriceCents)) {
+      return Response.json({ error: 'priceCents must be a number' }, { status: 400 })
+    }
+
+    if (normalizedPriceCents < 0) {
+      return Response.json({ error: 'priceCents must be >= 0' }, { status: 400 })
+    }
+
+    if (normalizedPriceCents === 0 && !allowZero) {
+      return Response.json({ error: 'priceCents must be > 0 unless allowZero is true' }, { status: 400 })
     }
 
     // Load bet to get experienceId
@@ -76,7 +91,7 @@ export async function POST(
       const updated = await db
         // @ts-ignore drizzle update helper inferred elsewhere
         .update(betSaleListings)
-        .set({ priceCents, currency, active, updatedAt: new Date() })
+        .set({ priceCents: normalizedPriceCents, currency, active, updatedAt: new Date() })
         .where(eq(betSaleListings.id, existing[0].id))
         .returning()
       return Response.json({ listing: updated[0] })
@@ -84,7 +99,7 @@ export async function POST(
 
     const created = await db
       .insert(betSaleListings)
-      .values({ betId: id, sellerUserId: userId, priceCents, currency, active })
+      .values({ betId: id, sellerUserId: userId, priceCents: normalizedPriceCents, currency, active })
       .returning()
 
     return Response.json({ listing: created[0] })

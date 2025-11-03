@@ -48,6 +48,7 @@ export function CreateUpcomingBetDialog({
   const [shouldPostToForum, setShouldPostToForum] = useState(false);
   const [forSale, setForSale] = useState(false);
   const [price, setPrice] = useState<string>(""); // dollars string
+  const [freeTestListing, setFreeTestListing] = useState(false);
 
   const oddPlaceholders = {
     american: "+150 or -200",
@@ -113,15 +114,16 @@ export function CreateUpcomingBetDialog({
       setEventDate("");
       setForSale(false);
       setPrice("");
+      setFreeTestListing(false);
     },
   });
 
   const createListing = useMutation({
-    mutationFn: async ({ betId, priceCents }: { betId: string; priceCents: number }) => {
+    mutationFn: async ({ betId, priceCents, allowZero = false }: { betId: string; priceCents: number; allowZero?: boolean }) => {
       const response = await fetch(`/api/bets/${betId}/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceCents, currency: 'usd', active: true }),
+        body: JSON.stringify({ priceCents, currency: 'usd', active: true, allowZero }),
       })
       if (!response.ok) throw new Error("Failed to create listing")
       return response.json()
@@ -155,8 +157,9 @@ export function CreateUpcomingBetDialog({
       onSuccess: (res) => {
         const betId = res?.bet?.id as string | undefined
         const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
-        if (forSale && betId && priceCents > 0) {
-          createListing.mutate({ betId, priceCents })
+        const isFreeTest = freeTestListing || priceCents === 0
+        if (forSale && betId && (priceCents > 0 || isFreeTest)) {
+          createListing.mutate({ betId, priceCents: isFreeTest ? 0 : priceCents, allowZero: isFreeTest })
         }
       }
     });
@@ -323,9 +326,50 @@ export function CreateUpcomingBetDialog({
                 <div className="flex items-center gap-3">
                   <div className="grid gap-1">
                     <Label htmlFor="price">Price (USD)</Label>
-                    <Input id="price" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} disabled={!forSale} placeholder="9.99" />
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      value={price}
+                      onChange={(e) => {
+                        setPrice(e.target.value)
+                        const val = Number.parseFloat(e.target.value || '0')
+                        if (!Number.isNaN(val) && val > 0) {
+                          setFreeTestListing(false)
+                        }
+                      }}
+                      disabled={!forSale || freeTestListing}
+                      placeholder="9.99"
+                    />
+                    {forSale && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <Switch
+                          id="free-test-listing"
+                          checked={freeTestListing}
+                          onCheckedChange={(checked) => {
+                            setFreeTestListing(checked)
+                            if (checked) {
+                              setPrice("0.00")
+                            }
+                          }}
+                        />
+                        <Label htmlFor="free-test-listing" className="text-sm font-normal text-muted-foreground">
+                          Mark as free $0 test listing
+                        </Label>
+                      </div>
+                    )}
                   </div>
-                  <Switch id="for-sale" checked={forSale} onCheckedChange={setForSale} />
+                  <Switch
+                    id="for-sale"
+                    checked={forSale}
+                    onCheckedChange={(checked) => {
+                      setForSale(checked)
+                      if (!checked) {
+                        setFreeTestListing(false)
+                        setPrice("")
+                      }
+                    }}
+                  />
                 </div>
               </div>
             )}

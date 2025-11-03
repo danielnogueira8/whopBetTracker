@@ -39,8 +39,20 @@ export async function POST(
     if (!userId) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { id } = await params
-    const { priceCents, currency = 'usd', active = true } = await req.json()
-    if (!priceCents || priceCents <= 0) return Response.json({ error: 'priceCents must be > 0' }, { status: 400 })
+    const { priceCents, currency = 'usd', active = true, allowZero = false } = await req.json()
+    const normalizedPriceCents = typeof priceCents === 'string' ? Number.parseInt(priceCents, 10) : Number(priceCents)
+
+    if (Number.isNaN(normalizedPriceCents)) {
+      return Response.json({ error: 'priceCents must be a number' }, { status: 400 })
+    }
+
+    if (normalizedPriceCents < 0) {
+      return Response.json({ error: 'priceCents must be >= 0' }, { status: 400 })
+    }
+
+    if (normalizedPriceCents === 0 && !allowZero) {
+      return Response.json({ error: 'priceCents must be > 0 unless allowZero is true' }, { status: 400 })
+    }
 
     const rows = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1)
     const parlay = rows[0]
@@ -54,7 +66,7 @@ export async function POST(
       const updated = await db
         // @ts-ignore
         .update(parlaySaleListings)
-        .set({ priceCents, currency, active, updatedAt: new Date() })
+        .set({ priceCents: normalizedPriceCents, currency, active, updatedAt: new Date() })
         .where(eq(parlaySaleListings.id, existing[0].id))
         .returning()
       return Response.json({ listing: updated[0] })
@@ -62,7 +74,7 @@ export async function POST(
 
     const created = await db
       .insert(parlaySaleListings)
-      .values({ parlayId: id, sellerUserId: userId, priceCents, currency, active })
+      .values({ parlayId: id, sellerUserId: userId, priceCents: normalizedPriceCents, currency, active })
       .returning()
 
     return Response.json({ listing: created[0] })

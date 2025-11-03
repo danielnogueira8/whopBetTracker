@@ -89,11 +89,18 @@ export function CreateBetDialog({
   // Sale controls (upcoming bets only)
   const [forSale, setForSale] = useState(false);
   const [price, setPrice] = useState<string>("");
+  const [freeTestListing, setFreeTestListing] = useState(false);
   const PRICE_OPTIONS = ["1.00", "4.90", "9.90", "19.90"] as const;
 
   useEffect(() => {
-    if (forSale && !price) setPrice(PRICE_OPTIONS[0]);
-  }, [forSale]);
+    if (forSale && !price && !freeTestListing) setPrice(PRICE_OPTIONS[0]);
+  }, [forSale, price, freeTestListing]);
+
+  useEffect(() => {
+    if (freeTestListing) {
+      setPrice("0.00");
+    }
+  }, [freeTestListing]);
 
   // Fetch settings for forum posting
   const { data: settings } = useQuery({
@@ -147,6 +154,9 @@ export function CreateBetDialog({
       setEventDate("");
       setExplanation("");
       setParlayConfidenceLevel("");
+      setForSale(false);
+      setPrice("");
+      setFreeTestListing(false);
       // Reset checkbox based on settings when dialog closes
       setShouldPostToForum(settings?.autoPostEnabled || false);
     }
@@ -187,8 +197,9 @@ export function CreateBetDialog({
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
       const parlayId = res?.parlay?.id as string | undefined
       const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
-      if (isUpcomingBet && isParlay && parlayId && !isSellingDisabled() && forSale && priceCents > 0) {
-        createParlayListing.mutate({ parlayId, priceCents })
+      const isFreeTest = freeTestListing || priceCents === 0
+      if (isUpcomingBet && isParlay && parlayId && !isSellingDisabled() && forSale && (priceCents > 0 || isFreeTest)) {
+        createParlayListing.mutate({ parlayId, priceCents: isFreeTest ? 0 : priceCents, allowZero: isFreeTest })
       } else {
         onOpenChange(false)
       }
@@ -196,11 +207,11 @@ export function CreateBetDialog({
   });
 
   const createParlayListing = useMutation({
-    mutationFn: async ({ parlayId, priceCents }: { parlayId: string; priceCents: number }) => {
+    mutationFn: async ({ parlayId, priceCents, allowZero = false }: { parlayId: string; priceCents: number; allowZero?: boolean }) => {
       const response = await fetch(`/api/parlays/${parlayId}/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceCents, currency: 'usd', active: true }),
+        body: JSON.stringify({ priceCents, currency: 'usd', active: true, allowZero }),
       })
       if (!response.ok) throw new Error("Failed to create parlay listing")
       return response.json()
@@ -225,8 +236,9 @@ export function CreateBetDialog({
       queryClient.invalidateQueries({ queryKey: ["upcoming-bets"] });
       const betId = res?.bet?.id as string | undefined
       const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
-      if (betId && !isSellingDisabled() && forSale && priceCents > 0) {
-        createListing.mutate({ betId, priceCents })
+      const isFreeTest = freeTestListing || priceCents === 0
+      if (betId && !isSellingDisabled() && forSale && (priceCents > 0 || isFreeTest)) {
+        createListing.mutate({ betId, priceCents: isFreeTest ? 0 : priceCents, allowZero: isFreeTest })
       } else {
         onOpenChange(false)
       }
@@ -234,11 +246,11 @@ export function CreateBetDialog({
   });
 
   const createListing = useMutation({
-    mutationFn: async ({ betId, priceCents }: { betId: string; priceCents: number }) => {
+    mutationFn: async ({ betId, priceCents, allowZero = false }: { betId: string; priceCents: number; allowZero?: boolean }) => {
       const response = await fetch(`/api/bets/${betId}/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceCents, currency: 'usd', active: true }),
+        body: JSON.stringify({ priceCents, currency: 'usd', active: true, allowZero }),
       })
       if (!response.ok) throw new Error("Failed to create listing")
       return response.json()
@@ -625,27 +637,52 @@ export function CreateBetDialog({
                       <div className="rounded-lg border p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <Label htmlFor="for-sale-parlay">List for sale</Label>
-                          <Switch id="for-sale-parlay" checked={forSale} onCheckedChange={setForSale} />
+                          <Switch
+                            id="for-sale-parlay"
+                            checked={forSale}
+                            onCheckedChange={(checked) => {
+                              setForSale(checked)
+                              if (!checked) {
+                                setFreeTestListing(false)
+                                setPrice("")
+                              }
+                            }}
+                          />
                         </div>
                         <div className="grid gap-1">
                           <Label>Price (USD)</Label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             {PRICE_OPTIONS.map((p) => (
                               <Button
                                 key={p}
                                 type="button"
-                                variant={price === p ? 'default' : 'outline'}
+                                variant={!freeTestListing && price === p ? 'default' : 'outline'}
                                 size="sm"
                                 disabled={!forSale}
-                                onClick={() => setPrice(p)}
+                                onClick={() => {
+                                  setPrice(p)
+                                  setFreeTestListing(false)
+                                }}
                               >
                                 ${p}
                               </Button>
                             ))}
+                            <Button
+                              type="button"
+                              variant={freeTestListing ? 'default' : 'outline'}
+                              size="sm"
+                              disabled={!forSale}
+                              onClick={() => {
+                                setFreeTestListing(true)
+                                setPrice("0.00")
+                              }}
+                            >
+                              $0 Test
+                            </Button>
                           </div>
                         </div>
                         <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
-                        <p className="text-xs text-muted-foreground">Disclaimer: This feature is experimental and still in testing.</p>
+                        <p className="text-xs text-muted-foreground">Need to test checkout? Choose “$0 Test” to create a free listing.</p>
                       </div>
                     )}
                   </>
@@ -821,23 +858,50 @@ export function CreateBetDialog({
                       <div className="rounded-lg border p-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <Label htmlFor="for-sale">List for sale</Label>
-                          <Switch id="for-sale" checked={forSale && !isSellingDisabled()} onCheckedChange={setForSale} disabled={isSellingDisabled()} />
+                          <Switch
+                            id="for-sale"
+                            checked={forSale && !isSellingDisabled()}
+                            onCheckedChange={(checked) => {
+                              if (isSellingDisabled()) return
+                              setForSale(checked)
+                              if (!checked) {
+                                setFreeTestListing(false)
+                                setPrice("")
+                              }
+                            }}
+                            disabled={isSellingDisabled()}
+                          />
                         </div>
                         <div className="grid gap-1">
                           <Label>Price (USD)</Label>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             {PRICE_OPTIONS.map((p) => (
                               <Button
                                 key={p}
                                 type="button"
-                                variant={price === p ? 'default' : 'outline'}
+                                variant={!freeTestListing && price === p ? 'default' : 'outline'}
                                 size="sm"
                                 disabled={!forSale || isSellingDisabled()}
-                                onClick={() => setPrice(p)}
+                                onClick={() => {
+                                  setPrice(p)
+                                  setFreeTestListing(false)
+                                }}
                               >
                                 ${p}
                               </Button>
                             ))}
+                            <Button
+                              type="button"
+                              variant={freeTestListing ? 'default' : 'outline'}
+                              size="sm"
+                              disabled={!forSale || isSellingDisabled()}
+                              onClick={() => {
+                                setFreeTestListing(true)
+                                setPrice("0.00")
+                              }}
+                            >
+                              $0 Test
+                            </Button>
                           </div>
                         </div>
                         {isSellingDisabled() ? (
@@ -845,7 +909,7 @@ export function CreateBetDialog({
                         ) : (
                           <p className="text-sm text-muted-foreground">Set a price for non-eligible users to buy access. 10% fee applies.</p>
                         )}
-                        <p className="text-xs text-muted-foreground">Disclaimer: This feature is experimental and still in testing.</p>
+                        <p className="text-xs text-muted-foreground">Use “$0 Test” to run a checkout flow without charges.</p>
                       </div>
                     )}
                   </>

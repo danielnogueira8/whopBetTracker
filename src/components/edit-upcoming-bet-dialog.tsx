@@ -66,6 +66,7 @@ export function EditUpcomingBetDialog({
   const [shouldUpdateForumPost, setShouldUpdateForumPost] = useState(false);
   const [forSale, setForSale] = useState(false);
   const [price, setPrice] = useState<string>("");
+  const [freeTestListing, setFreeTestListing] = useState(false);
 
   useEffect(() => {
     if (bet) {
@@ -92,10 +93,13 @@ export function EditUpcomingBetDialog({
         const listing = data?.listing
         if (listing) {
           setForSale(Boolean(listing.active))
-          setPrice((listing.priceCents / 100).toFixed(2))
+          const cents = listing.priceCents ?? 0
+          setFreeTestListing(cents === 0)
+          setPrice((cents / 100).toFixed(2))
         } else {
           setForSale(false)
           setPrice("")
+          setFreeTestListing(false)
         }
       }).catch(() => {})
     }
@@ -127,11 +131,11 @@ export function EditUpcomingBetDialog({
   });
 
   const saveListing = useMutation({
-    mutationFn: async ({ betId, priceCents, active }: { betId: string; priceCents: number; active: boolean }) => {
+    mutationFn: async ({ betId, priceCents, active, allowZero = false }: { betId: string; priceCents: number; active: boolean; allowZero?: boolean }) => {
       const response = await fetch(`/api/bets/${betId}/listings`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ priceCents, currency: 'usd', active }),
+        body: JSON.stringify({ priceCents, currency: 'usd', active, allowZero }),
       })
       if (!response.ok) throw new Error("Failed to save listing")
       return response.json()
@@ -166,12 +170,14 @@ export function EditUpcomingBetDialog({
       onSuccess: () => {
         if (bet?.id) {
           const priceCents = Math.round((parseFloat(price || '0') || 0) * 100)
-          if (forSale && priceCents > 0) {
-            saveListing.mutate({ betId: bet.id, priceCents, active: true })
+          const isFree = freeTestListing || priceCents === 0
+          const normalizedPriceCents = isFree ? 0 : Math.max(priceCents, 0)
+          if (forSale && (normalizedPriceCents > 0 || isFree)) {
+            saveListing.mutate({ betId: bet.id, priceCents: normalizedPriceCents, active: true, allowZero: isFree })
           } else {
             // deactivate listing if toggled off
-            if (priceCents >= 0) {
-              saveListing.mutate({ betId: bet.id, priceCents: Math.max(priceCents, 0), active: false })
+            if (normalizedPriceCents >= 0) {
+              saveListing.mutate({ betId: bet.id, priceCents: normalizedPriceCents, active: false, allowZero: isFree })
             }
           }
         }
@@ -340,10 +346,51 @@ export function EditUpcomingBetDialog({
                 <div className="grid gap-1">
                   <Label htmlFor="price-edit">Price (USD)
                   </Label>
-                  <Input id="price-edit" type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} disabled={!forSale} placeholder="9.99" />
+                  <Input
+                    id="price-edit"
+                    type="number"
+                    step="0.01"
+                    value={price}
+                    onChange={(e) => {
+                      setPrice(e.target.value)
+                      const val = Number.parseFloat(e.target.value || '0')
+                      if (!Number.isNaN(val) && val > 0) {
+                        setFreeTestListing(false)
+                      }
+                    }}
+                    disabled={!forSale || freeTestListing}
+                    placeholder="9.99"
+                  />
                 </div>
-                <Switch id="for-sale-edit" checked={forSale} onCheckedChange={setForSale} />
+                <Switch
+                  id="for-sale-edit"
+                  checked={forSale}
+                  onCheckedChange={(checked) => {
+                    setForSale(checked)
+                    if (!checked) {
+                      setFreeTestListing(false)
+                      setPrice("")
+                    }
+                  }}
+                />
               </div>
+              {forSale && (
+                <div className="flex items-center gap-2 pt-2">
+                  <Switch
+                    id="free-test-listing"
+                    checked={freeTestListing}
+                    onCheckedChange={(checked) => {
+                      setFreeTestListing(checked)
+                      if (checked) {
+                        setPrice("0.00")
+                      }
+                    }}
+                  />
+                  <Label htmlFor="free-test-listing" className="text-sm font-normal text-muted-foreground">
+                    Mark as free $0 test listing
+                  </Label>
+                </div>
+              )}
             </div>
             {bet?.forumPostId && (
               <div className="flex items-center justify-between space-x-2 rounded-lg border p-3">
