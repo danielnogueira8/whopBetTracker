@@ -105,7 +105,6 @@ export async function POST(
     const accessPass = await sellerWhop.accessPasses.createAccessPass({
       title: `Bet Access: ${bet.game}`,
       description: `Access to bet: ${bet.outcome}`,
-      shortenedDescription: `Bet: ${bet.outcome}`.slice(0, 150),
       companyId: sellerCompanyId,
       experienceIds: [bet.experienceId],
       route: accessPassRoute,

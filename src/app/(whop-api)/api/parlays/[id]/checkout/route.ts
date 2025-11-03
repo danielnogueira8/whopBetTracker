@@ -98,7 +98,6 @@ export async function POST(
     const accessPass = await sellerWhop.accessPasses.createAccessPass({
       title: `Parlay Access: ${parlay.name}`,
       description: `Access to parlay: ${parlay.name}`,
-      shortenedDescription: `Parlay: ${parlay.name}`.slice(0, 150),
       companyId: sellerCompanyId,
       experienceIds: [parlay.experienceId],
       route: accessPassRoute,
