@@ -75,11 +75,37 @@ export async function POST(
       return NextResponse.json({ error: 'Seller company not found' }, { status: 400 })
     }
 
+    // Verify seller is admin of the company/experience
+    const sellerAccess = await whop.access.checkIfUserHasAccessToExperience({
+      experienceId: bet.experienceId,
+      userId: listing.sellerUserId,
+    })
+    
+    if (sellerAccess?.accessLevel !== 'admin') {
+      console.error('[checkout] Seller is not admin', {
+        sellerUserId: listing.sellerUserId,
+        accessLevel: sellerAccess?.accessLevel,
+        experienceId: bet.experienceId,
+      })
+      return NextResponse.json({ 
+        error: 'Seller must be an admin to create products' 
+      }, { status: 403 })
+    }
+
     // Create seller SDK instance
     const sellerWhop = createSellerWhopSdk(sellerCompanyId)
 
     // Create product dynamically on seller's company using REST API
     // Use x-on-behalf-of and x-company-id headers to act on behalf of seller's company
+    console.log('[checkout] Creating product', {
+      sellerUserId: listing.sellerUserId,
+      sellerCompanyId,
+      headers: {
+        'x-on-behalf-of': listing.sellerUserId,
+        'x-company-id': sellerCompanyId,
+      },
+    })
+
     const productResponse = await fetch('https://api.whop.com/api/v2/products', {
       method: 'POST',
       headers: {
@@ -102,7 +128,12 @@ export async function POST(
         status: productResponse.status,
         error: errorText,
         sellerCompanyId,
+        sellerUserId: listing.sellerUserId,
         betId: bet.id,
+        requestHeaders: {
+          'x-on-behalf-of': listing.sellerUserId,
+          'x-company-id': sellerCompanyId,
+        },
       })
       throw new Error(`Product creation failed: ${productResponse.status} ${errorText}`)
     }
