@@ -106,16 +106,16 @@ export async function POST(
       },
     })
 
+    // Try without company_id in body since it's in headers
     const productResponse = await fetch('https://api.whop.com/api/v2/products', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${env.WHOP_API_KEY}`,
         'Content-Type': 'application/json',
-        'x-on-behalf-of': listing.sellerUserId, // Seller's user ID - acting on their behalf
-        'x-company-id': sellerCompanyId,        // Seller's company ID
+        'X-On-Behalf-Of': listing.sellerUserId, // Seller's user ID - try capitalized headers
+        'X-Company-Id': sellerCompanyId,        // Seller's company ID
       },
       body: JSON.stringify({
-        company_id: sellerCompanyId,
         title: `Bet Access: ${bet.game}`,
         description: `Access to bet: ${bet.outcome}`,
         type: 'api_only',
@@ -154,11 +154,10 @@ export async function POST(
       headers: {
         'Authorization': `Bearer ${env.WHOP_API_KEY}`,
         'Content-Type': 'application/json',
-        'x-on-behalf-of': listing.sellerUserId, // Seller's user ID - acting on their behalf
-        'x-company-id': sellerCompanyId,        // Seller's company ID
+        'X-On-Behalf-Of': listing.sellerUserId, // Seller's user ID - try capitalized headers
+        'X-Company-Id': sellerCompanyId,        // Seller's company ID
       },
       body: JSON.stringify({
-        company_id: sellerCompanyId,
         product_id: product.id,
         initial_price: priceInDollars,
         currency: listing.currency,
