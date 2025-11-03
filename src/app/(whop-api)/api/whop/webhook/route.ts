@@ -156,7 +156,6 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     // Custom HMAC verification (auto-detect format)
-    let webhook: any
     if (!chosenSig || !normalizedTs) {
       const keys = Array.from(headersView.keys())
       return NextResponse.json({ ok: false, error: 'missing signature headers' }, { status: 400 })
