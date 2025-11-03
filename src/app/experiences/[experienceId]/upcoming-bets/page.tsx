@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useIframeSdk } from '@whop/react'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { useWhop } from "~/lib/whop-context";
 import { SidebarTrigger } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
@@ -800,7 +801,10 @@ function PerBetLockedContent({ betId }: { betId: string }) {
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/bets/${betId}/checkout`, { method: 'POST', headers: forceBuyer ? { 'x-force-buyer': 'true' } : {} })
-      if (!res.ok) throw new Error('Failed to create checkout')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to create checkout' }))
+        throw new Error(errorData.error || 'Failed to create checkout')
+      }
       return res.json()
     },
     onSuccess: async (data) => {
@@ -825,10 +829,19 @@ function PerBetLockedContent({ betId }: { betId: string }) {
             setTimeout(() => poll(retries - 1), 1000)
           }
           setTimeout(() => poll(), 3000)
+        } else {
+          // Fallback: open checkout in new window if iframe SDK not available
+          window.open(`https://whop.com/checkout/${data.checkoutId}`, '_blank')
+          toast.info('Checkout opened in new window')
         }
       } catch (e) {
         console.error('Checkout failed', e)
+        toast.error('Failed to open checkout. Please try again.')
       }
+    },
+    onError: (error: Error) => {
+      console.error('Checkout error:', error)
+      toast.error(error.message || 'Failed to create checkout. Please try again.')
     }
   })
 
@@ -945,7 +958,10 @@ function PerParlayLockedContent({ parlayId }: { parlayId: string }) {
   const checkoutMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/parlays/${parlayId}/checkout`, { method: 'POST', headers: forceBuyer ? { 'x-force-buyer': 'true' } : {} })
-      if (!res.ok) throw new Error('Failed to create checkout')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Failed to create checkout' }))
+        throw new Error(errorData.error || 'Failed to create checkout')
+      }
       return res.json()
     },
     onSuccess: async (data) => {
@@ -969,10 +985,19 @@ function PerParlayLockedContent({ parlayId }: { parlayId: string }) {
             setTimeout(() => poll(retries - 1), 1000)
           }
           setTimeout(() => poll(), 3000)
+        } else {
+          // Fallback: open checkout in new window if iframe SDK not available
+          window.open(`https://whop.com/checkout/${data.checkoutId}`, '_blank')
+          toast.info('Checkout opened in new window')
         }
       } catch (e) {
         console.error('Checkout failed', e)
+        toast.error('Failed to open checkout. Please try again.')
       }
+    },
+    onError: (error: Error) => {
+      console.error('Checkout error:', error)
+      toast.error(error.message || 'Failed to create checkout. Please try again.')
     }
   })
 
