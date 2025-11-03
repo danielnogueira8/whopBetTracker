@@ -3,8 +3,7 @@ import { db } from "~/db"
 import { betPurchases, betSaleListings, userBetAccess, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
 import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
-import { type PaymentWebhookData } from "@whop/api"
-import crypto from "node:crypto"
+import { type PaymentWebhookData, makeWebhookValidator } from "@whop/api"
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -166,105 +165,28 @@ export async function POST(req: NextRequest) {
     if (Math.abs(nowSec - Number(normalizedTs)) > 5 * 60) {
       return NextResponse.json({ ok: false, error: 'timestamp out of range' }, { status: 400 })
     }
-    const payload = new TextDecoder().decode(bodyBuffer)
+    const validator = makeWebhookValidator({
+      webhookSecret: secret,
+      signatureHeaderName:
+        usedSet === 'webhook'
+          ? 'webhook-signature'
+          : usedSet === 'whop'
+            ? 'whop-signature'
+            : undefined,
+    })
 
-    function timingSafeEq(a: Buffer, b: Buffer): boolean {
-      if (a.length !== b.length) return false
-      return crypto.timingSafeEqual(a, b)
-    }
-
-    function getSecretCandidates(): Buffer[] {
-      const s = (secret || '').trim()
-      const out: Buffer[] = []
-      if (!s) return out
-      // utf8
-      out.push(Buffer.from(s, 'utf8'))
-      // base64
-      try {
-        const b64 = Buffer.from(s, 'base64')
-        if (b64.length > 0) out.push(b64)
-      } catch {}
-      // hex
-      try {
-        if (/^[0-9a-fA-F]+$/.test(s) && s.length % 2 === 0) {
-          const hx = Buffer.from(s, 'hex')
-          if (hx.length > 0) out.push(hx)
-        }
-      } catch {}
-      // dedupe by hex
-      const seen = new Set<string>()
-      return out.filter((b) => (seen.has(b.toString('hex')) ? false : (seen.add(b.toString('hex')), true)))
-    }
-
-    function parseSignatureToBuffers(sig: string): Buffer[] {
-      const variants: string[] = [sig]
-      // If v1,<sig>
-      if (sig.startsWith('v1,')) variants.push(sig.slice(3))
-      const out: Buffer[] = []
-      for (const v of variants) {
-        const s = v.trim()
-        // hex
-        if (/^[0-9a-fA-F]+$/.test(s) && s.length % 2 === 0) {
-          try { out.push(Buffer.from(s, 'hex')) } catch {}
-        }
-        // base64
-        try {
-          const b = Buffer.from(s, 'base64')
-          if (b.length > 0) out.push(b)
-        } catch {}
-        // base64url
-        try {
-          const b64 = s.replace(/-/g, '+').replace(/_/g, '/')
-          const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4))
-          const b = Buffer.from(b64 + pad, 'base64')
-          if (b.length > 0) out.push(b)
-        } catch {}
-      }
-      const seen = new Set<string>()
-      return out.filter((b) => (seen.has(b.toString('hex')) ? false : (seen.add(b.toString('hex')), true)))
-    }
-
-    function computeHmacDigests(input: string, keys: Buffer[]): Buffer[] {
-      const out: Buffer[] = []
-      for (const k of keys) {
-        try {
-          const d = crypto.createHmac('sha256', k).update(input).digest()
-          out.push(d)
-        } catch {}
-      }
-      const seen = new Set<string>()
-      return out.filter((b) => (seen.has(b.toString('hex')) ? false : (seen.add(b.toString('hex')), true)))
-    }
-
-    const sigRaw = chosenSig.trim()
-    let verified = false
-    const sigBuffers = parseSignatureToBuffers(sigRaw)
-    const keyCandidates = getSecretCandidates()
-
-    // Case A: Stripe-style: signature header like "t=TIMESTAMP,v1=SIGNATURE"
-    if (/t=\d+/.test(sigRaw) && /v1=/.test(sigRaw)) {
-      const parts = Object.fromEntries(sigRaw.split(',').map((p) => p.split('='))) as Record<string, string>
-      const t = parts['t']
-      const v1 = parts['v1']
-      if (v1) sigBuffers.push(...parseSignatureToBuffers(v1))
-      const signedPayload = `${t}.${payload}`
-      const digests = computeHmacDigests(signedPayload, keyCandidates)
-      verified = sigBuffers.some((sb) => digests.some((dg) => sb.length === dg.length && timingSafeEq(sb, dg)))
-    } else {
-      // Case B: Raw HMAC with optional v1 prefix
-      const digestsA = computeHmacDigests(payload, keyCandidates)
-      const digestsB = computeHmacDigests(`${normalizedTs}.${payload}`, keyCandidates)
-      verified = sigBuffers.some((sb) => digestsA.concat(digestsB).some((dg) => sb.length === dg.length && timingSafeEq(sb, dg)))
-    }
-
-    if (!verified) {
-      console.error('[webhook] invalid signature', { usedSet, hasId: !!chosenId, hasSig: !!chosenSig, hasTs: !!normalizedTs })
-      return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 401 })
-    }
+    let webhook: any
     try {
-      webhook = JSON.parse(payload)
-    } catch {
-      webhook = undefined
+      webhook = await validator(reqForValidation)
+    } catch (err) {
+      console.error('[webhook] invalid signature', {
+        usedSet,
+        hasId: !!chosenId,
+        hasSig: !!chosenSig,
+        hasTs: !!normalizedTs,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 401 })
     }
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
