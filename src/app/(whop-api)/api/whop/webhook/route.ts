@@ -152,6 +152,10 @@ export async function POST(req: NextRequest) {
         idPreview: redact(chosenId),
         sigPreview: redact(chosenSig),
         ts: normalizedTs,
+        svixSigExists: hdrs.has('svix-signature'),
+        svixTsExists: hdrs.has('svix-timestamp'),
+        svixIdExists: hdrs.has('svix-id'),
+        svixSigPreview: redact(hdrs.get('svix-signature')),
       })
     } catch {}
 
@@ -164,8 +168,23 @@ export async function POST(req: NextRequest) {
     if (Math.abs(nowSec - Number(normalizedTs)) > 5 * 60) {
       return NextResponse.json({ ok: false, error: 'timestamp out of range' }, { status: 400 })
     }
+    const headerOverrides = usedSet === 'webhook'
+      ? {
+          signatureHeaderName: 'webhook-signature',
+          timestampHeaderName: 'webhook-timestamp',
+          idHeaderName: 'webhook-id',
+        }
+      : usedSet === 'whop'
+        ? {
+            signatureHeaderName: 'whop-signature',
+            timestampHeaderName: 'whop-timestamp',
+            idHeaderName: 'whop-id',
+          }
+        : undefined
+
     const validator = makeWebhookValidator({
       webhookSecret: secret,
+      ...(headerOverrides ?? {}),
     })
 
     let webhook: any
