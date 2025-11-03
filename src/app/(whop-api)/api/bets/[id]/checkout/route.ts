@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verifyUserToken } from "@whop/api"
+import { verifyUserToken, type Currencies } from "@whop/api"
 import { db } from "~/db"
 import { betPurchases, betSaleListings, experienceSettings, upcomingBets, userBetAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
@@ -96,7 +96,7 @@ export async function POST(
     const sellerWhop = createSellerWhopSdk(sellerCompanyId)
 
     const priceInDollars = Number((listing.priceCents / 100).toFixed(2))
-    const baseCurrency = listing.currency?.toLowerCase() as (typeof listing.currency)
+    const baseCurrency = listing.currency?.toLowerCase() as Currencies | undefined
 
     const routeSlugBase = `bet-${bet.id}`.replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase()
     const uniqueSuffix = Math.random().toString(36).slice(2, 8)
