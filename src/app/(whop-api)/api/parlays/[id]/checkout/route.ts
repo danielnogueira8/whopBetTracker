@@ -71,78 +71,75 @@ export async function POST(
     // Create seller SDK instance
     const sellerWhop = createSellerWhopSdk(sellerCompanyId)
 
-    // Create product dynamically on seller's company
-    let product
-    try {
-      product = await sellerWhop.products.create({
+    // Create product dynamically on seller's company using REST API
+    // SDK doesn't support products.create() method, so we use REST API directly
+    const productResponse = await fetch('https://api.whop.com/api/v2/products', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        company_id: sellerCompanyId,
         title: `Parlay Access: ${parlay.name}`,
         description: `Access to parlay: ${parlay.name}`,
         type: 'api_only',
-      } as any)
-    } catch (error) {
-      console.error('[parlay-checkout] Failed to create product', error)
-      // Fallback: use REST API directly if SDK doesn't support
-      const productResponse = await fetch('https://api.whop.com/api/v2/products', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.WHOP_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          company_id: sellerCompanyId,
-          title: `Parlay Access: ${parlay.name}`,
-          description: `Access to parlay: ${parlay.name}`,
-          type: 'api_only',
-        }),
+      }),
+    })
+
+    if (!productResponse.ok) {
+      const errorText = await productResponse.text()
+      console.error('[parlay-checkout] Product creation failed', {
+        status: productResponse.status,
+        error: errorText,
+        sellerCompanyId,
+        parlayId: parlay.id,
       })
-      if (!productResponse.ok) {
-        const errorText = await productResponse.text()
-        throw new Error(`Product creation failed: ${productResponse.status} ${errorText}`)
-      }
-      const productData = await productResponse.json()
-      product = productData.data || productData
+      throw new Error(`Product creation failed: ${productResponse.status} ${errorText}`)
     }
 
+    const productData = await productResponse.json()
+    const product = productData.data || productData || productData.product
+
     if (!product?.id) {
+      console.error('[parlay-checkout] Invalid product response', productData)
       return NextResponse.json({ error: 'Failed to create product' }, { status: 500 })
     }
 
-    // Create plan dynamically
+    // Create plan dynamically using REST API
     const priceInDollars = listing.priceCents / 100
-    let plan
-    try {
-      plan = await sellerWhop.plans.create({
-        productId: product.id,
-        price: priceInDollars,
+    const planResponse = await fetch('https://api.whop.com/api/v2/plans', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${env.WHOP_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        company_id: sellerCompanyId,
+        product_id: product.id,
+        initial_price: priceInDollars,
         currency: listing.currency,
-        planType: 'one_time',
+        plan_type: 'one_time',
+      }),
+    })
+
+    if (!planResponse.ok) {
+      const errorText = await planResponse.text()
+      console.error('[parlay-checkout] Plan creation failed', {
+        status: planResponse.status,
+        error: errorText,
+        sellerCompanyId,
+        productId: product.id,
+        priceInDollars,
       })
-    } catch (error) {
-      console.error('[parlay-checkout] Failed to create plan', error)
-      // Fallback: use REST API directly if SDK doesn't support
-      const planResponse = await fetch('https://api.whop.com/api/v2/plans', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.WHOP_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          company_id: sellerCompanyId,
-          product_id: product.id,
-          initial_price: priceInDollars,
-          currency: listing.currency,
-          plan_type: 'one_time',
-        }),
-      })
-      if (!planResponse.ok) {
-        const errorText = await planResponse.text()
-        throw new Error(`Plan creation failed: ${planResponse.status} ${errorText}`)
-      }
-      const planData = await planResponse.json()
-      plan = planData.data || planData
+      throw new Error(`Plan creation failed: ${planResponse.status} ${errorText}`)
     }
 
+    const planData = await planResponse.json()
+    const plan = planData.data || planData || planData.plan
+
     if (!plan?.id) {
+      console.error('[parlay-checkout] Invalid plan response', planData)
       return NextResponse.json({ error: 'Failed to create plan' }, { status: 500 })
     }
 
