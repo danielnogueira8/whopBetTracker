@@ -44,14 +44,16 @@ export async function verifyAppInstallation(companyId: string): Promise<{
 	try {
 		// Try to list experiences for this app on the target company
 		// This will fail if the app is not installed
-		const experiences = await whop.experiences.listExperiences({
+		const response = await whop.experiences.listExperiences({
 			companyId,
-		})
+		}) as any
 
 		// Check if any experience belongs to our app
-		const appExperiences = experiences?.experiences?.nodes?.filter(
+		// The response can have either 'experiences' or 'experiencesV2' depending on API version
+		const experiencesData = response?.experiences?.nodes ?? response?.experiencesV2?.nodes ?? []
+		const appExperiences = experiencesData.filter(
 			(exp: any) => exp?.app?.id === env.NEXT_PUBLIC_WHOP_APP_ID
-		) ?? []
+		)
 
 		const isInstalled = appExperiences.length > 0
 
