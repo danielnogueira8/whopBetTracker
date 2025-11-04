@@ -47,13 +47,42 @@ export async function POST(req: NextRequest) {
     ))
 
     const pickHeader = (names: string[]) => {
+      // Try exact match first
       for (const name of names) {
         const value = originalHeaders.get(name)
         if (value) {
           return { name, value }
         }
       }
+      // Try case-insensitive match
+      const lowerHeaders = new Map<string, string>()
+      for (const [key, value] of originalHeaders.entries()) {
+        lowerHeaders.set(key.toLowerCase(), value)
+      }
+      for (const name of names) {
+        const value = lowerHeaders.get(name.toLowerCase())
+        if (value) {
+          return { name, value }
+        }
+      }
       return { name: null as string | null, value: null as string | null }
+    }
+
+    const bodyBuffer = await req.arrayBuffer()
+    const bodyString = new TextDecoder().decode(bodyBuffer)
+    
+    // Log body preview to see if it's a Whop webhook
+    let webhookBody: any = null
+    try {
+      webhookBody = JSON.parse(bodyString || '{}')
+      console.log('[webhook] body preview', {
+        hasAction: !!webhookBody?.action,
+        action: webhookBody?.action,
+        hasData: !!webhookBody?.data,
+        dataKeys: webhookBody?.data ? Object.keys(webhookBody.data) : [],
+      })
+    } catch (e) {
+      console.log('[webhook] body is not JSON', { bodyLength: bodyString.length })
     }
 
     const signaturePick = pickHeader(['webhook-signature', 'whop-signature', 'svix-signature'])
@@ -100,9 +129,6 @@ export async function POST(req: NextRequest) {
       canonicalSignature,
     })
 
-    const bodyBuffer = await req.arrayBuffer()
-    const bodyString = new TextDecoder().decode(bodyBuffer)
-
     const nowSec = Math.round(Date.now() / 1000)
     const tsNumber = normalizedTimestamp ? Number(normalizedTimestamp) : NaN
     console.log('[webhook] timing check', {
@@ -112,14 +138,32 @@ export async function POST(req: NextRequest) {
       absDiffSeconds: Number.isFinite(tsNumber) ? Math.abs(tsNumber - nowSec) : null,
     })
 
+    // Check if this looks like a Whop webhook by body structure (for test webhooks that might not have headers)
+    const isLikelyWhopWebhook = webhookBody && (
+      webhookBody.action || 
+      webhookBody.data?.id || 
+      webhookBody.data?.metadata ||
+      webhookBody.type
+    )
+
     if (!signaturePick.value) {
       console.error('[webhook] missing signature header - Whop headers not present')
+      console.error('[webhook] Body looks like Whop webhook:', isLikelyWhopWebhook)
       console.error('[webhook] This likely means:')
       console.error('[webhook] 1. Request is not from Whop (test from wrong source?)')
       console.error('[webhook] 2. Vercel is stripping Whop headers before reaching handler')
       console.error('[webhook] 3. Whop webhook URL is misconfigured')
+      console.error('[webhook] 4. Whop test webhook may not send signature headers')
       console.error('[webhook] Please verify webhook URL in Whop dashboard points to:')
       console.error('[webhook] https://whop-bet-tracker.vercel.app/api/whop/webhook')
+      
+      // If body looks like Whop webhook but headers missing, this might be a test
+      // In production, we should NEVER allow this, but for debugging we can log more
+      if (isLikelyWhopWebhook) {
+        console.error('[webhook] WARNING: Body looks like Whop webhook but headers missing!')
+        console.error('[webhook] This is likely a test webhook or misconfiguration.')
+      }
+      
       return NextResponse.json({ ok: false, error: 'missing signature - Whop headers not found. Check webhook URL configuration.' }, { status: 400 })
     }
 
@@ -165,13 +209,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 401 })
     }
 
-    let webhook: any
-    try {
-      webhook = JSON.parse(bodyString || '{}')
-    } catch (err) {
-      console.error('[webhook] invalid JSON body', err)
+    // Reuse the parsed body from earlier
+    if (!webhookBody) {
+      console.error('[webhook] invalid JSON body')
       return NextResponse.json({ ok: false, error: 'invalid payload' }, { status: 400 })
     }
+    const webhook = webhookBody
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
