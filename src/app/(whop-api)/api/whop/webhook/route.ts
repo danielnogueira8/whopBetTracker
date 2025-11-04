@@ -27,6 +27,53 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
 
+    const originalHeaders = req.headers
+    const bridgedHeaders = new Headers()
+    for (const [key, value] of originalHeaders.entries()) {
+      bridgedHeaders.set(key, value)
+    }
+
+    const pickHeader = (names: string[]) => {
+      for (const name of names) {
+        const value = originalHeaders.get(name)
+        if (value) {
+          return { name, value }
+        }
+      }
+      return { name: null as string | null, value: null as string | null }
+    }
+
+    const signaturePick = pickHeader(['webhook-signature', 'whop-signature', 'svix-signature', 'x-vercel-proxy-signature'])
+    if (signaturePick.value) {
+      bridgedHeaders.set('svix-signature', signaturePick.value)
+    }
+
+    const timestampPick = pickHeader(['webhook-timestamp', 'whop-timestamp', 'svix-timestamp', 'x-vercel-proxy-signature-ts'])
+    if (timestampPick.value) {
+      bridgedHeaders.set('svix-timestamp', timestampPick.value)
+    }
+
+    const idPick = pickHeader(['webhook-id', 'whop-id', 'svix-id'])
+    if (idPick.value) {
+      bridgedHeaders.set('svix-id', idPick.value)
+    }
+
+    console.log('[webhook] header bridge', {
+      signatureSource: signaturePick.name,
+      timestampSource: timestampPick.name,
+      idSource: idPick.name,
+      signatureMirrored: Boolean(signaturePick.value),
+      timestampMirrored: Boolean(timestampPick.value),
+      idMirrored: Boolean(idPick.value),
+    })
+
+    const bodyBuffer = await req.arrayBuffer()
+    const requestForValidation = new Request(req.url, {
+      method: req.method,
+      headers: bridgedHeaders,
+      body: bodyBuffer,
+    })
+
     // Validate webhook - only signatureHeaderName is configurable
     const validator = makeWebhookValidator({
       webhookSecret: secret,
@@ -35,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     let webhook: any
     try {
-      webhook = await validator(req)
+      webhook = await validator(requestForValidation)
     } catch (err) {
       console.error('[webhook] validation failed:', err instanceof Error ? err.message : String(err))
       return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 401 })
