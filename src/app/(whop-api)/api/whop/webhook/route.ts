@@ -108,11 +108,20 @@ export async function POST(req: NextRequest) {
 
     const chosenSig = pick(['whop-signature', 'svix-signature', 'webhook-signature', 'x-vercel-proxy-signature'])
     const chosenId = pick(['whop-id', 'svix-id', 'webhook-id'])
-    const chosenTsRaw = pick(['whop-timestamp', 'svix-timestamp', 'webhook-timestamp', 'x-vercel-proxy-signature-ts'])
+    
+    // Determine which header set we're using first
+    const usedSet = chosenSig ? (headersView.get('whop-signature') ? 'whop' : headersView.get('svix-signature') ? 'svix' : headersView.get('webhook-signature') ? 'webhook' : headersView.get('x-vercel-proxy-signature') ? 'vercel-proxy' : 'unknown') : 'none'
+    
+    // Pick timestamp from the same header set as the signature to ensure format matches
+    const chosenTsRaw = usedSet === 'webhook' 
+      ? (headersView.get('webhook-timestamp') || pick(['webhook-timestamp', 'x-vercel-proxy-signature-ts']))
+      : usedSet === 'whop'
+        ? (headersView.get('whop-timestamp') || pick(['whop-timestamp', 'svix-timestamp', 'webhook-timestamp']))
+        : usedSet === 'svix'
+          ? (headersView.get('svix-timestamp') || pick(['svix-timestamp', 'webhook-timestamp']))
+          : pick(['whop-timestamp', 'svix-timestamp', 'webhook-timestamp', 'x-vercel-proxy-signature-ts'])
 
     const normalizedTs = normalizeToSeconds(chosenTsRaw || tsRaw || undefined) || undefined
-
-    const usedSet = chosenSig ? (headersView.get('whop-signature') ? 'whop' : headersView.get('svix-signature') ? 'svix' : headersView.get('webhook-signature') ? 'webhook' : headersView.get('x-vercel-proxy-signature') ? 'vercel-proxy' : 'unknown') : 'none'
 
     // Always construct a cloned request with augmented headers so any downstream consumer sees expected variants
     const hdrs = new Headers(headersView)
@@ -154,6 +163,9 @@ export async function POST(req: NextRequest) {
         idPreview: redact(chosenId),
         sigPreview: redact(chosenSig),
         ts: normalizedTs,
+        chosenTsRaw: chosenTsRaw,
+        svixTsValue: hdrs.get('svix-timestamp'),
+        webhookTsValue: hdrs.get('webhook-timestamp'),
         svixSigExists: hdrs.has('svix-signature'),
         svixTsExists: hdrs.has('svix-timestamp'),
         svixIdExists: hdrs.has('svix-id'),
@@ -170,23 +182,11 @@ export async function POST(req: NextRequest) {
     if (Math.abs(nowSec - Number(normalizedTs)) > 5 * 60) {
       return NextResponse.json({ ok: false, error: 'timestamp out of range' }, { status: 400 })
     }
-    const headerOverrides = usedSet === 'webhook'
-      ? {
-          signatureHeaderName: 'webhook-signature',
-          timestampHeaderName: 'webhook-timestamp',
-          idHeaderName: 'webhook-id',
-        }
-      : usedSet === 'whop'
-        ? {
-            signatureHeaderName: 'whop-signature',
-            timestampHeaderName: 'whop-timestamp',
-            idHeaderName: 'whop-id',
-          }
-        : undefined
-
+    
+    // Don't use headerOverrides - let validator use default svix headers
+    // We've already mirrored all headers to svix-* format above
     const validator = makeWebhookValidator({
       webhookSecret: secret,
-      ...(headerOverrides ?? {}),
     })
 
     let webhook: any
