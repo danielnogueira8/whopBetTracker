@@ -30,6 +30,22 @@ export async function POST(req: NextRequest) {
 
     const originalHeaders = req.headers
 
+    // Log ALL headers to debug what we're actually receiving
+    const allHeaders: Record<string, string> = {}
+    for (const [key, value] of originalHeaders.entries()) {
+      allHeaders[key] = value
+    }
+    console.log('[webhook] all incoming headers', Object.keys(allHeaders).sort())
+    console.log('[webhook] relevant header values', Object.fromEntries(
+      Object.entries(allHeaders).filter(([k]) => 
+        k.toLowerCase().includes('signature') || 
+        k.toLowerCase().includes('timestamp') || 
+        k.toLowerCase().includes('webhook') ||
+        k.toLowerCase().includes('whop') ||
+        k.toLowerCase().includes('svix')
+      )
+    ))
+
     const pickHeader = (names: string[]) => {
       for (const name of names) {
         const value = originalHeaders.get(name)
