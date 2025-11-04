@@ -43,6 +43,15 @@ export async function POST(
     const sellerPlanId: string | undefined = (purchase as any)?.sellerPlanId ?? undefined
     const sellerAccessPassId: string | undefined = (purchase as any)?.sellerAccessPassId ?? undefined
 
+    console.log('[confirm] purchase status check', {
+      purchaseId: purchase.id,
+      checkoutId: purchase.checkoutId,
+      status: (purchase as any)?.status,
+      sellerCompanyId,
+      sellerPlanId,
+      sellerAccessPassId,
+    })
+
     if ((purchase as any)?.status !== 'succeeded') {
       if (!sellerCompanyId) {
         sellerCompanyId = await getOrStoreSellerCompanyId(listing.sellerUserId, bet.experienceId) ?? undefined
@@ -53,6 +62,11 @@ export async function POST(
       }
 
       if (sellerCompanyId && sellerPlanId) {
+        console.log('[confirm] attempting reconciliation', {
+          sellerCompanyId,
+          sellerPlanId,
+          buyerUserId: purchase.buyerUserId,
+        })
         try {
           const sellerWhop = createSellerWhopSdk(sellerCompanyId)
           const receiptsRes = await sellerWhop.payments.listReceiptsForCompany({
@@ -69,9 +83,19 @@ export async function POST(
           }) as any
 
           const receipts = receiptsRes?.company?.receipts?.nodes ?? receiptsRes?.receipts?.nodes ?? []
+          console.log('[confirm] reconciliation results', {
+            receiptCount: receipts.length,
+            receiptIds: receipts.map((r: any) => r?.id),
+            buyerUserIds: receipts.map((r: any) => r?.member?.user?.id),
+          })
+          
           const matchingReceipt = receipts.find((r: any) => r?.member?.user?.id === purchase.buyerUserId)
 
           if (matchingReceipt) {
+            console.log('[confirm] found matching receipt, updating purchase', {
+              receiptId: matchingReceipt.id,
+              purchaseId: purchase.id,
+            })
             await db.update(betPurchases).set({
               status: 'succeeded',
               sellerCompanyId,
@@ -81,10 +105,20 @@ export async function POST(
 
             await db.insert(userBetAccess).values({ betId: bet.id, userId }).onConflictDoNothing?.()
             return NextResponse.json({ ok: true, reconciled: true })
+          } else {
+            console.log('[confirm] no matching receipt found', {
+              buyerUserId: purchase.buyerUserId,
+              receiptBuyerIds: receipts.map((r: any) => r?.member?.user?.id),
+            })
           }
         } catch (err) {
           console.error('[confirm] reconciliation failed', err)
         }
+      } else {
+        console.log('[confirm] cannot reconcile - missing seller info', {
+          hasSellerCompanyId: !!sellerCompanyId,
+          hasSellerPlanId: !!sellerPlanId,
+        })
       }
 
       return NextResponse.json({ error: 'Payment not completed' }, { status: 409 })
