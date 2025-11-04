@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUserToken } from "@whop/api";
 import { db } from "~/db";
-import { bets } from "~/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { bets, parlays, parlayLegs } from "~/db/schema";
+import { eq, inArray } from "drizzle-orm";
 import { whop } from "~/lib/whop";
 import { calculateBettingROI } from "~/lib/bet-utils";
 
@@ -28,11 +28,38 @@ export async function GET(req: NextRequest) {
       .from(bets)
       .where(eq(bets.isCommunityBet, true));
 
+    const communityParlays = await db
+      .select()
+      .from(parlays)
+      .where(eq(parlays.isCommunityBet, true));
+
+    let communityParlayLegs: any[] = [];
+    if (communityParlays.length > 0) {
+      const parlayIds = communityParlays.map((parlay) => parlay.id);
+      communityParlayLegs = await db
+        .select()
+        .from(parlayLegs)
+        .where(inArray(parlayLegs.parlayId, parlayIds));
+    }
+
+    const parlayMap = new Map(communityParlays.map((parlay) => [parlay.id, parlay] as const));
+
     // Group by experienceId
-    const grouped: Record<string, any[]> = {};
+    const grouped: Record<string, { bets: any[]; legs: Array<{ leg: any; parlay: any }> }> = {};
     for (const row of rows) {
-      if (!grouped[row.experienceId]) grouped[row.experienceId] = [];
-      grouped[row.experienceId].push(row);
+      if (!grouped[row.experienceId]) {
+        grouped[row.experienceId] = { bets: [], legs: [] };
+      }
+      grouped[row.experienceId].bets.push(row);
+    }
+
+    for (const leg of communityParlayLegs) {
+      const parent = parlayMap.get(leg.parlayId);
+      if (!parent) continue;
+      if (!grouped[parent.experienceId]) {
+        grouped[parent.experienceId] = { bets: [], legs: [] };
+      }
+      grouped[parent.experienceId].legs.push({ leg, parlay: parent });
     }
 
     // Cache experience titles to avoid repeated API calls
@@ -40,15 +67,28 @@ export async function GET(req: NextRequest) {
 
     const leaderboard = await Promise.all(
       Object.entries(grouped).map(async ([experienceId, items]) => {
-        let totalBets = 0;
-        let wonBets = 0;
-        const oddValues: Array<{ value: string; format: string }> = [];
+        const betItems = items?.bets ?? [];
+        const legItems = items?.legs ?? [];
 
-        for (const bet of items) {
-          totalBets++;
-          if (bet.result === "win") wonBets++;
-          oddValues.push({ value: String(bet.oddValue), format: bet.oddFormat });
-        }
+        const combined = [
+          ...betItems.map((bet) => ({
+            result: bet.result,
+            oddValue: String(bet.oddValue),
+            oddFormat: bet.oddFormat,
+          })),
+          ...legItems.map(({ leg }) => ({
+            result: leg.result,
+            oddValue: String(leg.oddValue),
+            oddFormat: leg.oddFormat,
+          })),
+        ];
+
+        const totalBets = combined.length;
+        const wonBets = combined.filter((entry) => entry.result === "win").length;
+
+        const oddValues: Array<{ value: string; format: string }> = combined
+          .filter((entry) => entry.oddValue && entry.oddFormat)
+          .map((entry) => ({ value: entry.oddValue, format: entry.oddFormat }));
 
         const winRate = totalBets > 0 ? (wonBets / totalBets) * 100 : 0;
         let avgOdds = 0;

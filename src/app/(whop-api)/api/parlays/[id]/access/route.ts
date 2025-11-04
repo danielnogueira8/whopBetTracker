@@ -34,14 +34,15 @@ export async function GET(
       const cfg = (s[0]?.paywallConfig as any) || { enabled: false, productIds: [], rule: 'any' }
       if (cfg?.enabled) {
         const productIds: string[] = Array.isArray(cfg.productIds) ? cfg.productIds : []
-        let eligible = false
         if (productIds.length > 0) {
-          eligible = await userHasAccessToAnyProducts({ userId, productIds })
+          // Products configured - check if user has access to any of them
+          const eligible = await userHasAccessToAnyProducts({ userId, productIds })
+          if (eligible) {
+            return Response.json({ hasAccess: true })
+          }
         } else {
-          eligible = false
-        }
-        if (eligible) {
-          return Response.json({ hasAccess: true })
+          // Paywall enabled but no products configured - user must purchase per-parlay access
+          // Don't return early, continue to check per-parlay purchased access below
         }
       }
     } catch (e) {

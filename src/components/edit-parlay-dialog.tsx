@@ -40,6 +40,7 @@ interface Leg {
   betCategory: string;
   oddFormat: "american" | "decimal" | "fractional";
   oddValue: string;
+  result: "pending" | "win" | "lose" | "returned";
 }
 
 export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialogProps) {
@@ -68,6 +69,7 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
         betCategory: leg.betCategory || "game_match",
         oddFormat: leg.oddFormat || "american",
         oddValue: leg.oddValue?.toString() || "",
+        result: leg.result || "pending",
       })) || []);
       setUnitsInvested(parlay.unitsInvested || "");
       setDollarsInvested(parlay.dollarsInvested || "");
@@ -124,7 +126,12 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
     
     const parlayData: any = {
       name,
-      legs: legs.filter(leg => leg.sport && leg.game && leg.outcome && leg.oddValue),
+      legs: legs
+        .filter(leg => leg.sport && leg.game && leg.outcome && leg.oddValue)
+        .map(leg => ({
+          ...leg,
+          result: leg.result || "pending",
+        })),
       unitsInvested: unitsInvested || null,
       dollarsInvested: dollarsInvested || null,
       notes: notes || null,
@@ -147,7 +154,19 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
   };
 
   const addLeg = () => {
-    setLegs([...legs, { sport: "", league: "", game: "", outcome: "", betCategory: "game_match", oddFormat: "american", oddValue: "" }]);
+    setLegs([
+      ...legs,
+      {
+        sport: "",
+        league: "",
+        game: "",
+        outcome: "",
+        betCategory: "game_match",
+        oddFormat: "american",
+        oddValue: "",
+        result: "pending",
+      },
+    ]);
   };
 
   const removeLeg = (index: number) => {
@@ -307,6 +326,25 @@ export function EditParlayDialog({ open, onOpenChange, parlay }: EditParlayDialo
                           onChange={(e) => updateLeg(index, "oddValue", e.target.value)}
                           required
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor={`result-${index}`}>Result</Label>
+                        <Select
+                          value={leg.result}
+                          onValueChange={(value: "pending" | "win" | "lose" | "returned") =>
+                            updateLeg(index, "result", value)
+                          }
+                        >
+                          <SelectTrigger id={`result-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="win">Win</SelectItem>
+                            <SelectItem value="lose">Lose</SelectItem>
+                            <SelectItem value="returned">Returned</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>

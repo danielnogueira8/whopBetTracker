@@ -95,30 +95,48 @@ export async function POST(
     const uniqueSuffix = Math.random().toString(36).slice(2, 8)
     const accessPassRoute = `${routeSlugBase}-${uniqueSuffix}`.slice(0, 60).replace(/^-+|-+$/g, '')
 
-    const accessPass = await sellerWhop.accessPasses.createAccessPass({
-      title: `Parlay Access: ${parlay.name}`,
-      description: `Access to parlay: ${parlay.name}`,
-      companyId: sellerCompanyId,
-      experienceIds: [parlay.experienceId],
-      route: accessPassRoute,
-      visibility: 'hidden',
-      planOptions: {
-        planType: 'one_time',
-        initialPrice: priceInDollars,
-        baseCurrency,
-        releaseMethod: 'buy_now',
+    let accessPass: any
+    try {
+      accessPass = await sellerWhop.accessPasses.createAccessPass({
+        title: `Parlay Access: ${parlay.name}`,
+        description: `Access to parlay: ${parlay.name}`,
+        companyId: sellerCompanyId,
+        experienceIds: [parlay.experienceId],
+        route: accessPassRoute,
         visibility: 'hidden',
-      },
-    }) as any
+        planOptions: {
+          planType: 'one_time',
+          initialPrice: priceInDollars,
+          baseCurrency,
+          releaseMethod: 'buy_now',
+          visibility: 'hidden',
+        },
+      }) as any
 
-    if (accessPass?._error) {
-      console.error('[parlay-checkout] accessPass creation failed', accessPass._error)
-      throw new Error('Failed to create access pass for seller')
-    }
+      if (accessPass?._error) {
+        console.error('[parlay-checkout] accessPass creation failed', accessPass._error)
+        throw new Error('Failed to create access pass for seller')
+      }
 
-    if (!accessPass?.id) {
-      console.error('[parlay-checkout] Missing accessPass id', accessPass)
-      return NextResponse.json({ error: 'Failed to create access pass' }, { status: 500 })
+      if (!accessPass?.id) {
+        console.error('[parlay-checkout] Missing accessPass id', accessPass)
+        return NextResponse.json({ error: 'Failed to create access pass' }, { status: 500 })
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || String(error)
+      if (errorMessage.includes('permission') || errorMessage.includes('access_pass:create')) {
+        console.error('[parlay-checkout] Permission error creating access pass', {
+          error: errorMessage,
+          sellerCompanyId,
+          sellerUserId: listing.sellerUserId,
+        })
+        return NextResponse.json({
+          error: 'Permission denied. The app must be installed on your company with "access_pass:create" permission. Please install the app on your company and grant the required permissions.',
+          code: 'PERMISSION_DENIED',
+          requiredPermission: 'access_pass:create',
+        }, { status: 403 })
+      }
+      throw error
     }
 
     const plansData = (await sellerWhop.companies.listPlans({
@@ -174,10 +192,20 @@ export async function POST(
     })
 
     return NextResponse.json({ checkoutId: checkoutSession.id, planId: plan.id })
-  } catch (e) {
+  } catch (e: any) {
     console.error('Parlay checkout failed', e)
-    const errorMessage = e instanceof Error ? e.message : 'Failed to start checkout'
-    return NextResponse.json({ error: errorMessage }, { status: 500 })
+    const errorMessage = e?.message || String(e)
+    
+    // Check if it's a permission error that wasn't caught earlier
+    if (errorMessage.includes('permission') || errorMessage.includes('access_pass:create') || errorMessage.includes('Required permission')) {
+      return NextResponse.json({
+        error: 'Permission denied. The app must be installed on your company with "access_pass:create" permission. Please install the app on your company and grant the required permissions.',
+        code: 'PERMISSION_DENIED',
+        requiredPermission: 'access_pass:create',
+      }, { status: 403 })
+    }
+    
+    return NextResponse.json({ error: errorMessage || 'Failed to start checkout' }, { status: 500 })
   }
 }
 

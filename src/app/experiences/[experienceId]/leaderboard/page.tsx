@@ -29,8 +29,6 @@ export default function LeaderboardPage() {
   if (!experience || !user || !access) return <div className="flex h-screen items-center justify-center"><Spinner /></div>;
   
   const companyName = experience.company.title;
-  const currentUserId = user.id;
-  const isAdmin = access.accessLevel === "admin";
   
   const [preferredOddsFormat] = useState<OddFormat>(() => {
     if (typeof window !== "undefined") {
@@ -61,8 +59,18 @@ export default function LeaderboardPage() {
     },
   });
 
+  const { data: communityParlaysData } = useQuery({
+    queryKey: ["community-parlays-leaderboard", experience.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/parlays?experienceId=${experience.id}&isCommunity=true&limit=500`);
+      if (!response.ok) throw new Error("Failed to fetch community parlays");
+      return response.json();
+    },
+  });
+
   const leaderboard: LeaderboardEntry[] = data?.leaderboard || [];
-  const communityBets: any[] = communityBetsData?.bets || [];
+  const communityBets: any[] = useMemo(() => communityBetsData?.bets || [], [communityBetsData]);
+  const communityParlays: any[] = useMemo(() => communityParlaysData?.parlays || [], [communityParlaysData]);
 
   // Global communities leaderboard
   const { data: communitiesData, isLoading: isLoadingCommunities } = useQuery({
@@ -76,8 +84,15 @@ export default function LeaderboardPage() {
 
   // Extract unique user IDs from community bets
   const uniqueUserIds = useMemo(() => {
-    return Array.from(new Set(communityBets.map(bet => bet.userId)));
-  }, [communityBets]);
+    const ids = new Set<string>();
+    communityBets.forEach((bet) => {
+      if (bet?.userId) ids.add(bet.userId);
+    });
+    communityParlays.forEach((parlay) => {
+      if (parlay?.userId) ids.add(parlay.userId);
+    });
+    return Array.from(ids);
+  }, [communityBets, communityParlays]);
 
   // Fetch admin status for all users
   const { data: adminStatusData } = useQuery({
@@ -100,39 +115,72 @@ export default function LeaderboardPage() {
 
   const adminStatus: Record<string, boolean> = adminStatusData?.adminStatus || {};
 
+  const communityParlayLegs = useMemo(() => {
+    return communityParlays.flatMap((parlay) => {
+      const legs = Array.isArray(parlay?.legs) ? parlay.legs : [];
+      const legCount = legs.length > 0 ? legs.length : 1;
+      const rawUnits = parlay?.unitsInvested != null ? parseFloat(parlay.unitsInvested) : NaN;
+      const rawDollars = parlay?.dollarsInvested != null ? parseFloat(parlay.dollarsInvested) : NaN;
+      const unitsPerLeg = Number.isFinite(rawUnits) ? rawUnits / legCount : null;
+      const dollarsPerLeg = Number.isFinite(rawDollars) ? rawDollars / legCount : null;
+
+      return legs.map((leg: any) => ({
+        id: `${parlay.id}:${leg.id}`,
+        parlayId: parlay.id,
+        userId: parlay.userId ?? null,
+        sport: leg.sport ?? null,
+        betCategory: leg.betCategory ?? null,
+        oddFormat: leg.oddFormat,
+        oddValue: leg.oddValue?.toString() ?? "0",
+        unitsInvested: unitsPerLeg != null ? unitsPerLeg.toString() : null,
+        dollarsInvested: dollarsPerLeg != null ? dollarsPerLeg.toString() : null,
+        result: leg.result ?? "pending",
+        createdAt: parlay.createdAt,
+        source: "parlay_leg" as const,
+      }));
+    });
+  }, [communityParlays]);
+
   // Calculate community aggregate stats for global leaderboard
   const communityForGlobal = useMemo(() => {
-    if (!communityBets.length) return null;
+    const combinedEntries = [...communityBets, ...communityParlayLegs];
+    if (!combinedEntries.length) return null;
 
     let totalBets = 0;
     let totalWins = 0;
     const oddValues: { value: string; format: OddFormat }[] = [];
 
-    communityBets.forEach((bet) => {
+    combinedEntries.forEach((entry) => {
       totalBets++;
-      if (bet.result === "win") {
+      if (entry.result === "win") {
         totalWins++;
       }
-      
-      oddValues.push({
-        value: bet.oddValue,
-        format: bet.oddFormat
-      });
+
+      if (entry.oddValue && entry.oddFormat) {
+        oddValues.push({
+          value: entry.oddValue,
+          format: entry.oddFormat as OddFormat,
+        });
+      }
     });
 
     const winRate = totalBets > 0 ? (totalWins / totalBets) * 100 : 0;
-    
+
     // Calculate average odds and ROI
     let avgOdds = 0;
     let roi = 0;
-    
+
     if (oddValues.length > 0) {
       const sumOdds = oddValues.reduce((sum, oddData) => {
-        const decimal = toDecimal(parseFloat(oddData.value), oddData.format);
-        return sum + decimal;
+        try {
+          const decimal = toDecimal(oddData.value, oddData.format);
+          return sum + decimal;
+        } catch {
+          return sum;
+        }
       }, 0);
       avgOdds = sumOdds / oddValues.length;
-      
+
       // Calculate ROI using the new formula: (winRatio * (avgOdds - 1)) - (1 - winRatio)
       const winRatio = winRate / 100;
       roi = calculateBettingROI(avgOdds, winRatio, true);
@@ -147,79 +195,56 @@ export default function LeaderboardPage() {
       avgOdds,
       roi,
     };
-  }, [communityBets, experience.id, companyName]);
+  }, [communityBets, communityParlayLegs, experience.id, companyName]);
 
   // Calculate community leaderboard
   const { communityLeaderboard, communityStats, rankedEntries } = useMemo(() => {
     const statsMap: Record<string, any> = {};
+    const communityEntries = [...communityBets, ...communityParlayLegs];
+
+    const usersWithPersonalBets = new Set(leaderboard.map((l) => l.userId));
+
     let totalBets = 0;
     let totalWins = 0;
-    let totalUnitsInvested = 0;
-    let totalUnitsWon = 0;
-    let totalDollarsInvested = 0;
-    let totalDollarsWon = 0;
 
-    // Get user IDs who have personal bets in the global stats
-    const usersWithPersonalBets = new Set(leaderboard.map(l => l.userId));
+    const toDecimalSafe = (value: string, format: string): number | null => {
+      if (!value || !format) return null;
+      try {
+        return toDecimal(value, format as OddFormat);
+      } catch {
+        if (format === "fractional" && value.includes("/")) {
+          const [n, d] = value.split("/").map(Number);
+          if (d) return n / d + 1;
+        }
+        const parsed = parseFloat(value);
+        if (!Number.isFinite(parsed)) return null;
+        if (format === "american") {
+          return parsed > 0 ? parsed / 100 + 1 : 100 / Math.abs(parsed) + 1;
+        }
+        return parsed;
+      }
+    };
 
-    communityBets.forEach((bet) => {
-      const userId = bet.userId;
-      
-      // Always count for community stats
+    communityEntries.forEach((entry) => {
       totalBets++;
-      if (bet.unitsInvested) {
-        const units = parseFloat(bet.unitsInvested);
-        totalUnitsInvested += units;
-        
-        // For units won, calculate based on result
-        if (bet.result === "win") {
-          // On win, calculate total return: units * odds
-          const decimalOdd = bet.oddFormat === "decimal" 
-            ? parseFloat(bet.oddValue) 
-            : bet.oddFormat === "american" 
-              ? (parseFloat(bet.oddValue) > 0 ? parseFloat(bet.oddValue) / 100 + 1 : 100 / Math.abs(parseFloat(bet.oddValue)) + 1)
-              : (() => {
-                  const [num, den] = bet.oddValue.split("/").map(Number);
-                  return num / den + 1;
-                })();
-          const totalReturn = units * decimalOdd;
-          totalUnitsWon += totalReturn;
-        } else if (bet.result === "lose") {
-          // On loss, we get back 0 (lose everything)
-          totalUnitsWon += 0;
-        }
-        // For pending or returned, no change to units won
-      }
-      if (bet.dollarsInvested) {
-        const dollars = parseFloat(bet.dollarsInvested);
-        totalDollarsInvested += dollars;
-        
-        if (bet.result === "win") {
-          totalDollarsWon += dollars;
-        } else if (bet.result === "lose") {
-          totalDollarsWon -= dollars;
-        }
-      }
-      if (bet.result === "win") {
+      if (entry.result === "win") {
         totalWins++;
       }
-    });
-    
-    // Track user stats separately, excluding admin users
-    communityBets.forEach((bet) => {
-      const userId = bet.userId;
-      
-      // Skip if this user is an admin
-      if (adminStatus[userId]) {
+
+      const decimalOdd = entry.oddValue && entry.oddFormat ? toDecimalSafe(entry.oddValue, entry.oddFormat) : null;
+      const userId: string | null | undefined = entry.userId;
+
+      if (!userId || adminStatus[userId]) {
         return;
       }
-      
+
       if (!statsMap[userId]) {
         statsMap[userId] = {
           userId,
-          username: usersWithPersonalBets.has(userId) 
-            ? leaderboard.find(l => l.userId === userId)?.username || userId
-            : userId, // Use full userId, not truncated
+          username:
+            usersWithPersonalBets.has(userId)
+              ? leaderboard.find((l) => l.userId === userId)?.username || userId
+              : userId,
           totalBets: 0,
           wonBets: 0,
           totalUnitsInvested: 0,
@@ -229,77 +254,57 @@ export default function LeaderboardPage() {
           oddValues: [] as { value: string; format: OddFormat }[],
         };
       }
-      
-      // Track odd values for average calculation
-      statsMap[userId].oddValues.push({
-        value: bet.oddValue,
-        format: bet.oddFormat
-      });
-      
-      statsMap[userId].totalBets++;
-      if (bet.unitsInvested) {
-        const units = parseFloat(bet.unitsInvested);
-        statsMap[userId].totalUnitsInvested += units;
+
+      const stat = statsMap[userId];
+      stat.totalBets++;
+
+      if (entry.unitsInvested) {
+        const units = parseFloat(entry.unitsInvested);
+        if (Number.isFinite(units)) {
+          stat.totalUnitsInvested += units;
+          if (entry.result === "win" && decimalOdd != null) {
+            stat.totalUnitsWon += units * decimalOdd;
+          }
+        }
       }
-      if (bet.dollarsInvested) {
-        const dollars = parseFloat(bet.dollarsInvested);
-        statsMap[userId].totalDollarsInvested += dollars;
+
+      if (entry.dollarsInvested) {
+        const dollars = parseFloat(entry.dollarsInvested);
+        if (Number.isFinite(dollars)) {
+          stat.totalDollarsInvested += dollars;
+          if (entry.result === "win" && decimalOdd != null) {
+            stat.totalDollarsWon += dollars * decimalOdd;
+          }
+        }
       }
-      if (bet.result === "win") {
-        statsMap[userId].wonBets++;
-        if (bet.unitsInvested) {
-          const units = parseFloat(bet.unitsInvested);
-          // Calculate total return from odds
-          const decimalOdd = bet.oddFormat === "decimal" 
-            ? parseFloat(bet.oddValue) 
-            : bet.oddFormat === "american" 
-              ? (parseFloat(bet.oddValue) > 0 ? parseFloat(bet.oddValue) / 100 + 1 : 100 / Math.abs(parseFloat(bet.oddValue)) + 1)
-              : (() => {
-                  const [num, den] = bet.oddValue.split("/").map(Number);
-                  return num / den + 1;
-                })();
-          const totalReturn = units * decimalOdd;
-          statsMap[userId].totalUnitsWon += totalReturn;
-        }
-        if (bet.dollarsInvested) {
-          const dollars = parseFloat(bet.dollarsInvested);
-          const decimalOdd = bet.oddFormat === "decimal" 
-            ? parseFloat(bet.oddValue) 
-            : bet.oddFormat === "american" 
-              ? (parseFloat(bet.oddValue) > 0 ? parseFloat(bet.oddValue) / 100 + 1 : 100 / Math.abs(parseFloat(bet.oddValue)) + 1)
-              : (() => {
-                  const [num, den] = bet.oddValue.split("/").map(Number);
-                  return num / den + 1;
-                })();
-          const totalReturn = dollars * decimalOdd;
-          statsMap[userId].totalDollarsWon += totalReturn;
-        }
-      } else if (bet.result === "lose") {
-        // On loss, get back 0
-        if (bet.unitsInvested) {
-          statsMap[userId].totalUnitsWon += 0;
-        }
-        if (bet.dollarsInvested) {
-          statsMap[userId].totalDollarsWon += 0;
-        }
+
+      if (entry.result === "win") {
+        stat.wonBets++;
+      }
+
+      if (entry.oddValue && entry.oddFormat) {
+        stat.oddValues.push({
+          value: entry.oddValue,
+          format: entry.oddFormat as OddFormat,
+        });
       }
     });
 
     const results = Object.values(statsMap).map((stat: any) => {
       const winRate = stat.totalBets > 0 ? (stat.wonBets / stat.totalBets) * 100 : 0;
-      
-      // Calculate average odds and ROI based on win rate and average odds
+
       let avgOdds = 0;
       let roi = 0;
-      
-      if (stat.totalBets > 0 && stat.oddValues && stat.oddValues.length > 0) {
+
+      if (stat.oddValues.length > 0) {
         const sumOdds = stat.oddValues.reduce((sum: number, oddData: { value: string; format: OddFormat }) => {
-          const decimal = toDecimal(parseFloat(oddData.value), oddData.format);
-          return sum + decimal;
+          try {
+            return sum + toDecimal(oddData.value, oddData.format);
+          } catch {
+            return sum;
+          }
         }, 0);
         avgOdds = sumOdds / stat.oddValues.length;
-        
-        // Calculate ROI using the new formula: (winRatio * (avgOdds - 1)) - (1 - winRatio)
         const winRatio = winRate / 100;
         roi = calculateBettingROI(avgOdds, winRatio, true);
       }
@@ -312,7 +317,6 @@ export default function LeaderboardPage() {
       };
     });
 
-    // Sort by win rate, then by total bets
     const sorted = results.sort((a, b) => {
       if (b.winRate !== a.winRate) {
         return b.winRate - a.winRate;
@@ -320,25 +324,24 @@ export default function LeaderboardPage() {
       return b.totalBets - a.totalBets;
     });
 
-    // Calculate community aggregate stats
     const communityWinRate = totalBets > 0 ? (totalWins / totalBets) * 100 : 0;
-    
-    // Calculate average odds for community
-    const communityOddValues = communityBets.map(bet => ({
-      value: bet.oddValue,
-      format: bet.oddFormat
-    }));
+
+    const communityOddValues = communityEntries
+      .filter((entry) => entry.oddValue && entry.oddFormat)
+      .map((entry) => ({ value: entry.oddValue as string, format: entry.oddFormat as OddFormat }));
+
     let communityAvgOdds = 0;
     let communityRoi = 0;
-    
+
     if (communityOddValues.length > 0) {
       const sumOdds = communityOddValues.reduce((sum, oddData) => {
-        const decimal = toDecimal(parseFloat(oddData.value), oddData.format);
-        return sum + decimal;
+        try {
+          return sum + toDecimal(oddData.value, oddData.format);
+        } catch {
+          return sum;
+        }
       }, 0);
       communityAvgOdds = sumOdds / communityOddValues.length;
-      
-      // Calculate ROI using the new formula: (winRatio * (avgOdds - 1)) - (1 - winRatio)
       const winRatio = communityWinRate / 100;
       communityRoi = calculateBettingROI(communityAvgOdds, winRatio, true);
     }
@@ -351,11 +354,6 @@ export default function LeaderboardPage() {
       roi: communityRoi,
     };
 
-    // Filter out admin user from individual members if they only created community bets
-    // This was already done in the loop above, but we add this as a safety check
-    const filteredSorted = sorted;
-
-    // Combine community stats with individual members and sort by win rate
     const allEntries = [
       {
         userId: `community_${experience.id}`,
@@ -367,9 +365,8 @@ export default function LeaderboardPage() {
         roi: communityStats.roi,
         isCommunity: true,
       },
-      ...filteredSorted.map(entry => ({ ...entry, isCommunity: false })),
+      ...sorted.map((entry) => ({ ...entry, isCommunity: false })),
     ].sort((a, b) => {
-      // Sort by win rate descending, then by total bets
       if (b.winRate !== a.winRate) {
         return b.winRate - a.winRate;
       }
@@ -377,7 +374,7 @@ export default function LeaderboardPage() {
     });
 
     return { communityLeaderboard: sorted, communityStats, rankedEntries: allEntries };
-  }, [communityBets, leaderboard, currentUserId, companyName, experience.id, isAdmin, adminStatus]);
+  }, [communityBets, communityParlayLegs, leaderboard, adminStatus, companyName, experience.id]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background">

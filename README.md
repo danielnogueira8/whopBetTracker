@@ -208,6 +208,34 @@ const channel = supabase.channel('room-1')
 └── next.config.ts             # Next.js configuration
 ```
 
+## Seller Permissions & App Installation
+
+When sellers want to create and sell bets or parlays, the app must be installed on their company with the `access_pass:create` permission.
+
+### For Sellers (Company Admins)
+
+If you're selling bets or parlays, you need to:
+
+1. **Install the app on your company**:
+   - Go to your Whop company dashboard
+   - Navigate to Apps
+   - Find and install the Whop Bet Tracker app
+   - When prompted, grant the `access_pass:create` permission
+
+2. **Why this is needed**:
+   - The app creates access passes for each bet/parlay you sell
+   - These access passes enable checkout and payment processing
+   - Without this permission, buyers cannot purchase your bets/parlays
+
+### Error Handling
+
+If you encounter the error "You do not have permission to perform this action. Required permission: access_pass:create", it means:
+
+- The app is not installed on your company, OR
+- The app is installed but doesn't have the `access_pass:create` permission
+
+**Solution**: Install the app on your company and ensure the `access_pass:create` permission is granted during installation.
+
 ## Whop Integration
 
 ### Client-Side SDK
