@@ -47,10 +47,25 @@ export async function POST(
       purchaseId: purchase.id,
       checkoutId: purchase.checkoutId,
       status: (purchase as any)?.status,
+      amountCents: purchase.amountCents,
       sellerCompanyId,
       sellerPlanId,
       sellerAccessPassId,
     })
+
+    // Auto-approve $0 purchases (free packages don't trigger webhooks)
+    if (purchase.amountCents === 0 && (purchase as any)?.status !== 'succeeded') {
+      console.log('[confirm] auto-approving $0 purchase (no webhook for free packages)')
+      await db.update(betPurchases).set({
+        status: 'succeeded',
+        sellerCompanyId: sellerCompanyId ?? undefined,
+        sellerAccessPassId: sellerAccessPassId ?? undefined,
+        sellerPlanId: sellerPlanId ?? undefined,
+      }).where(eq(betPurchases.id, purchase.id))
+      
+      await db.insert(userBetAccess).values({ betId: bet.id, userId }).onConflictDoNothing?.()
+      return NextResponse.json({ ok: true, autoApproved: true })
+    }
 
     if ((purchase as any)?.status !== 'succeeded') {
       if (!sellerCompanyId) {
