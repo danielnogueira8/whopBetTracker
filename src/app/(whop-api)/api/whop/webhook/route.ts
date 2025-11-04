@@ -132,11 +132,7 @@ export async function POST(req: NextRequest) {
       setAllCased('whop-id', chosenId)
       setAllCased('webhook-id', chosenId)
     }
-    if (normalizedTs) {
-      setAllCased('svix-timestamp', normalizedTs)
-      setAllCased('whop-timestamp', normalizedTs)
-      setAllCased('webhook-timestamp', normalizedTs)
-    }
+    // Don't override timestamp headers - let validator use original format for signature verification
     // Read raw body once to avoid disturbing the original Request body stream
     const bodyBuffer = await req.arrayBuffer()
     const reqForValidation: Request = new Request(req.url, { method: 'POST', headers: hdrs, body: bodyBuffer })
