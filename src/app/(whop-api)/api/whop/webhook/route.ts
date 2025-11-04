@@ -27,12 +27,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'missing webhook secret' }, { status: 400 })
     }
 
-    // Validate webhook - Whop sends webhook-* headers, not svix-* (the default)
+    // Validate webhook - only signatureHeaderName is configurable
     const validator = makeWebhookValidator({
       webhookSecret: secret,
       signatureHeaderName: 'webhook-signature',
-      timestampHeaderName: 'webhook-timestamp',
-      idHeaderName: 'webhook-id',
     })
 
     let webhook: any
