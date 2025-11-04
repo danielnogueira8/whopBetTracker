@@ -20,7 +20,7 @@ export async function POST(
   const { userId } = await verifyUserToken(req.headers)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let sellerCompanyId: string | undefined
+  let sellerCompanyId: string | null
   try {
     const { id } = await params
 
