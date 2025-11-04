@@ -3,7 +3,7 @@ import { verifyUserToken, type Currencies } from "@whop/api"
 import { db } from "~/db"
 import { betPurchases, betSaleListings, experienceSettings, upcomingBets, userBetAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { whop, getOrStoreSellerCompanyId, createSellerWhopSdk, verifyAppInstallation } from "~/lib/whop"
+import { whop, getOrStoreSellerCompanyId, verifyAppInstallation } from "~/lib/whop"
 import { env } from "~/env"
 import { userHasAccessToAnyProducts } from "~/lib/whop"
 
@@ -191,7 +191,7 @@ export async function POST(
       throw error
     }
 
-    const plansData = (await sellerWhop.companies.listPlans({
+    const plansData = (await whop.companies.listPlans({
       companyId: sellerCompanyId,
       filter: {
         accessPassId: accessPass.id,
@@ -222,9 +222,8 @@ export async function POST(
       sellerPlanId: plan.id,
     } as any
 
-    // Create checkout session using seller's company SDK instance
-    // This should route payments to the seller's company
-    const checkoutSession = await sellerWhop.payments.createCheckoutSession({
+    // Create checkout session using seller's company
+    const checkoutSession = await whop.payments.createCheckoutSession({
       planId: plan.id,
       metadata,
     })

@@ -3,7 +3,7 @@ import { verifyUserToken, type Currencies } from "@whop/api"
 import { db } from "~/db"
 import { experienceSettings, parlayPurchases, parlaySaleListings, parlays, userParlayAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { whop, getOrStoreSellerCompanyId, createSellerWhopSdk, verifyAppInstallation } from "~/lib/whop"
+import { whop, getOrStoreSellerCompanyId, verifyAppInstallation } from "~/lib/whop"
 import { env } from "~/env"
 import { userHasAccessToAnyProducts } from "~/lib/whop"
 
@@ -180,7 +180,7 @@ export async function POST(
       throw error
     }
 
-    const plansData = (await sellerWhop.companies.listPlans({
+    const plansData = (await whop.companies.listPlans({
       companyId: sellerCompanyId,
       filter: {
         accessPassId: accessPass.id,
@@ -212,8 +212,7 @@ export async function POST(
     } as any
 
     // Create checkout session using seller's company
-    // SDK instance already has sellerCompanyId, so we don't need to pass it
-    const checkoutSession = await sellerWhop.payments.createCheckoutSession({
+    const checkoutSession = await whop.payments.createCheckoutSession({
       planId: plan.id,
       metadata,
     })

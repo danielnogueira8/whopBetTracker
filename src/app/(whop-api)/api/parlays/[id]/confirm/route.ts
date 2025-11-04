@@ -3,7 +3,7 @@ import { verifyUserToken } from "@whop/api"
 import { db } from "~/db"
 import { parlayPurchases, parlaySaleListings, parlays, userParlayAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { createSellerWhopSdk, getOrStoreSellerCompanyId } from "~/lib/whop"
+import { whop, getOrStoreSellerCompanyId } from "~/lib/whop"
 
 export async function POST(
   req: NextRequest,
@@ -50,8 +50,7 @@ export async function POST(
 
       if (sellerCompanyId && sellerPlanId) {
         try {
-          const sellerWhop = createSellerWhopSdk(sellerCompanyId)
-          const receiptsRes = await sellerWhop.payments.listReceiptsForCompany({
+          const receiptsRes = await whop.payments.listReceiptsForCompany({
             companyId: sellerCompanyId,
             first: 25,
             filter: {
