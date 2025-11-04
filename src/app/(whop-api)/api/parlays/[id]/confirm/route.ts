@@ -58,10 +58,6 @@ export async function POST(
               planIds: [sellerPlanId],
               statuses: ['succeeded'],
             },
-          }, {
-            headers: {
-              'x-on-behalf-of': listing.sellerUserId,
-            },
           }) as any
 
           const receipts = receiptsRes?.company?.receipts?.nodes ?? receiptsRes?.receipts?.nodes ?? []
