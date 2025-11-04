@@ -113,8 +113,14 @@ export async function POST(req: NextRequest) {
     })
 
     if (!signaturePick.value) {
-      console.error('[webhook] missing signature header')
-      return NextResponse.json({ ok: false, error: 'missing signature' }, { status: 400 })
+      console.error('[webhook] missing signature header - Whop headers not present')
+      console.error('[webhook] This likely means:')
+      console.error('[webhook] 1. Request is not from Whop (test from wrong source?)')
+      console.error('[webhook] 2. Vercel is stripping Whop headers before reaching handler')
+      console.error('[webhook] 3. Whop webhook URL is misconfigured')
+      console.error('[webhook] Please verify webhook URL in Whop dashboard points to:')
+      console.error('[webhook] https://whop-bet-tracker.vercel.app/api/whop/webhook')
+      return NextResponse.json({ ok: false, error: 'missing signature - Whop headers not found. Check webhook URL configuration.' }, { status: 400 })
     }
 
     if (!Number.isFinite(tsNumber)) {
