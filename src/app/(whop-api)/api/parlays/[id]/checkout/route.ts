@@ -114,8 +114,20 @@ export async function POST(
       }) as any
 
       if (accessPass?._error) {
-        console.error('[parlay-checkout] accessPass creation failed', accessPass._error)
-        throw new Error('Failed to create access pass for seller')
+        console.error('[parlay-checkout] accessPass creation failed - full response:', JSON.stringify(accessPass, null, 2))
+        const errorMsg = String(accessPass._error)
+        const errorLower = errorMsg.toLowerCase()
+        if (errorLower.includes('permission') || errorLower.includes('access_pass:create') || errorLower.includes('required permission')) {
+          return NextResponse.json({
+            error: 'Permission denied. The app must be installed on your company with "access_pass:create" permission. Please install the app on your company and grant the required permissions.',
+            code: 'PERMISSION_DENIED',
+            requiredPermission: 'access_pass:create',
+            instructions: `Go to your Whop company dashboard (company ID: ${sellerCompanyId}) > Apps > Find "Whop Bet Tracker" > Click "Manage" or "Settings" > Ensure "access_pass:create" permission is enabled. If not, you may need to reinstall the app with the permission granted.`,
+            sellerCompanyId,
+            rawError: accessPass._error,
+          }, { status: 403 })
+        }
+        throw new Error(`Failed to create access pass: ${errorMsg}`)
       }
 
       if (!accessPass?.id) {
@@ -134,6 +146,7 @@ export async function POST(
           error: 'Permission denied. The app must be installed on your company with "access_pass:create" permission. Please install the app on your company and grant the required permissions.',
           code: 'PERMISSION_DENIED',
           requiredPermission: 'access_pass:create',
+          instructions: 'Go to your Whop company dashboard > Apps > Install this app > Grant "access_pass:create" permission',
         }, { status: 403 })
       }
       throw error
@@ -193,20 +206,31 @@ export async function POST(
 
     return NextResponse.json({ checkoutId: checkoutSession.id, planId: plan.id })
   } catch (e: any) {
-    console.error('Parlay checkout failed', e)
-    const errorMessage = e?.message || String(e)
-    
-    // Check if it's a permission error that wasn't caught earlier
-    if (errorMessage.includes('permission') || errorMessage.includes('access_pass:create') || errorMessage.includes('Required permission')) {
-      return NextResponse.json({
-        error: 'Permission denied. The app must be installed on your company with "access_pass:create" permission. Please install the app on your company and grant the required permissions.',
-        code: 'PERMISSION_DENIED',
-        requiredPermission: 'access_pass:create',
-      }, { status: 403 })
+      console.error('[parlay-checkout] Exception caught during checkout:', {
+        error: e,
+        errorMessage: e?.message,
+        errorString: String(e),
+        errorJson: JSON.stringify(e, null, 2),
+        sellerCompanyId,
+        sellerUserId: listing?.sellerUserId,
+      })
+      const errorMessage = e?.message || String(e)
+      const errorLower = errorMessage.toLowerCase()
+      
+      // Check if it's a permission error that wasn't caught earlier
+      if (errorLower.includes('permission') || errorLower.includes('access_pass:create') || errorLower.includes('required permission')) {
+        return NextResponse.json({
+          error: 'Permission denied. The app must be installed on your company with "access_pass:create" permission. Please install the app on your company and grant the required permissions.',
+          code: 'PERMISSION_DENIED',
+          requiredPermission: 'access_pass:create',
+          instructions: `Go to your Whop company dashboard (company ID: ${sellerCompanyId}) > Apps > Find "Whop Bet Tracker" > Click "Manage" or "Settings" > Ensure "access_pass:create" permission is enabled. If not, you may need to reinstall the app with the permission granted.`,
+          sellerCompanyId,
+          rawError: errorMessage,
+        }, { status: 403 })
+      }
+      
+      return NextResponse.json({ error: errorMessage || 'Failed to start checkout' }, { status: 500 })
     }
-    
-    return NextResponse.json({ error: errorMessage || 'Failed to start checkout' }, { status: 500 })
-  }
 }
 
 
