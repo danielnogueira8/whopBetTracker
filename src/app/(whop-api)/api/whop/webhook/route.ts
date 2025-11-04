@@ -58,8 +58,17 @@ export async function POST(req: NextRequest) {
       return cleaned
     }
 
+    const normalizeTimestamp = (raw: string | null) => {
+      if (!raw) return null
+      const trimmed = raw.trim()
+      if (!trimmed) return null
+      const withoutPrefix = trimmed.replace(/^t=/i, '')
+      const numericOnly = withoutPrefix.replace(/[^0-9]/g, '')
+      return numericOnly || null
+    }
+
     const canonicalSignature = (() => {
-      const ts = timestampPick.value?.trim()
+      const ts = normalizeTimestamp(timestampPick.value)
       const sig = normalizeSignature(signaturePick.value)
       if (!ts || !sig) return null
       return `t=${ts},v1=${sig}`
@@ -68,8 +77,9 @@ export async function POST(req: NextRequest) {
     if (canonicalSignature) {
       bridgedHeaders.set('svix-signature', canonicalSignature)
     }
-    if (timestampPick.value) {
-      bridgedHeaders.set('svix-timestamp', timestampPick.value)
+    const normalizedTimestamp = normalizeTimestamp(timestampPick.value)
+    if (normalizedTimestamp) {
+      bridgedHeaders.set('svix-timestamp', normalizedTimestamp)
     }
 
     const idPick = pickHeader(['webhook-id', 'whop-id', 'svix-id'])
@@ -83,9 +93,10 @@ export async function POST(req: NextRequest) {
       idSource: idPick.name,
       signatureHeaderValue: signaturePick.value,
       timestampHeaderValue: timestampPick.value,
+      normalizedTimestamp,
       canonicalSignature,
       signatureMirrored: Boolean(signaturePick.value),
-      timestampMirrored: Boolean(timestampPick.value),
+      timestampMirrored: Boolean(normalizedTimestamp),
       idMirrored: Boolean(idPick.value),
     })
 
@@ -103,6 +114,14 @@ export async function POST(req: NextRequest) {
 
     let webhook: any
     try {
+      const nowSec = Math.round(Date.now() / 1000)
+      const tsNumber = normalizedTimestamp ? Number(normalizedTimestamp) : null
+      console.log('[webhook] timing check', {
+        nowSec,
+        incomingTs: tsNumber,
+        diffSeconds: tsNumber != null ? tsNumber - nowSec : null,
+        absDiffSeconds: tsNumber != null ? Math.abs(tsNumber - nowSec) : null,
+      })
       webhook = await validator(requestForValidation)
     } catch (err) {
       console.error('[webhook] validation failed:', err instanceof Error ? err.message : String(err))
