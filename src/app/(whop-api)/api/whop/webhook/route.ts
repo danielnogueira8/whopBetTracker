@@ -44,11 +44,30 @@ export async function POST(req: NextRequest) {
     }
 
     const signaturePick = pickHeader(['webhook-signature', 'whop-signature', 'svix-signature', 'x-vercel-proxy-signature'])
-    if (signaturePick.value) {
-      bridgedHeaders.set('svix-signature', signaturePick.value)
+    const timestampPick = pickHeader(['webhook-timestamp', 'whop-timestamp', 'svix-timestamp', 'x-vercel-proxy-signature-ts'])
+
+    const normalizeSignature = (raw: string | null) => {
+      if (!raw) return null
+      const trimmed = raw.trim()
+      if (!trimmed) return null
+      const cleaned = trimmed
+        .replace(/^v1[,=]/i, '')
+        .replace(/^v0[,=]/i, '')
+        .trim()
+      if (!cleaned) return null
+      return cleaned
     }
 
-    const timestampPick = pickHeader(['webhook-timestamp', 'whop-timestamp', 'svix-timestamp', 'x-vercel-proxy-signature-ts'])
+    const canonicalSignature = (() => {
+      const ts = timestampPick.value?.trim()
+      const sig = normalizeSignature(signaturePick.value)
+      if (!ts || !sig) return null
+      return `t=${ts},v1=${sig}`
+    })()
+
+    if (canonicalSignature) {
+      bridgedHeaders.set('svix-signature', canonicalSignature)
+    }
     if (timestampPick.value) {
       bridgedHeaders.set('svix-timestamp', timestampPick.value)
     }
@@ -62,6 +81,9 @@ export async function POST(req: NextRequest) {
       signatureSource: signaturePick.name,
       timestampSource: timestampPick.name,
       idSource: idPick.name,
+      signatureHeaderValue: signaturePick.value,
+      timestampHeaderValue: timestampPick.value,
+      canonicalSignature,
       signatureMirrored: Boolean(signaturePick.value),
       timestampMirrored: Boolean(timestampPick.value),
       idMirrored: Boolean(idPick.value),
@@ -74,10 +96,9 @@ export async function POST(req: NextRequest) {
       body: bodyBuffer,
     })
 
-    // Validate webhook - only signatureHeaderName is configurable
+    // Validate webhook with canonical svix-style headers
     const validator = makeWebhookValidator({
       webhookSecret: secret,
-      signatureHeaderName: 'webhook-signature',
     })
 
     let webhook: any
