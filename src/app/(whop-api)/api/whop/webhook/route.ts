@@ -4,7 +4,7 @@ import { db } from "~/db"
 import { betPurchases, betSaleListings, userBetAccess, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
 import { eq } from "drizzle-orm"
 import { whop } from "~/lib/whop"
-import { type PaymentWebhookData, makeWebhookValidator } from "@whop/api"
+import { type PaymentWebhookData } from "@whop/api"
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,10 +29,6 @@ export async function POST(req: NextRequest) {
     }
 
     const originalHeaders = req.headers
-    const bridgedHeaders = new Headers()
-    for (const [key, value] of originalHeaders.entries()) {
-      bridgedHeaders.set(key, value)
-    }
 
     const pickHeader = (names: string[]) => {
       for (const name of names) {
@@ -72,22 +68,12 @@ export async function POST(req: NextRequest) {
       const ts = normalizeTimestamp(timestampPick.value)
       const sig = normalizeSignature(signaturePick.value)
       if (!ts || !sig) return null
-      return `t=${ts},v1=${sig}`
+      return { ts, sig }
     })()
 
-    if (canonicalSignature) {
-      bridgedHeaders.set('svix-signature', canonicalSignature)
-    }
-    const normalizedTimestamp = normalizeTimestamp(timestampPick.value)
-    if (normalizedTimestamp) {
-      bridgedHeaders.set('svix-timestamp', normalizedTimestamp)
-    }
+    const normalizedTimestamp = canonicalSignature?.ts ?? normalizeTimestamp(timestampPick.value)
 
     const idPick = pickHeader(['webhook-id', 'whop-id', 'svix-id'])
-    if (idPick.value) {
-      bridgedHeaders.set('svix-id', idPick.value)
-    }
-
     console.log('[webhook] header bridge', {
       signatureSource: signaturePick.name,
       timestampSource: timestampPick.name,
@@ -96,52 +82,73 @@ export async function POST(req: NextRequest) {
       timestampHeaderValue: timestampPick.value,
       normalizedTimestamp,
       canonicalSignature,
-      signatureMirrored: Boolean(signaturePick.value),
-      timestampMirrored: Boolean(normalizedTimestamp),
-      idMirrored: Boolean(idPick.value),
     })
 
     const bodyBuffer = await req.arrayBuffer()
     const bodyString = new TextDecoder().decode(bodyBuffer)
 
-    if (normalizedTimestamp && canonicalSignature) {
-      const computedSignature = createHmac('sha256', secret)
-        .update(`${normalizedTimestamp}.${bodyString}`)
-        .digest('base64')
-      console.log('[webhook] signature compare', {
-        canonicalSignature,
-        normalizedTimestamp,
-        payloadPreview: bodyString.slice(0, 200),
-        computedSignature,
-        matches: computedSignature === normalizeSignature(signaturePick.value),
-      })
+    const nowSec = Math.round(Date.now() / 1000)
+    const tsNumber = normalizedTimestamp ? Number(normalizedTimestamp) : NaN
+    console.log('[webhook] timing check', {
+      nowSec,
+      incomingTs: tsNumber,
+      diffSeconds: Number.isFinite(tsNumber) ? tsNumber - nowSec : null,
+      absDiffSeconds: Number.isFinite(tsNumber) ? Math.abs(tsNumber - nowSec) : null,
+    })
+
+    if (!signaturePick.value) {
+      console.error('[webhook] missing signature header')
+      return NextResponse.json({ ok: false, error: 'missing signature' }, { status: 400 })
     }
 
-    const requestForValidation = new Request(req.url, {
-      method: req.method,
-      headers: bridgedHeaders,
-      body: bodyString,
+    if (!Number.isFinite(tsNumber)) {
+      console.error('[webhook] invalid timestamp header', { raw: timestampPick.value })
+      return NextResponse.json({ ok: false, error: 'invalid timestamp' }, { status: 400 })
+    }
+
+    if (Math.abs(nowSec - tsNumber) > 5 * 60) {
+      console.error('[webhook] timestamp out of tolerance', { nowSec, tsNumber })
+      return NextResponse.json({ ok: false, error: 'invalid timestamp' }, { status: 401 })
+    }
+
+    const extractSignatures = (raw: string) => {
+      return raw
+        .split(',')
+        .map((part) => part.trim())
+        .map((part) => {
+          if (/^v1[=:]/i.test(part)) return part.slice(3)
+          if (part.toLowerCase() === 'v1') return null
+          if (part.toLowerCase().startsWith('v1')) {
+            return part.slice(2).replace(/^[=:]/, '')
+          }
+          return part
+        })
+        .filter((part): part is string => !!part)
+    }
+
+    const providedSignatures = extractSignatures(signaturePick.value)
+    const computedSignature = createHmac('sha256', secret)
+      .update(`${normalizedTimestamp}.${bodyString}`)
+      .digest('base64')
+
+    console.log('[webhook] signature compare', {
+      normalizedTimestamp,
+      providedSignatures,
+      computedSignature,
+      matches: providedSignatures.includes(computedSignature),
     })
 
-    // Validate webhook with canonical svix-style headers
-    const validator = makeWebhookValidator({
-      webhookSecret: secret,
-    })
+    if (!providedSignatures.includes(computedSignature)) {
+      console.error('[webhook] signature mismatch')
+      return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 401 })
+    }
 
     let webhook: any
     try {
-      const nowSec = Math.round(Date.now() / 1000)
-      const tsNumber = normalizedTimestamp ? Number(normalizedTimestamp) : null
-      console.log('[webhook] timing check', {
-        nowSec,
-        incomingTs: tsNumber,
-        diffSeconds: tsNumber != null ? tsNumber - nowSec : null,
-        absDiffSeconds: tsNumber != null ? Math.abs(tsNumber - nowSec) : null,
-      })
-      webhook = await validator(requestForValidation)
+      webhook = JSON.parse(bodyString || '{}')
     } catch (err) {
-      console.error('[webhook] validation failed:', err instanceof Error ? err.message : String(err))
-      return NextResponse.json({ ok: false, error: 'invalid signature' }, { status: 401 })
+      console.error('[webhook] invalid JSON body', err)
+      return NextResponse.json({ ok: false, error: 'invalid payload' }, { status: 400 })
     }
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
