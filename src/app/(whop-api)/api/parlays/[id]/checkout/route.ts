@@ -21,6 +21,7 @@ export async function POST(
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let sellerCompanyId: string | null = null
+  let sellerUserId: string | null = null
   try {
     const { id } = await params
     const rows = await db.select().from(parlays).where(eq(parlays.id, id)).limit(1)
@@ -29,6 +30,7 @@ export async function POST(
 
     const listingRows = await db.select().from(parlaySaleListings).where(eq(parlaySaleListings.parlayId, id)).limit(1)
     const listing = listingRows[0]
+    sellerUserId = listing?.sellerUserId ?? null
     if (!listing || !listing.active) return NextResponse.json({ error: 'Not for sale' }, { status: 400 })
 
     const forceBuyer = req.headers.get('x-force-buyer') === 'true'
@@ -213,7 +215,7 @@ export async function POST(
         errorString: String(e),
         errorJson: JSON.stringify(e, null, 2),
         sellerCompanyId,
-        sellerUserId: listing?.sellerUserId,
+        sellerUserId,
       })
       const errorMessage = e?.message || String(e)
       const errorLower = errorMessage.toLowerCase()
