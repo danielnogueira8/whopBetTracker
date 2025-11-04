@@ -15,11 +15,13 @@ export type WhopUser = GetUserQuery['publicUser']
 export type WhopAccess = CheckIfUserHasAccessToExperienceQuery['hasAccessToExperience']
 
 // Initialize WhopServerSdk with app configuration
+// NOTE: Do NOT set companyId here - let each method call specify the target company
+// This allows the SDK to work with any company where the app is installed
 export const whop = WhopServerSdk({
 	appId: env.NEXT_PUBLIC_WHOP_APP_ID,
 	appApiKey: env.WHOP_API_KEY,
 	onBehalfOfUserId: env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
-	companyId: env.NEXT_PUBLIC_WHOP_COMPANY_ID,
+	// companyId: DO NOT SET - use method parameters instead
 })
 
 // Helper: create SDK instance for seller's company
