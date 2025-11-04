@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createHmac } from "crypto"
 import { db } from "~/db"
 import { betPurchases, betSaleListings, userBetAccess, parlayPurchases, parlaySaleListings, userParlayAccess } from "~/db/schema"
 import { eq } from "drizzle-orm"
@@ -101,10 +102,25 @@ export async function POST(req: NextRequest) {
     })
 
     const bodyBuffer = await req.arrayBuffer()
+    const bodyString = new TextDecoder().decode(bodyBuffer)
+
+    if (normalizedTimestamp && canonicalSignature) {
+      const computedSignature = createHmac('sha256', secret)
+        .update(`${normalizedTimestamp}.${bodyString}`)
+        .digest('base64')
+      console.log('[webhook] signature compare', {
+        canonicalSignature,
+        normalizedTimestamp,
+        payloadPreview: bodyString.slice(0, 200),
+        computedSignature,
+        matches: computedSignature === normalizeSignature(signaturePick.value),
+      })
+    }
+
     const requestForValidation = new Request(req.url, {
       method: req.method,
       headers: bridgedHeaders,
-      body: bodyBuffer,
+      body: bodyString,
     })
 
     // Validate webhook with canonical svix-style headers
