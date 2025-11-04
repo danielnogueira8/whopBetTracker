@@ -23,6 +23,9 @@ export const whop = WhopServerSdk({
 })
 
 // Helper: create SDK instance for seller's company
+// This allows the app to act on behalf of the seller's company, assuming:
+// 1. The app is installed on that company
+// 2. The company granted the required permissions (e.g., access_pass:create)
 export function createSellerWhopSdk(companyId: string) {
 	return WhopServerSdk({
 		appId: env.NEXT_PUBLIC_WHOP_APP_ID,
@@ -30,6 +33,45 @@ export function createSellerWhopSdk(companyId: string) {
 		onBehalfOfUserId: env.NEXT_PUBLIC_WHOP_AGENT_USER_ID,
 		companyId: companyId, // Seller's company ID
 	})
+}
+
+// Helper: verify if app is installed on a company with required permissions
+export async function verifyAppInstallation(companyId: string): Promise<{
+	isInstalled: boolean
+	hasCreatePermission: boolean
+	error?: string
+}> {
+	try {
+		// Try to list experiences for this app on the target company
+		// This will fail if the app is not installed
+		const experiences = await whop.experiences.listExperiences({
+			companyId,
+		})
+
+		// Check if any experience belongs to our app
+		const appExperiences = experiences?.experiences?.nodes?.filter(
+			(exp: any) => exp?.app?.id === env.NEXT_PUBLIC_WHOP_APP_ID
+		) ?? []
+
+		const isInstalled = appExperiences.length > 0
+
+		// We can't directly check permissions via API, but we can infer from whether
+		// the app is installed. If not installed, definitely no permissions.
+		return {
+			isInstalled,
+			hasCreatePermission: isInstalled, // Assume if installed, permissions were granted
+		}
+	} catch (error: any) {
+		console.error('[verifyAppInstallation] Error checking installation:', {
+			companyId,
+			error: error?.message || String(error),
+		})
+		return {
+			isInstalled: false,
+			hasCreatePermission: false,
+			error: error?.message || String(error),
+		}
+	}
 }
 
 // Helper: get or store seller's company ID from experience

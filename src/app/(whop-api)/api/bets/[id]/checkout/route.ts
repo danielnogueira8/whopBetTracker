@@ -3,7 +3,7 @@ import { verifyUserToken, type Currencies } from "@whop/api"
 import { db } from "~/db"
 import { betPurchases, betSaleListings, experienceSettings, upcomingBets, userBetAccess } from "~/db/schema"
 import { and, eq } from "drizzle-orm"
-import { whop, getOrStoreSellerCompanyId, createSellerWhopSdk } from "~/lib/whop"
+import { whop, getOrStoreSellerCompanyId, createSellerWhopSdk, verifyAppInstallation } from "~/lib/whop"
 import { env } from "~/env"
 import { userHasAccessToAnyProducts } from "~/lib/whop"
 
@@ -93,8 +93,24 @@ export async function POST(
       }, { status: 403 })
     }
 
-    // Create seller SDK instance
-    const sellerWhop = createSellerWhopSdk(sellerCompanyId)
+    // Verify app is installed on seller's company
+    const installationCheck = await verifyAppInstallation(sellerCompanyId)
+    console.log('[checkout] App installation check:', {
+      sellerCompanyId,
+      isInstalled: installationCheck.isInstalled,
+      hasCreatePermission: installationCheck.hasCreatePermission,
+      error: installationCheck.error,
+    })
+
+    if (!installationCheck.isInstalled) {
+      return NextResponse.json({
+        error: 'App not installed. Please install the Whop Bet Tracker app on your company before selling bets.',
+        code: 'APP_NOT_INSTALLED',
+        sellerCompanyId,
+        installUrl: `https://whop.com/apps/${env.NEXT_PUBLIC_WHOP_APP_ID}`,
+        instructions: 'Install the app and make sure to grant the "access_pass:create" permission.',
+      }, { status: 403 })
+    }
 
     const priceInDollars = Number((listing.priceCents / 100).toFixed(2))
     const baseCurrency = listing.currency?.toLowerCase() as Currencies | undefined
@@ -105,10 +121,19 @@ export async function POST(
 
     let accessPass: any
     try {
-      accessPass = await sellerWhop.accessPasses.createAccessPass({
+      // Use main SDK instance - the companyId parameter directs where to create the access pass
+      // The SDK uses the app's credentials to create on behalf of the seller's company
+      console.log('[checkout] Creating access pass with params:', {
+        sellerCompanyId,
+        experienceId: bet.experienceId,
+        priceInDollars,
+        baseCurrency,
+      })
+      
+      accessPass = await whop.accessPasses.createAccessPass({
         title: `Bet Access: ${bet.game}`,
         description: `Access to bet: ${bet.outcome}`,
-        companyId: sellerCompanyId,
+        companyId: sellerCompanyId, // Seller's company
         experienceIds: [bet.experienceId],
         route: accessPassRoute,
         visibility: 'hidden',

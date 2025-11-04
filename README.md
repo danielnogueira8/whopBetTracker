@@ -210,7 +210,7 @@ const channel = supabase.channel('room-1')
 
 ## Seller Permissions & App Installation
 
-When sellers want to create and sell bets or parlays, the app must be installed on their company with the `access_pass:create` permission.
+**CRITICAL**: When sellers want to create and sell bets or parlays, the app MUST be installed on their company with the `access_pass:create` permission.
 
 ### For Sellers (Company Admins)
 
@@ -218,23 +218,52 @@ If you're selling bets or parlays, you need to:
 
 1. **Install the app on your company**:
    - Go to your Whop company dashboard
-   - Navigate to Apps
-   - Find and install the Whop Bet Tracker app
-   - When prompted, grant the `access_pass:create` permission
+   - Navigate to Apps → Browse Apps
+   - Find and install the "Whop Bet Tracker" app
+   - **IMPORTANT**: When prompted, you MUST grant the `access_pass:create` permission
+   - This permission allows the app to create products on your behalf
 
 2. **Why this is needed**:
-   - The app creates access passes for each bet/parlay you sell
-   - These access passes enable checkout and payment processing
-   - Without this permission, buyers cannot purchase your bets/parlays
+   - The app dynamically creates access passes for each bet/parlay you sell
+   - These access passes enable secure checkout and payment processing
+   - Payments go directly to YOUR company (not the app's company)
+   - Without this permission, the app cannot create products and buyers cannot purchase your bets/parlays
+
+3. **Verification**:
+   - After installation, verify the permission was granted:
+     - Go to Settings → Authorized Apps
+     - Find "Whop Bet Tracker"
+     - Confirm `access_pass:create` is listed in granted permissions
+   - Or use the diagnostic endpoint: `GET /api/check-installation?experienceId=exp_xxxxx`
 
 ### Error Handling
 
-If you encounter the error "You do not have permission to perform this action. Required permission: access_pass:create", it means:
+**Error: "Permission denied. The app must be installed on your company with 'access_pass:create' permission"**
 
-- The app is not installed on your company, OR
-- The app is installed but doesn't have the `access_pass:create` permission
+This error occurs when:
 
-**Solution**: Install the app on your company and ensure the `access_pass:create` permission is granted during installation.
+1. **App not installed**: The app is not installed on your company at all
+2. **Permission not granted**: The app is installed but `access_pass:create` was not granted during installation
+3. **Old installation**: The app was installed before the permission requirement was added
+
+**Solutions**:
+
+- **If app is not installed**: Install it from the Whop app store and grant the permission
+- **If app is installed but missing permission**: 
+  - Uninstall the app
+  - Reinstall it and make sure to grant `access_pass:create` during installation
+- **Check installation status**: Use `GET /api/check-installation?experienceId=YOUR_EXPERIENCE_ID` to verify
+
+### Developer Notes
+
+The app uses `verifyAppInstallation()` to check if the app is properly installed before attempting to create access passes. This provides early error detection and clearer error messages to sellers.
+
+**How it works:**
+1. App creates access passes on the seller's company (where app is installed)
+2. Buyer pays through Whop checkout
+3. Payment goes directly to seller's company
+4. Webhook notifies your app of successful payment
+5. App grants access to buyer
 
 ## Whop Integration
 
