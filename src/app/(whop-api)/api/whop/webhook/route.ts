@@ -219,12 +219,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'invalid payload' }, { status: 400 })
     }
     const webhook = webhookBody
+    
+    // Log full webhook structure for debugging
+    console.log('[webhook] full webhook structure', {
+      action: webhook?.action,
+      hasData: !!webhook?.data,
+      dataType: typeof webhook?.data,
+      dataKeys: webhook?.data ? Object.keys(webhook.data) : [],
+      webhookKeys: Object.keys(webhook || {}),
+      fullBody: JSON.stringify(webhook).slice(0, 500),
+    })
+    
     const evtType = webhook?.action
     const data = webhook?.data as unknown as PaymentWebhookData | any
     const metadata: BetPurchaseMetadata | undefined = (data?.metadata as any) || undefined
 
+    // Log what we're looking for
+    console.log('[webhook] processing check', {
+      evtType,
+      hasData: !!data,
+      hasMetadata: !!metadata,
+      metadataType: metadata?.type,
+      isPurchaseEvent: metadata?.type === 'bet_purchase' || metadata?.type === 'parlay_purchase',
+    })
+
     // Only handle our purchase events
     if (!metadata || (metadata.type !== 'bet_purchase' && metadata.type !== 'parlay_purchase')) {
+      console.log('[webhook] skipping - not a purchase event', { metadataType: metadata?.type })
       return NextResponse.json({ ok: true })
     }
 
