@@ -20,6 +20,7 @@ export async function POST(
   const { userId } = await verifyUserToken(req.headers)
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  let sellerCompanyId: string | undefined
   try {
     const { id } = await params
 
@@ -70,7 +71,7 @@ export async function POST(
     }
 
     // Get seller's company ID from experience (store if not cached)
-    const sellerCompanyId = await getOrStoreSellerCompanyId(listing.sellerUserId, bet.experienceId)
+    sellerCompanyId = await getOrStoreSellerCompanyId(listing.sellerUserId, bet.experienceId)
     if (!sellerCompanyId) {
       return NextResponse.json({ error: 'Seller company not found' }, { status: 400 })
     }
