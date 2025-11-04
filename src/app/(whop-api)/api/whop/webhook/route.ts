@@ -123,35 +123,6 @@ export async function POST(req: NextRequest) {
 
     const normalizedTs = normalizeToSeconds(chosenTsRaw || tsRaw || undefined) || undefined
 
-    // Always construct a cloned request with augmented headers so any downstream consumer sees expected variants
-    const hdrs = new Headers(headersView)
-    const setAllCased = (name: string, value: string) => {
-      hdrs.set(name.toLowerCase(), value)
-      const title = name.replace(/(^|[-_])(\w)/g, (_, p, c) => (p ? p : '') + c.toUpperCase())
-      hdrs.set(title, value)
-      hdrs.set(name.toUpperCase(), value)
-    }
-    if (chosenSig) {
-      setAllCased('svix-signature', chosenSig)
-      setAllCased('whop-signature', chosenSig)
-      setAllCased('webhook-signature', chosenSig)
-    }
-    if (chosenId) {
-      setAllCased('svix-id', chosenId)
-      setAllCased('whop-id', chosenId)
-      setAllCased('webhook-id', chosenId)
-    }
-    // Mirror timestamp header to all variants using ORIGINAL value (not normalized)
-    // This ensures validator can find it while preserving the format used for signature calculation
-    if (chosenTsRaw) {
-      setAllCased('svix-timestamp', chosenTsRaw)
-      setAllCased('whop-timestamp', chosenTsRaw)
-      setAllCased('webhook-timestamp', chosenTsRaw)
-    }
-    // Read raw body once to avoid disturbing the original Request body stream
-    const bodyBuffer = await req.arrayBuffer()
-    const reqForValidation: Request = new Request(req.url, { method: 'POST', headers: hdrs, body: bodyBuffer })
-
     // Extra diagnostics about selected header set (redacted preview)
     try {
       const redact = (s?: string | null) => (s ? `${s.slice(0, 8)}…${s.slice(-4)}` : undefined)
@@ -164,12 +135,6 @@ export async function POST(req: NextRequest) {
         sigPreview: redact(chosenSig),
         ts: normalizedTs,
         chosenTsRaw: chosenTsRaw,
-        svixTsValue: hdrs.get('svix-timestamp'),
-        webhookTsValue: hdrs.get('webhook-timestamp'),
-        svixSigExists: hdrs.has('svix-signature'),
-        svixTsExists: hdrs.has('svix-timestamp'),
-        svixIdExists: hdrs.has('svix-id'),
-        svixSigPreview: redact(hdrs.get('svix-signature')),
       })
     } catch {}
 
@@ -183,15 +148,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'timestamp out of range' }, { status: 400 })
     }
     
-    // Don't use headerOverrides - let validator use default svix headers
-    // We've already mirrored all headers to svix-* format above
+    // Use headerOverrides to tell validator which header names to use
+    // Whop sends webhook-* headers, so we need to specify that
+    const headerOverrides = usedSet === 'webhook'
+      ? {
+          signatureHeaderName: 'webhook-signature',
+          timestampHeaderName: 'webhook-timestamp',
+          idHeaderName: 'webhook-id',
+        }
+      : usedSet === 'whop'
+        ? {
+            signatureHeaderName: 'whop-signature',
+            timestampHeaderName: 'whop-timestamp',
+            idHeaderName: 'whop-id',
+          }
+        : undefined
+
     const validator = makeWebhookValidator({
       webhookSecret: secret,
+      ...(headerOverrides ?? {}),
     })
 
+    // Pass the original request directly - don't create a new Request object
+    // The validator needs the original headers and body as-is
     let webhook: any
     try {
-      webhook = await validator(reqForValidation)
+      webhook = await validator(req)
     } catch (err) {
       console.error('[webhook] invalid signature', {
         usedSet,
