@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
       return { name: null as string | null, value: null as string | null }
     }
 
-    const signaturePick = pickHeader(['webhook-signature', 'whop-signature', 'svix-signature', 'x-vercel-proxy-signature'])
-    const timestampPick = pickHeader(['webhook-timestamp', 'whop-timestamp', 'svix-timestamp', 'x-vercel-proxy-signature-ts'])
+    const signaturePick = pickHeader(['webhook-signature', 'whop-signature', 'svix-signature'])
+    const timestampPick = pickHeader(['webhook-timestamp', 'whop-timestamp', 'svix-timestamp'])
 
     const normalizeSignature = (raw: string | null) => {
       if (!raw) return null
