@@ -238,6 +238,7 @@ export async function POST(req: NextRequest) {
     console.log('[webhook] processing check', {
       evtType,
       hasData: !!data,
+      dataIsNull: data === null,
       hasMetadata: !!metadata,
       metadataType: metadata?.type,
       isPurchaseEvent: metadata?.type === 'bet_purchase' || metadata?.type === 'parlay_purchase',
@@ -245,7 +246,12 @@ export async function POST(req: NextRequest) {
 
     // Only handle our purchase events
     if (!metadata || (metadata.type !== 'bet_purchase' && metadata.type !== 'parlay_purchase')) {
-      console.log('[webhook] skipping - not a purchase event', { metadataType: metadata?.type })
+      if (data === null) {
+        console.log('[webhook] skipping - test webhook with null data (no purchase info)')
+        console.log('[webhook] Real webhooks from actual checkouts will have data populated')
+      } else {
+        console.log('[webhook] skipping - not a purchase event', { metadataType: metadata?.type })
+      }
       return NextResponse.json({ ok: true })
     }
 
